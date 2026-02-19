@@ -42,7 +42,7 @@ object ApricornHarvester : Worker {
     private val APRICORNS_TAG = TagKey.of(RegistryKeys.BLOCK, Identifier.of("cobblemon", "apricorns"))
     private val heldItemsByPokemon = mutableMapOf<UUID, List<ItemStack>>()
     private val failedDepositLocations = mutableMapOf<UUID, MutableSet<BlockPos>>()
-    private val config = CobbleworkersConfigHolder.config.apricorn
+    private val config get() = CobbleworkersConfigHolder.config.apricorn
 
     override val jobType: JobType = JobType.ApricornHarvester
     override val blockValidator: ((World, BlockPos) -> Boolean) = { world: World, pos: BlockPos ->
@@ -57,7 +57,7 @@ object ApricornHarvester : Worker {
     override fun shouldRun(pokemonEntity: PokemonEntity): Boolean {
         if (!config.apricornHarvestersEnabled) return false
 
-        return  CobbleworkersTypeUtils.isAllowedByType(config.typeHarvestsApricorns, pokemonEntity) || isDesignatedHarvester(pokemonEntity)
+        return  CobbleworkersTypeUtils.isAllowedByType(config.typeHarvestsApricorns, pokemonEntity) || CobbleworkersTypeUtils.isDesignatedBySpecies(pokemonEntity, config.apricornHarvesters)
     }
 
     /**
@@ -143,12 +143,8 @@ object ApricornHarvester : Worker {
         world.setBlockState(apricornPos, apricornState.with(ApricornBlock.AGE, 0), Block.NOTIFY_ALL)
     }
 
-    /**
-     * Checks if the Pokémon qualifies as a harvester because its species is
-     * explicitly listed in the config.
-     */
-    private fun isDesignatedHarvester(pokemonEntity: PokemonEntity): Boolean {
-        val speciesName = pokemonEntity.pokemon.species.translatedName.string.lowercase()
-        return config.apricornHarvesters.any { it.lowercase() == speciesName }
+    override fun cleanup(pokemonId: UUID) {
+        heldItemsByPokemon.remove(pokemonId)
+        failedDepositLocations.remove(pokemonId)
     }
 }

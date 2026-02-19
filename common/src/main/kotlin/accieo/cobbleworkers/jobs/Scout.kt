@@ -36,13 +36,14 @@ import net.minecraft.util.math.Box
 import net.minecraft.world.World
 import net.minecraft.world.gen.structure.Structure
 import java.util.UUID
+import java.util.concurrent.CompletableFuture
 import kotlin.text.lowercase
 
 object Scout : Worker {
     private val heldItemsByPokemon = mutableMapOf<UUID, List<ItemStack>>()
     private val failedDepositLocations = mutableMapOf<UUID, MutableSet<BlockPos>>()
     private val config get() = CobbleworkersConfigHolder.config.scouts
-    private val generalConfig = CobbleworkersConfigHolder.config.general
+    private val generalConfig get() = CobbleworkersConfigHolder.config.general
     private val searchRadius get() = generalConfig.searchRadius
     private val searchHeight get() = generalConfig.searchHeight
     private val lastGenerationTime = mutableMapOf<UUID, Long>()
@@ -57,7 +58,7 @@ object Scout : Worker {
     override fun shouldRun(pokemonEntity: PokemonEntity): Boolean {
         if (!config.scoutsEnabled) return false
 
-        return CobbleworkersTypeUtils.isAllowedByType(config.typeScouts, pokemonEntity) || isDesignatedScout(pokemonEntity) || doesPokemonKnowFly(pokemonEntity)
+        return CobbleworkersTypeUtils.isAllowedByType(config.typeScouts, pokemonEntity) || CobbleworkersTypeUtils.isDesignatedBySpecies(pokemonEntity, config.scouts) || doesPokemonKnowFly(pokemonEntity)
     }
 
     /**
@@ -99,8 +100,12 @@ object Scout : Worker {
             ?.let { it.blockPos to it }
     }
 
+    // Pending async structure lookups keyed by structure ID
+    private val pendingLookups = mutableMapOf<Identifier, CompletableFuture<com.mojang.datafixers.util.Pair<BlockPos, RegistryEntry<Structure>>?>>()
+
     /**
      * Locate random structure in already generated chunks and create a map to it.
+     * Structure locating is done asynchronously to avoid tick lag.
      */
     private fun createStructureMap(world: ServerWorld, origin: BlockPos): ItemStack? {
         val now = world.time
@@ -109,11 +114,37 @@ object Scout : Worker {
 
         val selectedId = structures.random()
         val cached = CobbleworkersCacheManager.getCachedStructure(selectedId, now)
-        val searchResult = cached ?: locateStructure(world, selectedId, origin)?.also {
-            CobbleworkersCacheManager.cacheStructure(selectedId, it, now)
-        }
 
-        if (searchResult == null) return null
+        val searchResult = if (cached != null) {
+            cached
+        } else {
+            // Check if we already have a pending lookup for this structure
+            val existing = pendingLookups[selectedId]
+            if (existing == null) {
+                // Capture registry data on main thread, run locate off-thread
+                val structureRegistry = world.server.registryManager.get(RegistryKeys.STRUCTURE)
+                val entry = structureRegistry
+                    .getEntry(RegistryKey.of(RegistryKeys.STRUCTURE, selectedId))
+                    .orElse(null) ?: return null
+                val entryList = RegistryEntryList.of(entry)
+                val chunkGenerator = world.chunkManager.chunkGenerator
+                val searchPos = origin.toImmutable()
+
+                val future = CompletableFuture.supplyAsync {
+                    chunkGenerator.locateStructure(world, entryList, searchPos, 100, false)
+                }
+                pendingLookups[selectedId] = future
+                return null // Not ready yet
+            } else if (!existing.isDone) {
+                return null // Still searching
+            } else {
+                // Future completed — retrieve and clean up
+                pendingLookups.remove(selectedId)
+                val result = existing.join() ?: return null
+                CobbleworkersCacheManager.cacheStructure(selectedId, result, now)
+                result
+            }
+        }
 
         val structurePos = searchResult.first
         val structureEntry = searchResult.second
@@ -144,19 +175,6 @@ object Scout : Worker {
         map.set(DataComponentTypes.MAP_COLOR, MapColorComponent(0xCC84ED))
 
         return map
-    }
-
-    private fun locateStructure(world: ServerWorld, structure: Identifier, pos: BlockPos): com.mojang.datafixers.util.Pair<BlockPos, RegistryEntry<Structure>>? {
-        val structureRegistry = world.server.registryManager.get(RegistryKeys.STRUCTURE)
-
-        val entry = structureRegistry
-            .getEntry(RegistryKey.of(RegistryKeys.STRUCTURE, structure))
-            .orElse(null) ?: return null
-
-        val entryList = RegistryEntryList.of(entry)
-
-        val chunkGenerator = world.chunkManager.chunkGenerator
-        return chunkGenerator.locateStructure(world, entryList, pos, 100, false)
     }
 
     /**
@@ -198,13 +216,10 @@ object Scout : Worker {
         }
     }
 
-    /**
-     * Checks if the Pokémon qualifies as a scout because its species is
-     * explicitly listed in the config.
-     */
-    private fun isDesignatedScout(pokemonEntity: PokemonEntity): Boolean {
-        val speciesName = pokemonEntity.pokemon.species.translatedName.string.lowercase()
-        return config.scouts.any { it.lowercase() == speciesName }
+    override fun cleanup(pokemonId: UUID) {
+        heldItemsByPokemon.remove(pokemonId)
+        failedDepositLocations.remove(pokemonId)
+        lastGenerationTime.remove(pokemonId)
     }
 
     /**

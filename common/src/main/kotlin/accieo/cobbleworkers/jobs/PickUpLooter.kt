@@ -26,7 +26,7 @@ import net.minecraft.world.World
 import java.util.UUID
 
 object PickUpLooter : Worker {
-    private val config = CobbleworkersConfigHolder.config.pickup
+    private val config get() = CobbleworkersConfigHolder.config.pickup
     private val cooldownTicks get() = config.pickUpLootingCooldownSeconds * 20L
     private val lastGenerationTime = mutableMapOf<UUID, Long>()
     private val heldItemsByPokemon = mutableMapOf<UUID, List<ItemStack>>()
@@ -92,5 +92,11 @@ object PickUpLooter : Worker {
             lastGenerationTime[pokemonId] = now
             heldItemsByPokemon[pokemonId] = drops
         }
+    }
+
+    override fun cleanup(pokemonId: UUID) {
+        lastGenerationTime.remove(pokemonId)
+        heldItemsByPokemon.remove(pokemonId)
+        failedDepositLocations.remove(pokemonId)
     }
 }

@@ -29,7 +29,7 @@ import kotlin.text.lowercase
 object CropHarvester : Worker {
     private val heldItemsByPokemon = mutableMapOf<UUID, List<ItemStack>>()
     private val failedDepositLocations = mutableMapOf<UUID, MutableSet<BlockPos>>()
-    private val config = CobbleworkersConfigHolder.config.cropHarvest
+    private val config get() = CobbleworkersConfigHolder.config.cropHarvest
 
     override val jobType: JobType = JobType.CropHarvester
     override val blockValidator: ((World, BlockPos) -> Boolean) = { world: World, pos: BlockPos ->
@@ -44,7 +44,7 @@ object CropHarvester : Worker {
     override fun shouldRun(pokemonEntity: PokemonEntity): Boolean {
         if (!config.cropHarvestersEnabled) return false
 
-        return CobbleworkersTypeUtils.isAllowedByType(config.typeHarvestsCrops, pokemonEntity) || isDesignatedHarvester(pokemonEntity)
+        return CobbleworkersTypeUtils.isAllowedByType(config.typeHarvestsCrops, pokemonEntity) || CobbleworkersTypeUtils.isDesignatedBySpecies(pokemonEntity, config.cropHarvesters)
     }
 
     /**
@@ -91,12 +91,8 @@ object CropHarvester : Worker {
         }
     }
 
-    /**
-     * Checks if the Pokémon qualifies as a harvester because its species is
-     * explicitly listed in the config.
-     */
-    private fun isDesignatedHarvester(pokemonEntity: PokemonEntity): Boolean {
-        val speciesName = pokemonEntity.pokemon.species.translatedName.string.lowercase()
-        return config.cropHarvesters.any { it.lowercase() == speciesName }
+    override fun cleanup(pokemonId: UUID) {
+        heldItemsByPokemon.remove(pokemonId)
+        failedDepositLocations.remove(pokemonId)
     }
 }

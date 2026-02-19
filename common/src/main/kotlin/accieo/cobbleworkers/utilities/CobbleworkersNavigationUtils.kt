@@ -198,4 +198,13 @@ object CobbleworkersNavigationUtils {
         releaseExpiredClaims(world)
         return recentlyExpiredTargets.containsKey(pos)
     }
+
+    /**
+     * Removes all state associated with a Pokémon.
+     */
+    fun cleanupPokemon(pokemonId: UUID, world: World) {
+        releaseTarget(pokemonId, world)
+        releasePlayerTarget(pokemonId)
+        lastPathfindTick.remove(pokemonId)
+    }
 }

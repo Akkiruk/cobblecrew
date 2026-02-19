@@ -38,7 +38,7 @@ object BerryHarvester : Worker {
     private val BERRIES_TAG = TagKey.of(RegistryKeys.BLOCK, Identifier.of("cobblemon", "berries"))
     private val heldItemsByPokemon = mutableMapOf<UUID, List<ItemStack>>()
     private val failedDepositLocations = mutableMapOf<UUID, MutableSet<BlockPos>>()
-    private val config = CobbleworkersConfigHolder.config.berries
+    private val config get() = CobbleworkersConfigHolder.config.berries
 
     override val jobType: JobType = JobType.BerryHarvester
     override val blockValidator: ((World, BlockPos) -> Boolean) = { world: World, pos: BlockPos ->
@@ -53,7 +53,7 @@ object BerryHarvester : Worker {
     override fun shouldRun(pokemonEntity: PokemonEntity): Boolean {
         if (!config.berryHarvestersEnabled) return false
 
-        return CobbleworkersTypeUtils.isAllowedByType(config.typeHarvestsBerries, pokemonEntity) || isDesignatedHarvester(pokemonEntity)
+        return CobbleworkersTypeUtils.isAllowedByType(config.typeHarvestsBerries, pokemonEntity) || CobbleworkersTypeUtils.isDesignatedBySpecies(pokemonEntity, config.berryHarvesters)
     }
 
     /**
@@ -133,12 +133,8 @@ object BerryHarvester : Worker {
         world.setBlockState(berryPos, berryState.with(BerryBlock.AGE, BerryBlock.MATURE_AGE), Block.NOTIFY_ALL)
     }
 
-    /**
-     * Checks if the Pokémon qualifies as a harvester because its species is
-     * explicitly listed in the config.
-     */
-    private fun isDesignatedHarvester(pokemonEntity: PokemonEntity): Boolean {
-        val speciesName = pokemonEntity.pokemon.species.translatedName.string.lowercase()
-        return config.berryHarvesters.any { it.lowercase() == speciesName }
+    override fun cleanup(pokemonId: UUID) {
+        heldItemsByPokemon.remove(pokemonId)
+        failedDepositLocations.remove(pokemonId)
     }
 }

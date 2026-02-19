@@ -25,7 +25,7 @@ import net.minecraft.world.World
  * A worker job for a Pokémon to find, navigate to, and irrigate dry farmland.
  */
 object CropIrrigator : Worker {
-    private val config = CobbleworkersConfigHolder.config.irrigation
+    private val config get() = CobbleworkersConfigHolder.config.irrigation
 
     override val jobType: JobType = JobType.CropIrrigator
     override val blockValidator: ((World, BlockPos) -> Boolean) = { world: World, pos: BlockPos ->
@@ -40,7 +40,7 @@ object CropIrrigator : Worker {
     override fun shouldRun(pokemonEntity: PokemonEntity): Boolean {
         if (!config.cropIrrigatorsEnabled) return false
 
-        return CobbleworkersTypeUtils.isAllowedByType(config.typeIrrigatesCrops, pokemonEntity) || isDesignatedIrrigator(pokemonEntity)
+        return CobbleworkersTypeUtils.isAllowedByType(config.typeIrrigatesCrops, pokemonEntity) || CobbleworkersTypeUtils.isDesignatedBySpecies(pokemonEntity, config.cropIrrigators)
     }
 
     /**
@@ -90,14 +90,5 @@ object CropIrrigator : Worker {
                 )
             }
         }
-    }
-
-    /**
-     * Checks if the Pokémon qualifies as an irrigator because its species is
-     * explicitly listed in the config.
-     */
-    private fun isDesignatedIrrigator(pokemonEntity: PokemonEntity): Boolean {
-        val speciesName = pokemonEntity.pokemon.species.translatedName.string.lowercase()
-        return config.cropIrrigators.any { it.lowercase() == speciesName }
     }
 }

@@ -22,7 +22,7 @@ import java.util.UUID
 import kotlin.text.lowercase
 
 object WaterGenerator : Worker {
-    private val config = CobbleworkersConfigHolder.config.water
+    private val config get() = CobbleworkersConfigHolder.config.water
     private val cooldownTicks get() = config.waterGenerationCooldownSeconds * 20L
     private val lastGenerationTime = mutableMapOf<UUID, Long>()
 
@@ -39,7 +39,7 @@ object WaterGenerator : Worker {
     override fun shouldRun(pokemonEntity: PokemonEntity): Boolean {
         if (!config.waterGeneratorsEnabled) return false
 
-        return CobbleworkersTypeUtils.isAllowedByType(config.typeGeneratesWater, pokemonEntity) || isDesignatedGenerator(pokemonEntity)
+        return CobbleworkersTypeUtils.isAllowedByType(config.typeGeneratesWater, pokemonEntity) || CobbleworkersTypeUtils.isDesignatedBySpecies(pokemonEntity, config.waterGenerators)
     }
 
     /**
@@ -81,12 +81,7 @@ object WaterGenerator : Worker {
         }
     }
 
-    /**
-     * Checks if the Pokémon qualifies as a generator because its species is
-     * explicitly listed in the config.
-     */
-    private fun isDesignatedGenerator(pokemonEntity: PokemonEntity): Boolean {
-        val speciesName = pokemonEntity.pokemon.species.translatedName.string.lowercase()
-        return config.waterGenerators.any { it.lowercase() == speciesName }
+    override fun cleanup(pokemonId: UUID) {
+        lastGenerationTime.remove(pokemonId)
     }
 }

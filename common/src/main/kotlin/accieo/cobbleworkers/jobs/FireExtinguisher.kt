@@ -21,7 +21,7 @@ import net.minecraft.world.World
 import kotlin.text.lowercase
 
 object FireExtinguisher : Worker {
-    private val config = CobbleworkersConfigHolder.config.extinguisher
+    private val config get() = CobbleworkersConfigHolder.config.extinguisher
 
     override val jobType: JobType = JobType.FireExtinguisher
     override val blockValidator: ((World, BlockPos) -> Boolean) = {  world: World, pos: BlockPos ->
@@ -36,7 +36,7 @@ object FireExtinguisher : Worker {
     override fun shouldRun(pokemonEntity: PokemonEntity): Boolean {
         if (!config.extinguishersEnabled) return false
 
-        return CobbleworkersTypeUtils.isAllowedByType(config.typeExtinguishesFire, pokemonEntity) || isDesignatedExtinguisher(pokemonEntity)
+        return CobbleworkersTypeUtils.isAllowedByType(config.typeExtinguishesFire, pokemonEntity) || CobbleworkersTypeUtils.isDesignatedBySpecies(pokemonEntity, config.extinguishers)
     }
 
     /**
@@ -105,14 +105,5 @@ object FireExtinguisher : Worker {
                 blockValidator(world, pos) && !CobbleworkersNavigationUtils.isRecentlyExpired(pos, world)
             }
             .minByOrNull { it.getSquaredDistance(origin) }
-    }
-
-    /**
-     * Checks if the Pokémon qualifies as an extinguisher because its species is
-     * explicitly listed in the config.
-     */
-    private fun isDesignatedExtinguisher(pokemonEntity: PokemonEntity): Boolean {
-        val speciesName = pokemonEntity.pokemon.species.translatedName.string.lowercase()
-        return config.extinguishers.any { it.lowercase() == speciesName }
     }
 }

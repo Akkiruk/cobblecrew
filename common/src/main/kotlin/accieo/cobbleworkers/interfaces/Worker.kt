@@ -35,4 +35,10 @@ interface Worker {
      * NOTE: Origin refers to the pasture's block position.
      */
     fun tick(world: World, origin: BlockPos, pokemonEntity: PokemonEntity)
+
+    /**
+     * Cleans up per-Pokémon state when a Pokémon leaves a pasture.
+     * Prevents memory leaks from accumulated UUID-keyed maps.
+     */
+    fun cleanup(pokemonId: java.util.UUID) {}
 }

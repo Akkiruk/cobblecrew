@@ -10,10 +10,12 @@ package accieo.cobbleworkers.jobs
 
 import accieo.cobbleworkers.enums.JobType
 import accieo.cobbleworkers.interfaces.Worker
+import accieo.cobbleworkers.utilities.CobbleworkersNavigationUtils
 import accieo.cobbleworkers.utilities.DeferredBlockScanner
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import net.minecraft.util.math.BlockPos
 import net.minecraft.world.World
+import java.util.UUID
 import kotlin.collections.filter
 import kotlin.collections.forEach
 
@@ -73,5 +75,14 @@ object WorkerDispatcher {
         workers
             .filter { it.shouldRun(pokemonEntity) }
             .forEach { it.tick(world, pastureOrigin, pokemonEntity) }
+    }
+
+    /**
+     * Cleans up all per-Pokémon state when a Pokémon leaves a pasture.
+     * Call this when a Pokémon is removed/recalled from a pasture.
+     */
+    fun cleanupPokemon(pokemonId: UUID, world: World) {
+        workers.forEach { it.cleanup(pokemonId) }
+        CobbleworkersNavigationUtils.cleanupPokemon(pokemonId, world)
     }
 }

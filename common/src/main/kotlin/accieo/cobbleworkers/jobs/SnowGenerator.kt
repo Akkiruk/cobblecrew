@@ -22,7 +22,7 @@ import java.util.UUID
 import kotlin.text.lowercase
 
 object SnowGenerator : Worker {
-    private val config = CobbleworkersConfigHolder.config.snow
+    private val config get() = CobbleworkersConfigHolder.config.snow
     private val cooldownTicks get() = config.snowGenerationCooldownSeconds * 20L
     private val lastGenerationTime = mutableMapOf<UUID, Long>()
 
@@ -39,7 +39,7 @@ object SnowGenerator : Worker {
     override fun shouldRun(pokemonEntity: PokemonEntity): Boolean {
         if (!config.snowGeneratorsEnabled) return false
 
-        return CobbleworkersTypeUtils.isAllowedByType(config.typeGeneratesSnow, pokemonEntity) || isDesignatedGenerator(pokemonEntity)
+        return CobbleworkersTypeUtils.isAllowedByType(config.typeGeneratesSnow, pokemonEntity) || CobbleworkersTypeUtils.isDesignatedBySpecies(pokemonEntity, config.snowGenerators)
     }
 
     /**
@@ -81,12 +81,7 @@ object SnowGenerator : Worker {
         }
     }
 
-    /**
-     * Checks if the Pokémon qualifies as a generator because its species is
-     * explicitly listed in the config.
-     */
-    private fun isDesignatedGenerator(pokemonEntity: PokemonEntity): Boolean {
-        val speciesName = pokemonEntity.pokemon.species.translatedName.string.lowercase()
-        return config.snowGenerators.any { it.lowercase() == speciesName }
+    override fun cleanup(pokemonId: UUID) {
+        lastGenerationTime.remove(pokemonId)
     }
 }

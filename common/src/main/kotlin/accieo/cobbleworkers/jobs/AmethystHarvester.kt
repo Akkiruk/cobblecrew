@@ -33,7 +33,7 @@ import kotlin.text.lowercase
 object AmethystHarvester : Worker {
     private val heldItemsByPokemon = mutableMapOf<UUID, List<ItemStack>>()
     private val failedDepositLocations = mutableMapOf<UUID, MutableSet<BlockPos>>()
-    private val config = CobbleworkersConfigHolder.config.amethyst
+    private val config get() = CobbleworkersConfigHolder.config.amethyst
 
     override val jobType: JobType = JobType.AmethystHarvester
     override val blockValidator: ((World, BlockPos) -> Boolean) = { world: World, pos: BlockPos ->
@@ -48,7 +48,7 @@ object AmethystHarvester : Worker {
     override fun shouldRun(pokemonEntity: PokemonEntity): Boolean {
         if (!config.amethystHarvestersEnabled) return false
 
-        return CobbleworkersTypeUtils.isAllowedByType(config.typeHarvestsAmethyst, pokemonEntity) || isDesignatedHarvester(pokemonEntity)
+        return CobbleworkersTypeUtils.isAllowedByType(config.typeHarvestsAmethyst, pokemonEntity) || CobbleworkersTypeUtils.isDesignatedBySpecies(pokemonEntity, config.amethystHarvesters)
     }
 
     /**
@@ -132,12 +132,8 @@ object AmethystHarvester : Worker {
         world.setBlockState(amethystPos, Blocks.AIR.defaultState)
     }
 
-    /**
-     * Checks if the Pokémon qualifies as a harvester because its species is
-     * explicitly listed in the config.
-     */
-    private fun isDesignatedHarvester(pokemonEntity: PokemonEntity): Boolean {
-        val speciesName = pokemonEntity.pokemon.species.translatedName.string.lowercase()
-        return config.amethystHarvesters.any { it.lowercase() == speciesName }
+    override fun cleanup(pokemonId: UUID) {
+        heldItemsByPokemon.remove(pokemonId)
+        failedDepositLocations.remove(pokemonId)
     }
 }

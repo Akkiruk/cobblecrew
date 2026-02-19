@@ -33,7 +33,7 @@ object MintHarvester : Worker {
     private val MINTS_TAG = TagKey.of(RegistryKeys.BLOCK, Identifier.of("cobblemon", "mints"))
     private val heldItemsByPokemon = mutableMapOf<UUID, List<ItemStack>>()
     private val failedDepositLocations = mutableMapOf<UUID, MutableSet<BlockPos>>()
-    private val config = CobbleworkersConfigHolder.config.mints
+    private val config get() = CobbleworkersConfigHolder.config.mints
 
     override val jobType: JobType = JobType.MintHarvester
     override val blockValidator: ((World, BlockPos) -> Boolean) = { world: World, pos: BlockPos ->
@@ -48,7 +48,7 @@ object MintHarvester : Worker {
     override fun shouldRun(pokemonEntity: PokemonEntity): Boolean {
         if (!config.mintHarvestersEnabled) return false
 
-        return  CobbleworkersTypeUtils.isAllowedByType(config.typeHarvestsMints, pokemonEntity) || isDesignatedHarvester(pokemonEntity)
+        return  CobbleworkersTypeUtils.isAllowedByType(config.typeHarvestsMints, pokemonEntity) || CobbleworkersTypeUtils.isDesignatedBySpecies(pokemonEntity, config.mintHarvesters)
     }
 
     /**
@@ -134,12 +134,8 @@ object MintHarvester : Worker {
         world.setBlockState(mintPos, mintState.with(MintBlock.AGE, 0), Block.NOTIFY_ALL)
     }
 
-    /**
-     * Checks if the Pokémon qualifies as a harvester because its species is
-     * explicitly listed in the config.
-     */
-    private fun isDesignatedHarvester(pokemonEntity: PokemonEntity): Boolean {
-        val speciesName = pokemonEntity.pokemon.species.translatedName.string.lowercase()
-        return config.mintHarvesters.any { it.lowercase() == speciesName }
+    override fun cleanup(pokemonId: UUID) {
+        heldItemsByPokemon.remove(pokemonId)
+        failedDepositLocations.remove(pokemonId)
     }
 }

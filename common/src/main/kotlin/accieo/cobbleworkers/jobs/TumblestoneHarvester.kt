@@ -41,7 +41,7 @@ object TumblestoneHarvester : Worker {
     )
     private val heldItemsByPokemon = mutableMapOf<UUID, List<ItemStack>>()
     private val failedDepositLocations = mutableMapOf<UUID, MutableSet<BlockPos>>()
-    private val config = CobbleworkersConfigHolder.config.tumblestone
+    private val config get() = CobbleworkersConfigHolder.config.tumblestone
 
     override val jobType: JobType = JobType.TumblestoneHarvester
     override val blockValidator: ((World, BlockPos) -> Boolean) = { world: World, pos: BlockPos ->
@@ -56,7 +56,7 @@ object TumblestoneHarvester : Worker {
     override fun shouldRun(pokemonEntity: PokemonEntity): Boolean {
         if (!config.tumblestoneHarvestersEnabled) return false
 
-        return CobbleworkersTypeUtils.isAllowedByType(config.typeHarvestsTumblestone, pokemonEntity) || isDesignatedHarvester(pokemonEntity)
+        return CobbleworkersTypeUtils.isAllowedByType(config.typeHarvestsTumblestone, pokemonEntity) || CobbleworkersTypeUtils.isDesignatedBySpecies(pokemonEntity, config.tumblestoneHarvesters)
     }
 
     /**
@@ -155,12 +155,8 @@ object TumblestoneHarvester : Worker {
         }
     }
 
-    /**
-     * Checks if the Pokémon qualifies as a harvester because its species is
-     * explicitly listed in the config.
-     */
-    private fun isDesignatedHarvester(pokemonEntity: PokemonEntity): Boolean {
-        val speciesName = pokemonEntity.pokemon.species.translatedName.string.lowercase()
-        return config.tumblestoneHarvesters.any { it.lowercase() == speciesName }
+    override fun cleanup(pokemonId: UUID) {
+        heldItemsByPokemon.remove(pokemonId)
+        failedDepositLocations.remove(pokemonId)
     }
 }

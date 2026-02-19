@@ -28,7 +28,7 @@ import kotlin.collections.set
 import kotlin.text.lowercase
 
 object FishingLootGenerator : Worker {
-    private val config = CobbleworkersConfigHolder.config.fishing
+    private val config get() = CobbleworkersConfigHolder.config.fishing
     private val cooldownTicks get() = config.fishingLootGenerationCooldownSeconds * 20L
     private val treasureChance get() = config.fishingLootTreasureChance
     private val lastGenerationTime = mutableMapOf<UUID, Long>()
@@ -45,7 +45,7 @@ object FishingLootGenerator : Worker {
     override fun shouldRun(pokemonEntity: PokemonEntity): Boolean {
         if (!config.fishingLootGeneratorsEnabled) return false
 
-        return CobbleworkersTypeUtils.isAllowedByType(config.typeGeneratesFishingLoot, pokemonEntity) || isDesignatedGenerator(pokemonEntity)
+        return CobbleworkersTypeUtils.isAllowedByType(config.typeGeneratesFishingLoot, pokemonEntity) || CobbleworkersTypeUtils.isDesignatedBySpecies(pokemonEntity, config.fishingLootGenerators)
     }
 
     /**
@@ -101,12 +101,9 @@ object FishingLootGenerator : Worker {
         }
     }
 
-    /**
-     * Checks if the Pokémon qualifies as a generator because its species is
-     * explicitly listed in the config.
-     */
-    private fun isDesignatedGenerator(pokemonEntity: PokemonEntity): Boolean {
-        val speciesName = pokemonEntity.pokemon.species.translatedName.string.lowercase()
-        return config.fishingLootGenerators.any { it.lowercase() == speciesName }
+    override fun cleanup(pokemonId: UUID) {
+        lastGenerationTime.remove(pokemonId)
+        heldItemsByPokemon.remove(pokemonId)
+        failedDepositLocations.remove(pokemonId)
     }
 }

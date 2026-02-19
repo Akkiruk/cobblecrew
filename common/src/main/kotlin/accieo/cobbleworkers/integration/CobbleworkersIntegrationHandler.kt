@@ -53,19 +53,16 @@ class CobbleworkersIntegrationHandler(private val helper: ModIntegrationHelper) 
     }
 
     /**
-     * Adds integration for sophisticated storage
+     * Adds integration for sophisticated storage.
+     * TODO: Not yet implemented — waiting for upstream API support.
      */
     private fun addSophisticatedStorage() {
-        // TODO: This is a work in progress, not yet implemented.
-        return
-
         if (!helper.isModLoaded(SOPHISTICATED_STORAGE)) return
 
-        val sophisticatedStorageBlocks = getModBlocks(
-            SOPHISTICATED_STORAGE,
-            listOf("limited_barrel_1", "limited_barrel_2", "limited_barrel_3", "limited_barrel_4")
-        )
-
-        CobbleworkersInventoryUtils.addCompatibility(sophisticatedStorageBlocks)
+        // val sophisticatedStorageBlocks = getModBlocks(
+        //     SOPHISTICATED_STORAGE,
+        //     listOf("limited_barrel_1", "limited_barrel_2", "limited_barrel_3", "limited_barrel_4")
+        // )
+        // CobbleworkersInventoryUtils.addCompatibility(sophisticatedStorageBlocks)
     }
 }

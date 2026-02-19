@@ -24,7 +24,7 @@ import java.util.UUID
 import kotlin.text.lowercase
 
 object FuelGenerator : Worker {
-    private val config = CobbleworkersConfigHolder.config.fuel
+    private val config get() = CobbleworkersConfigHolder.config.fuel
     private val cooldownTicks get() = config.fuelGenerationCooldownSeconds * 20L
     private val lastGenerationTime = mutableMapOf<UUID, Long>()
 
@@ -41,7 +41,7 @@ object FuelGenerator : Worker {
     override fun shouldRun(pokemonEntity: PokemonEntity): Boolean {
         if (!config.fuelGeneratorsEnabled) return false
 
-        return CobbleworkersTypeUtils.isAllowedByType(config.typeGeneratesFuel, pokemonEntity) || isDesignatedGenerator(pokemonEntity)
+        return CobbleworkersTypeUtils.isAllowedByType(config.typeGeneratesFuel, pokemonEntity) || CobbleworkersTypeUtils.isDesignatedBySpecies(pokemonEntity, config.fuelGenerators)
     }
 
     /**
@@ -121,12 +121,7 @@ object FuelGenerator : Worker {
         }
     }
 
-    /**
-     * Checks if the Pokémon qualifies as a fuel generator because its species is
-     * explicitly listed in the config.
-     */
-    private fun isDesignatedGenerator(pokemonEntity: PokemonEntity): Boolean {
-        val speciesName = pokemonEntity.pokemon.species.translatedName.string.lowercase()
-        return config.fuelGenerators.any { it.lowercase() == speciesName }
+    override fun cleanup(pokemonId: UUID) {
+        lastGenerationTime.remove(pokemonId)
     }
 }

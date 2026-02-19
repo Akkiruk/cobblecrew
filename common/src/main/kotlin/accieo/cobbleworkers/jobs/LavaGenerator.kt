@@ -22,7 +22,7 @@ import java.util.UUID
 import kotlin.text.lowercase
 
 object LavaGenerator : Worker {
-    private val config = CobbleworkersConfigHolder.config.lava
+    private val config get() = CobbleworkersConfigHolder.config.lava
     private val cooldownTicks get() = config.lavaGenerationCooldownSeconds * 20L
     private val lastGenerationTime = mutableMapOf<UUID, Long>()
 
@@ -39,7 +39,7 @@ object LavaGenerator : Worker {
     override fun shouldRun(pokemonEntity: PokemonEntity): Boolean {
         if (!config.lavaGeneratorsEnabled) return false
 
-        return CobbleworkersTypeUtils.isAllowedByType(config.typeGeneratesLava, pokemonEntity) || isDesignatedGenerator(pokemonEntity)
+        return CobbleworkersTypeUtils.isAllowedByType(config.typeGeneratesLava, pokemonEntity) || CobbleworkersTypeUtils.isDesignatedBySpecies(pokemonEntity, config.lavaGenerators)
     }
 
     /**
@@ -83,12 +83,7 @@ object LavaGenerator : Worker {
         }
     }
 
-    /**
-     * Checks if the Pokémon qualifies as a generator because its species is
-     * explicitly listed in the config.
-     */
-    private fun isDesignatedGenerator(pokemonEntity: PokemonEntity): Boolean {
-        val speciesName = pokemonEntity.pokemon.species.translatedName.string.lowercase()
-        return config.lavaGenerators.any { it.lowercase() == speciesName }
+    override fun cleanup(pokemonId: UUID) {
+        lastGenerationTime.remove(pokemonId)
     }
 }

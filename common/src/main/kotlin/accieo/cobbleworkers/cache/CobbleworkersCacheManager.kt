@@ -18,7 +18,7 @@ import net.minecraft.world.gen.structure.Structure
 import java.util.concurrent.ConcurrentHashMap
 
 object CobbleworkersCacheManager {
-    private val pastureCaches: MutableMap<BlockPos, PastureCache> = mutableMapOf()
+    private val pastureCaches: MutableMap<BlockPos, PastureCache> = ConcurrentHashMap()
     private var structuresCache: Set<Identifier>? = null
 
     private val structureLocationCache: MutableMap<Identifier, com.mojang.datafixers.util.Pair<BlockPos, RegistryEntry<Structure>>> =

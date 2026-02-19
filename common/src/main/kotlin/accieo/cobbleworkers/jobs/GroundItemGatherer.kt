@@ -26,8 +26,8 @@ import kotlin.text.lowercase
 object GroundItemGatherer : Worker {
     private val heldItemsByPokemon = mutableMapOf<UUID, List<ItemStack>>()
     private val failedDepositLocations = mutableMapOf<UUID, MutableSet<BlockPos>>()
-    private val config = CobbleworkersConfigHolder.config.groundItemGathering
-    private val generalConfig = CobbleworkersConfigHolder.config.general
+    private val config get() = CobbleworkersConfigHolder.config.groundItemGathering
+    private val generalConfig get() = CobbleworkersConfigHolder.config.general
     private val searchRadius get() = generalConfig.searchRadius
     private val searchHeight get() = generalConfig.searchHeight
 
@@ -41,7 +41,7 @@ object GroundItemGatherer : Worker {
     override fun shouldRun(pokemonEntity: PokemonEntity): Boolean {
         if (!config.groundItemGatheringEnabled) return false
 
-        return  CobbleworkersTypeUtils.isAllowedByType(config.typeGathersGroundItems, pokemonEntity) || isDesignatedGatherer(pokemonEntity)
+        return  CobbleworkersTypeUtils.isAllowedByType(config.typeGathersGroundItems, pokemonEntity) || CobbleworkersTypeUtils.isDesignatedBySpecies(pokemonEntity, config.groundItemGatherers)
     }
 
     /**
@@ -97,12 +97,8 @@ object GroundItemGatherer : Worker {
         return items.find { item -> item.isOnGround }?.let { it.blockPos to it }
     }
 
-    /**
-     * Checks if the Pokémon qualifies as a gatherer because its species is
-     * explicitly listed in the config.
-     */
-    private fun isDesignatedGatherer(pokemonEntity: PokemonEntity): Boolean {
-        val speciesName = pokemonEntity.pokemon.species.translatedName.string.lowercase()
-        return config.groundItemGatherers.any { it.lowercase() == speciesName }
+    override fun cleanup(pokemonId: UUID) {
+        heldItemsByPokemon.remove(pokemonId)
+        failedDepositLocations.remove(pokemonId)
     }
 }

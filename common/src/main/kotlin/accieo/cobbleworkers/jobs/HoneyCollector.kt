@@ -42,7 +42,7 @@ object HoneyCollector : Worker {
     }
     private val heldItemsByPokemon = mutableMapOf<UUID, List<ItemStack>>()
     private val failedDepositLocations = mutableMapOf<UUID, MutableSet<BlockPos>>()
-    private val config = CobbleworkersConfigHolder.config.honey
+    private val config get() = CobbleworkersConfigHolder.config.honey
     private val lastGenerationTime = mutableMapOf<UUID, Long>()
     private val cooldownTicks get() = config.honeyGenerationCooldownSeconds * 20L
 
@@ -59,7 +59,7 @@ object HoneyCollector : Worker {
     override fun shouldRun(pokemonEntity: PokemonEntity): Boolean {
         if (!config.honeyCollectorsEnabled) return false
 
-        return isAllowedBySpecies(pokemonEntity) || isDesignatedCollector(pokemonEntity) || CobbleworkersTypeUtils.isAllowedByType(config.typeHarvestsHoney, pokemonEntity)
+        return isAllowedBySpecies(pokemonEntity) || CobbleworkersTypeUtils.isDesignatedBySpecies(pokemonEntity, config.honeyCollectors) || CobbleworkersTypeUtils.isAllowedByType(config.typeHarvestsHoney, pokemonEntity)
     }
 
     /**
@@ -184,12 +184,9 @@ object HoneyCollector : Worker {
         return speciesName in VALID_TRANSLATED_SPECIES
     }
 
-    /**
-     * Checks if the Pokémon qualifies as a collector because its species is
-     * explicitly listed in the config.
-     */
-    private fun isDesignatedCollector(pokemonEntity: PokemonEntity): Boolean {
-        val speciesName = pokemonEntity.pokemon.species.translatedName.string.lowercase()
-        return config.honeyCollectors.any { it.lowercase() == speciesName }
+    override fun cleanup(pokemonId: UUID) {
+        heldItemsByPokemon.remove(pokemonId)
+        failedDepositLocations.remove(pokemonId)
+        lastGenerationTime.remove(pokemonId)
     }
 }

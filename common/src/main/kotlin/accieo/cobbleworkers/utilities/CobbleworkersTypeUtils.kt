@@ -18,8 +18,15 @@ object CobbleworkersTypeUtils {
      * is enabled via the config.
      */
     fun isAllowedByType(configPokemonType: CobbleworkersConfigPokemonType, pokemonEntity: PokemonEntity): Boolean {
-        val allowedType = configPokemonType.toElementalType()
-        if (allowedType == null) return false
+        val allowedType = configPokemonType.toElementalType() ?: return false
         return pokemonEntity.pokemon.types.any { it == allowedType }
+    }
+
+    /**
+     * Checks if a Pokémon's species name is in the designated species list.
+     */
+    fun isDesignatedBySpecies(pokemonEntity: PokemonEntity, designatedSpecies: List<String>): Boolean {
+        val speciesName = pokemonEntity.pokemon.species.translatedName.string.lowercase()
+        return designatedSpecies.any { it.lowercase() == speciesName }
     }
 }

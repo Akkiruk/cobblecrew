@@ -26,7 +26,7 @@ import net.minecraft.world.World
 import java.util.UUID
 
 object DiveLooter : Worker {
-    private val config = CobbleworkersConfigHolder.config.diving
+    private val config get() = CobbleworkersConfigHolder.config.diving
     private val cooldownTicks get() = config.divingLootingCooldownSeconds * 20L
     private val lastGenerationTime = mutableMapOf<UUID, Long>()
     private val heldItemsByPokemon = mutableMapOf<UUID, List<ItemStack>>()
@@ -94,5 +94,11 @@ object DiveLooter : Worker {
             lastGenerationTime[pokemonId] = now
             heldItemsByPokemon[pokemonId] = drops
         }
+    }
+
+    override fun cleanup(pokemonId: UUID) {
+        lastGenerationTime.remove(pokemonId)
+        heldItemsByPokemon.remove(pokemonId)
+        failedDepositLocations.remove(pokemonId)
     }
 }

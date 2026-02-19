@@ -32,7 +32,7 @@ import java.util.UUID
 import kotlin.text.lowercase
 
 object Archeologist : Worker {
-    private val config = CobbleworkersConfigHolder.config.archeology
+    private val config get() = CobbleworkersConfigHolder.config.archeology
     private val cooldownTicks get() = config.archeologyLootingCooldownSeconds * 20L
     private val lastGenerationTime = mutableMapOf<UUID, Long>()
     private val heldItemsByPokemon = mutableMapOf<UUID, List<ItemStack>>()
@@ -59,7 +59,7 @@ object Archeologist : Worker {
     override fun shouldRun(pokemonEntity: PokemonEntity): Boolean {
         if (!config.archeologistsEnabled) return false
 
-        return  CobbleworkersTypeUtils.isAllowedByType(config.typeDoesArcheology, pokemonEntity) || isDesignatedHarvester(pokemonEntity)
+        return  CobbleworkersTypeUtils.isAllowedByType(config.typeDoesArcheology, pokemonEntity) || CobbleworkersTypeUtils.isDesignatedBySpecies(pokemonEntity, config.archeologists)
     }
 
     /**
@@ -156,12 +156,9 @@ object Archeologist : Worker {
         }
     }
 
-    /**
-     * Checks if the Pokémon qualifies as an archeologist because its species is
-     * explicitly listed in the config.
-     */
-    private fun isDesignatedHarvester(pokemonEntity: PokemonEntity): Boolean {
-        val speciesName = pokemonEntity.pokemon.species.translatedName.string.lowercase()
-        return config.archeologists.any { it.lowercase() == speciesName }
+    override fun cleanup(pokemonId: UUID) {
+        lastGenerationTime.remove(pokemonId)
+        heldItemsByPokemon.remove(pokemonId)
+        failedDepositLocations.remove(pokemonId)
     }
 }

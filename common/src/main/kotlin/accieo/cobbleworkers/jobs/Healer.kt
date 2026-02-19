@@ -12,6 +12,7 @@ import accieo.cobbleworkers.config.CobbleworkersConfigHolder
 import accieo.cobbleworkers.enums.JobType
 import accieo.cobbleworkers.interfaces.Worker
 import accieo.cobbleworkers.utilities.CobbleworkersNavigationUtils
+import accieo.cobbleworkers.utilities.CobbleworkersTypeUtils
 import com.cobblemon.mod.common.api.pokemon.PokemonSpecies
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import net.minecraft.entity.effect.StatusEffectInstance
@@ -32,8 +33,8 @@ object Healer : Worker {
                 ?: name.lowercase()
         }.toSet()
     }
-    private val config = CobbleworkersConfigHolder.config.healing
-    private val generalConfig = CobbleworkersConfigHolder.config.general
+    private val config get() = CobbleworkersConfigHolder.config.healing
+    private val generalConfig get() = CobbleworkersConfigHolder.config.general
     private val searchRadius get() = generalConfig.searchRadius
     private val searchHeight get() = generalConfig.searchHeight
 
@@ -47,7 +48,7 @@ object Healer : Worker {
     override fun shouldRun(pokemonEntity: PokemonEntity): Boolean {
         if (!config.healersEnabled) return false
 
-        return isDesignatedHealer(pokemonEntity) || isAllowedBySpecies(pokemonEntity) || doesPokemonKnowHealingMove(pokemonEntity)
+        return CobbleworkersTypeUtils.isDesignatedBySpecies(pokemonEntity, config.healers) || isAllowedBySpecies(pokemonEntity) || doesPokemonKnowHealingMove(pokemonEntity)
     }
 
     /**
@@ -120,15 +121,6 @@ object Healer : Worker {
         if (!config.chanseyLineHealsPlayers) return false
         val speciesName = pokemonEntity.pokemon.species.translatedName.string.lowercase()
         return speciesName in VALID_TRANSLATED_SPECIES
-    }
-
-    /**
-     * Checks if the Pokémon qualifies as a healer because its species is
-     * explicitly listed in the config.
-     */
-    private fun isDesignatedHealer(pokemonEntity: PokemonEntity): Boolean {
-        val speciesName = pokemonEntity.pokemon.species.translatedName.string.lowercase()
-        return config.healers.any { it.lowercase() == speciesName }
     }
 
     /**
