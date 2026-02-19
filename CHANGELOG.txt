@@ -1,3 +1,12 @@
+## 2.2.0
+- Phase 2: 28 new gathering jobs via DSL (wood, crops, stone, minerals, nature)
+- BlockCategoryValidators: 30+ new validators for all gathering block types
+- Jobs: Overworld Logger, Jungle Chopper, Fungi Harvester, Bamboo Chopper, Sugar Cane Cutter,
+  Cactus Pruner, Vine Trimmer, Beet Puller, Sweet Berry Harvester, Pumpkin/Melon Harvester,
+  Cocoa Harvester, Chorus Fruit Harvester, Glowberry Picker, Dripleaf Harvester, Stone Breaker,
+  Igneous Miner, Deepslate Excavator, Excavator, Sand Miner, Clay Digger, Sculk Harvester,
+  Ice Miner, Mushroom Forager, Flower Picker, Snow Scraper, Moss Scraper, Decomposer, Terrain Flattener
+
 ## 2.1.0
 - Phase 1: Base class infrastructure for V2 job system
 - PokemonProfile: eligibility caching computed once per Pokémon on pasture entry
