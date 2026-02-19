@@ -1,3 +1,14 @@
+## 2.3.0
+- Phase 3: 25 production jobs (wool, silk, slime, ink, bone, pearl, feather, scale, fruit,
+  coin, gem, spore, pollen, gift, egg, milk, electric, wax, powder, ash, static, sap, toxin,
+  crystal, tear)
+- Phase 4: 10 processing jobs (ore smelter, food cooker, glass maker, brick baker, charcoal
+  burner, paper maker, bone grinder, flint knapper, pigment presser, composter)
+- Phase 5: 4 placement jobs (torch lighter, tree planter, crop sower, bonemeal applicator)
+- Phase 6: 7 defense jobs (guard, sentry, repeller, fearmonger, fire/poison/ice trap)
+- Phase 7: 9 support jobs (healer, speed/strength/resistance/haste/jump booster, night vision,
+  water breathing, hunger restorer)
+
 ## 2.2.0
 - Phase 2: 28 new gathering jobs via DSL (wood, crops, stone, minerals, nature)
 - BlockCategoryValidators: 30+ new validators for all gathering block types
