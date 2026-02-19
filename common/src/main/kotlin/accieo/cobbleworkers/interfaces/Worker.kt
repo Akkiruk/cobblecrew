@@ -37,6 +37,12 @@ interface Worker {
     fun tick(world: World, origin: BlockPos, pokemonEntity: PokemonEntity)
 
     /**
+     * Returns true if this worker has active per-Pokémon state (e.g. held items)
+     * that requires it to keep ticking for this Pokémon.
+     */
+    fun hasActiveState(pokemonId: java.util.UUID): Boolean = false
+
+    /**
      * Cleans up per-Pokémon state when a Pokémon leaves a pasture.
      * Prevents memory leaks from accumulated UUID-keyed maps.
      */

@@ -13,11 +13,13 @@ import accieo.cobbleworkers.enums.JobType
 import accieo.cobbleworkers.interfaces.Worker
 import accieo.cobbleworkers.utilities.CobbleworkersNavigationUtils
 import accieo.cobbleworkers.utilities.CobbleworkersTypeUtils
+import accieo.cobbleworkers.utilities.WorkerVisualUtils
 import com.cobblemon.mod.common.api.pokemon.PokemonSpecies
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import net.minecraft.entity.effect.StatusEffectInstance
 import net.minecraft.entity.effect.StatusEffects
 import net.minecraft.entity.player.PlayerEntity
+import net.minecraft.particle.ParticleTypes
 import net.minecraft.util.math.BlockPos
 import net.minecraft.util.math.Box
 import net.minecraft.world.World
@@ -95,7 +97,7 @@ object Healer : Worker {
             CobbleworkersNavigationUtils.navigateToPlayer(pokemonEntity, closestPlayer)
         }
 
-        if (CobbleworkersNavigationUtils.isPokemonNearPlayer(pokemonEntity, closestPlayer)) {
+        if (WorkerVisualUtils.handlePlayerArrival(pokemonEntity, closestPlayer, world, ParticleTypes.HEART)) {
             if (!doesPlayerHaveRegen(closestPlayer)) {
                 closestPlayer.addStatusEffect(
                     StatusEffectInstance(

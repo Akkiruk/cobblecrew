@@ -8,137 +8,43 @@
 
 package accieo.cobbleworkers.jobs
 
-import accieo.cobbleworkers.cache.CobbleworkersCacheManager
 import accieo.cobbleworkers.config.CobbleworkersConfigHolder
 import accieo.cobbleworkers.enums.JobType
-import accieo.cobbleworkers.interfaces.Worker
-import accieo.cobbleworkers.utilities.CobbleworkersInventoryUtils
-import accieo.cobbleworkers.utilities.CobbleworkersNavigationUtils
 import accieo.cobbleworkers.utilities.CobbleworkersTypeUtils
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import net.minecraft.block.Block
 import net.minecraft.block.Blocks
 import net.minecraft.block.NetherWartBlock
-import net.minecraft.item.ItemStack
-import net.minecraft.loot.context.LootContextParameterSet
-import net.minecraft.loot.context.LootContextParameters
-import net.minecraft.server.world.ServerWorld
+import net.minecraft.particle.ParticleEffect
+import net.minecraft.particle.ParticleTypes
 import net.minecraft.util.math.BlockPos
 import net.minecraft.world.World
-import java.util.UUID
-import kotlin.text.lowercase
 
-object NetherwartHarvester : Worker {
-    private val heldItemsByPokemon = mutableMapOf<UUID, List<ItemStack>>()
-    private val failedDepositLocations = mutableMapOf<UUID, MutableSet<BlockPos>>()
+object NetherwartHarvester : BaseHarvester() {
     private val config get() = CobbleworkersConfigHolder.config.netherwartHarvest
 
-    override val jobType: JobType = JobType.NetherwartHarvester
-    override val blockValidator: ((World, BlockPos) -> Boolean) = { world: World, pos: BlockPos ->
-        val state = world.getBlockState(pos)
-        state.block is NetherWartBlock
+    override val jobType = JobType.NetherwartHarvester
+    override val arrivalParticle: ParticleEffect = ParticleTypes.SMOKE
+    override val blockValidator: ((World, BlockPos) -> Boolean) = { world, pos ->
+        world.getBlockState(pos).block is NetherWartBlock
     }
 
+    override fun isEnabled() = config.netherwartHarvestersEnabled
+    override fun isEligible(pokemonEntity: PokemonEntity) =
+        CobbleworkersTypeUtils.isAllowedByType(config.typeHarvestsNetherwart, pokemonEntity)
+            || CobbleworkersTypeUtils.isDesignatedBySpecies(pokemonEntity, config.netherwartHarvesters)
 
-    /**
-     * Determines if Pokémon is eligible to be a harvester.
-     * NOTE: This is used to prevent running the tick method unnecessarily.
-     */
-    override fun shouldRun(pokemonEntity: PokemonEntity): Boolean {
-        if (!config.netherwartHarvestersEnabled) return false
+    override fun isTargetReady(world: World, pos: BlockPos) =
+        world.getBlockState(pos).get(NetherWartBlock.AGE) == NetherWartBlock.MAX_AGE
 
-        return  CobbleworkersTypeUtils.isAllowedByType(config.typeHarvestsNetherwart, pokemonEntity) || CobbleworkersTypeUtils.isDesignatedBySpecies(pokemonEntity, config.netherwartHarvesters)
-    }
-
-    /**
-     * Main logic loop for the nether wart harvester, executed each tick.
-     * Delegates to state handlers handleHarvesting and handleDepositing
-     * to manage the current task of the Pokémon.
-     *
-     * NOTE: Origin refers to the pasture's block position.
-     */
-    override fun tick(world: World, origin: BlockPos, pokemonEntity: PokemonEntity) {
-        val pokemonId = pokemonEntity.pokemon.uuid
-        val heldItems = heldItemsByPokemon[pokemonId]
-
-        if (heldItems.isNullOrEmpty()) {
-            failedDepositLocations.remove(pokemonId)
-            handleHarvesting(world, origin, pokemonEntity)
-        } else {
-            CobbleworkersInventoryUtils.handleDepositing(world, origin, pokemonEntity, heldItems, failedDepositLocations, heldItemsByPokemon)
-        }
-    }
-
-    /**
-     * Handles logic for finding and harvesting a nether wart when the Pokémon is not holding items.
-     */
-    private fun handleHarvesting(world: World, origin: BlockPos, pokemonEntity: PokemonEntity) {
-        val pokemonId = pokemonEntity.pokemon.uuid
-        val closestNetherwart = findClosestNetherwart(world, origin) ?: return
-        val currentTarget = CobbleworkersNavigationUtils.getTarget(pokemonId, world)
-
-        if (currentTarget == null) {
-            if (!CobbleworkersNavigationUtils.isTargeted(closestNetherwart, world) && !CobbleworkersNavigationUtils.isRecentlyExpired(closestNetherwart, world)) {
-                CobbleworkersNavigationUtils.claimTarget(pokemonId, closestNetherwart, world)
+    override fun harvest(world: World, targetPos: BlockPos, pokemonEntity: PokemonEntity) {
+        harvestWithLoot(world, targetPos, pokemonEntity) { w, p, state ->
+            val newState = if (config.shouldReplantNetherwart) {
+                state.with(NetherWartBlock.AGE, 0)
+            } else {
+                Blocks.AIR.defaultState
             }
-            return
+            w.setBlockState(p, newState, Block.NOTIFY_ALL)
         }
-
-        if (currentTarget == closestNetherwart) {
-            CobbleworkersNavigationUtils.navigateTo(pokemonEntity, closestNetherwart)
-        }
-
-        if (CobbleworkersNavigationUtils.isPokemonAtPosition(pokemonEntity, currentTarget)) {
-            harvestNetherwart(world, closestNetherwart, pokemonEntity)
-            CobbleworkersNavigationUtils.releaseTarget(pokemonId, world)
-        }
-    }
-
-    /**
-     * Scans the pasture's block surrounding area for the closest mature nether wart.
-     */
-    private fun findClosestNetherwart(world: World, origin: BlockPos): BlockPos? {
-        val possibleTargets = CobbleworkersCacheManager.getTargets(origin, jobType)
-        if (possibleTargets.isEmpty()) return null
-
-        return possibleTargets
-            .filter { pos ->
-                val state = world.getBlockState(pos)
-                blockValidator(world, pos) && state.get(NetherWartBlock.AGE) == NetherWartBlock.MAX_AGE && !CobbleworkersNavigationUtils.isRecentlyExpired(pos, world)
-            }
-            .minByOrNull { it.getSquaredDistance(origin) }
-    }
-
-    /**
-     * Executes the complete harvesting process for a single nether wart block
-     */
-    private fun harvestNetherwart(world: World, netherwartPos: BlockPos, pokemonEntity: PokemonEntity) {
-        val pokemonId = pokemonEntity.pokemon.uuid
-        val netherwartState = world.getBlockState(netherwartPos)
-
-        val lootParams = LootContextParameterSet.Builder(world as ServerWorld)
-            .add(LootContextParameters.ORIGIN, netherwartPos.toCenterPos())
-            .add(LootContextParameters.BLOCK_STATE, netherwartState)
-            .add(LootContextParameters.TOOL, ItemStack.EMPTY)
-            .addOptional(LootContextParameters.THIS_ENTITY, pokemonEntity)
-
-        val drops = netherwartState.getDroppedStacks(lootParams)
-
-        if (drops.isNotEmpty()) {
-            heldItemsByPokemon[pokemonId] = drops
-        }
-
-        val newState = if (config.shouldReplantNetherwart) {
-            netherwartState.with(NetherWartBlock.AGE, 0)
-        } else {
-            Blocks.AIR.defaultState
-        }
-
-        world.setBlockState(netherwartPos, newState, Block.NOTIFY_ALL)
-    }
-
-    override fun cleanup(pokemonId: UUID) {
-        heldItemsByPokemon.remove(pokemonId)
-        failedDepositLocations.remove(pokemonId)
     }
 }

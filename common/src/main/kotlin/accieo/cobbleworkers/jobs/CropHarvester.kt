@@ -10,89 +10,32 @@ package accieo.cobbleworkers.jobs
 
 import accieo.cobbleworkers.config.CobbleworkersConfigHolder
 import accieo.cobbleworkers.enums.JobType
-import accieo.cobbleworkers.interfaces.Worker
 import accieo.cobbleworkers.utilities.CobbleworkersCropUtils
-import accieo.cobbleworkers.utilities.CobbleworkersInventoryUtils
-import accieo.cobbleworkers.utilities.CobbleworkersNavigationUtils
 import accieo.cobbleworkers.utilities.CobbleworkersTypeUtils
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
-import net.minecraft.item.ItemStack
+import net.minecraft.particle.ParticleEffect
+import net.minecraft.particle.ParticleTypes
 import net.minecraft.util.math.BlockPos
 import net.minecraft.world.World
-import java.util.UUID
-import kotlin.text.lowercase
 
-/**
- * A worker job for a Pokémon to find, navigate to, and harvest fully grown crops.
- * Harvested items are deposited into the nearest available inventory.
- */
-object CropHarvester : Worker {
-    private val heldItemsByPokemon = mutableMapOf<UUID, List<ItemStack>>()
-    private val failedDepositLocations = mutableMapOf<UUID, MutableSet<BlockPos>>()
+object CropHarvester : BaseHarvester() {
     private val config get() = CobbleworkersConfigHolder.config.cropHarvest
 
-    override val jobType: JobType = JobType.CropHarvester
-    override val blockValidator: ((World, BlockPos) -> Boolean) = { world: World, pos: BlockPos ->
-        val state = world.getBlockState(pos)
-        state.block in CobbleworkersCropUtils.validCropBlocks
+    override val jobType = JobType.CropHarvester
+    override val arrivalParticle: ParticleEffect = ParticleTypes.HAPPY_VILLAGER
+    override val blockValidator: ((World, BlockPos) -> Boolean) = { world, pos ->
+        world.getBlockState(pos).block in CobbleworkersCropUtils.validCropBlocks
     }
 
-    /**
-     * Determines if Pokémon is eligible to be a crop harvester.
-     * NOTE: This is used to prevent running the tick method unnecessarily.
-     */
-    override fun shouldRun(pokemonEntity: PokemonEntity): Boolean {
-        if (!config.cropHarvestersEnabled) return false
+    override fun isEnabled() = config.cropHarvestersEnabled
+    override fun isEligible(pokemonEntity: PokemonEntity) =
+        CobbleworkersTypeUtils.isAllowedByType(config.typeHarvestsCrops, pokemonEntity)
+            || CobbleworkersTypeUtils.isDesignatedBySpecies(pokemonEntity, config.cropHarvesters)
 
-        return CobbleworkersTypeUtils.isAllowedByType(config.typeHarvestsCrops, pokemonEntity) || CobbleworkersTypeUtils.isDesignatedBySpecies(pokemonEntity, config.cropHarvesters)
-    }
+    override fun findClosestTarget(world: World, origin: BlockPos) =
+        CobbleworkersCropUtils.findClosestCrop(world, origin)
 
-    /**
-     * Main logic loop for the crop harvester, executed each tick.
-     * Delegates to state handlers handleHarvesting and handleDepositing
-     * to manage the current task of the Pokémon.
-     *
-     * NOTE: Origin refers to the pasture's block position.
-     */
-    override fun tick(world: World, origin: BlockPos, pokemonEntity: PokemonEntity) {
-        val pokemonId = pokemonEntity.pokemon.uuid
-        val heldItems = heldItemsByPokemon[pokemonId]
-
-        if (heldItems.isNullOrEmpty()) {
-            failedDepositLocations.remove(pokemonId)
-            handleHarvesting(world, origin, pokemonEntity)
-        } else {
-            CobbleworkersInventoryUtils.handleDepositing(world, origin, pokemonEntity, heldItems, failedDepositLocations, heldItemsByPokemon)
-        }
-    }
-
-    /**
-     * Handles logic for finding and harvesting an apricorn when the Pokémon is not holding items.
-     */
-    private fun handleHarvesting(world: World, origin: BlockPos, pokemonEntity: PokemonEntity) {
-        val pokemonId = pokemonEntity.pokemon.uuid
-        val closestCrop = CobbleworkersCropUtils.findClosestCrop(world, origin) ?: return
-        val currentTarget = CobbleworkersNavigationUtils.getTarget(pokemonId, world)
-
-        if (currentTarget == null) {
-            if (!CobbleworkersNavigationUtils.isTargeted(closestCrop, world) && !CobbleworkersNavigationUtils.isRecentlyExpired(closestCrop, world)) {
-                CobbleworkersNavigationUtils.claimTarget(pokemonId, closestCrop, world)
-            }
-            return
-        }
-
-        if (currentTarget == closestCrop) {
-            CobbleworkersNavigationUtils.navigateTo(pokemonEntity, closestCrop)
-        }
-
-        if (CobbleworkersNavigationUtils.isPokemonAtPosition(pokemonEntity, currentTarget)) {
-            CobbleworkersCropUtils.harvestCrop(world, closestCrop, pokemonEntity, heldItemsByPokemon, config)
-            CobbleworkersNavigationUtils.releaseTarget(pokemonId, world)
-        }
-    }
-
-    override fun cleanup(pokemonId: UUID) {
-        heldItemsByPokemon.remove(pokemonId)
-        failedDepositLocations.remove(pokemonId)
+    override fun harvest(world: World, targetPos: BlockPos, pokemonEntity: PokemonEntity) {
+        CobbleworkersCropUtils.harvestCrop(world, targetPos, pokemonEntity, heldItemsByPokemon, config)
     }
 }

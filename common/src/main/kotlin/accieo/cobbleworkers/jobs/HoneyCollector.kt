@@ -15,12 +15,14 @@ import accieo.cobbleworkers.interfaces.Worker
 import accieo.cobbleworkers.utilities.CobbleworkersInventoryUtils
 import accieo.cobbleworkers.utilities.CobbleworkersNavigationUtils
 import accieo.cobbleworkers.utilities.CobbleworkersTypeUtils
+import accieo.cobbleworkers.utilities.WorkerVisualUtils
 import com.cobblemon.mod.common.api.pokemon.PokemonSpecies
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import net.minecraft.block.BeehiveBlock
 import net.minecraft.block.Block
 import net.minecraft.item.ItemStack
 import net.minecraft.item.Items
+import net.minecraft.particle.ParticleTypes
 import net.minecraft.util.math.BlockPos
 import net.minecraft.world.World
 import java.util.UUID
@@ -104,7 +106,7 @@ object HoneyCollector : Worker {
             CobbleworkersNavigationUtils.navigateTo(pokemonEntity, closestBeehive.down())
         }
 
-        if (CobbleworkersNavigationUtils.isPokemonAtPosition(pokemonEntity, currentTarget)) {
+        if (WorkerVisualUtils.handleArrival(pokemonEntity, currentTarget, world, ParticleTypes.HAPPY_VILLAGER)) {
             harvestHoneycomb(world, closestBeehive, pokemonEntity)
             CobbleworkersNavigationUtils.releaseTarget(pokemonId, world)
         }
@@ -144,7 +146,7 @@ object HoneyCollector : Worker {
             world.getBlockState(pos).get(BeehiveBlock.HONEY_LEVEL) < BeehiveBlock.FULL_HONEY_LEVEL
         } ?: return
 
-        if (CobbleworkersNavigationUtils.isPokemonAtPosition(pokemonEntity, closestBeehive.down(), 2.0)) {
+        if (WorkerVisualUtils.handleArrival(pokemonEntity, closestBeehive.down(), world, ParticleTypes.HAPPY_VILLAGER, 2.0)) {
             generateHoney(world, closestBeehive)
             lastGenerationTime[pokemonId] = now
         } else {
@@ -183,6 +185,8 @@ object HoneyCollector : Worker {
         val speciesName = pokemonEntity.pokemon.species.translatedName.string.lowercase()
         return speciesName in VALID_TRANSLATED_SPECIES
     }
+
+    override fun hasActiveState(pokemonId: UUID): Boolean = pokemonId in heldItemsByPokemon
 
     override fun cleanup(pokemonId: UUID) {
         heldItemsByPokemon.remove(pokemonId)

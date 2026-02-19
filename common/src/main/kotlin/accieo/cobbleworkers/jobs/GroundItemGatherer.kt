@@ -14,9 +14,11 @@ import accieo.cobbleworkers.interfaces.Worker
 import accieo.cobbleworkers.utilities.CobbleworkersInventoryUtils
 import accieo.cobbleworkers.utilities.CobbleworkersNavigationUtils
 import accieo.cobbleworkers.utilities.CobbleworkersTypeUtils
+import accieo.cobbleworkers.utilities.WorkerVisualUtils
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import net.minecraft.entity.ItemEntity
 import net.minecraft.item.ItemStack
+import net.minecraft.particle.ParticleTypes
 import net.minecraft.util.math.BlockPos
 import net.minecraft.util.math.Box
 import net.minecraft.world.World
@@ -80,7 +82,7 @@ object GroundItemGatherer : Worker {
             CobbleworkersNavigationUtils.navigateTo(pokemonEntity, closestItemPos)
         }
 
-        if (CobbleworkersNavigationUtils.isPokemonAtPosition(pokemonEntity, currentTarget)) {
+        if (WorkerVisualUtils.handleArrival(pokemonEntity, currentTarget, world, ParticleTypes.ENCHANT)) {
             val stack = closestItem.stack.copy()
             closestItem.discard()
             heldItemsByPokemon[pokemonId] = listOf(stack)
@@ -96,6 +98,8 @@ object GroundItemGatherer : Worker {
         val items = world.getEntitiesByClass(ItemEntity::class.java, searchArea) { true }
         return items.find { item -> item.isOnGround }?.let { it.blockPos to it }
     }
+
+    override fun hasActiveState(pokemonId: UUID): Boolean = pokemonId in heldItemsByPokemon
 
     override fun cleanup(pokemonId: UUID) {
         heldItemsByPokemon.remove(pokemonId)

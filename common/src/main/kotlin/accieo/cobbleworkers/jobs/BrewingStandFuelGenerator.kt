@@ -15,10 +15,12 @@ import accieo.cobbleworkers.interfaces.Worker
 import accieo.cobbleworkers.mixin.BrewingStandBlockEntityAccessor
 import accieo.cobbleworkers.utilities.CobbleworkersNavigationUtils
 import accieo.cobbleworkers.utilities.CobbleworkersTypeUtils
+import accieo.cobbleworkers.utilities.WorkerVisualUtils
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import net.minecraft.block.Block
 import net.minecraft.block.BrewingStandBlock
 import net.minecraft.block.entity.BrewingStandBlockEntity
+import net.minecraft.particle.ParticleTypes
 import net.minecraft.util.math.BlockPos
 import net.minecraft.world.World
 import java.util.UUID
@@ -99,7 +101,7 @@ object BrewingStandFuelGenerator : Worker {
             CobbleworkersNavigationUtils.navigateTo(pokemonEntity, closestBrewingStand)
         }
 
-        if (CobbleworkersNavigationUtils.isPokemonAtPosition(pokemonEntity, closestBrewingStand)) {
+        if (WorkerVisualUtils.handleArrival(pokemonEntity, closestBrewingStand, world, ParticleTypes.FLAME)) {
             addBurnTime(world, closestBrewingStand)
             lastGenerationTime[pokemonId] = now
             CobbleworkersNavigationUtils.releaseTarget(pokemonId, world)

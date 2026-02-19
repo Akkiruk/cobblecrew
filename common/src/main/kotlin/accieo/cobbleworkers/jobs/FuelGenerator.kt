@@ -15,9 +15,11 @@ import accieo.cobbleworkers.interfaces.Worker
 import accieo.cobbleworkers.mixin.AbstractFurnaceBlockEntityAccessor
 import accieo.cobbleworkers.utilities.CobbleworkersNavigationUtils
 import accieo.cobbleworkers.utilities.CobbleworkersTypeUtils
+import accieo.cobbleworkers.utilities.WorkerVisualUtils
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import net.minecraft.block.AbstractFurnaceBlock
 import net.minecraft.block.entity.AbstractFurnaceBlockEntity
+import net.minecraft.particle.ParticleTypes
 import net.minecraft.util.math.BlockPos
 import net.minecraft.world.World
 import java.util.UUID
@@ -99,7 +101,7 @@ object FuelGenerator : Worker {
             CobbleworkersNavigationUtils.navigateTo(pokemonEntity, closestFurnace)
         }
 
-        if (CobbleworkersNavigationUtils.isPokemonAtPosition(pokemonEntity, closestFurnace)) {
+        if (WorkerVisualUtils.handleArrival(pokemonEntity, closestFurnace, world, ParticleTypes.FLAME)) {
             addBurnTime(world, closestFurnace)
             lastGenerationTime[pokemonId] = now
             CobbleworkersNavigationUtils.releaseTarget(pokemonId, world)

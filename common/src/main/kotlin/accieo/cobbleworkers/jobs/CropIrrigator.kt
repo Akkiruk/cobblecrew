@@ -14,10 +14,12 @@ import accieo.cobbleworkers.interfaces.Worker
 import accieo.cobbleworkers.utilities.CobbleworkersCropUtils
 import accieo.cobbleworkers.utilities.CobbleworkersNavigationUtils
 import accieo.cobbleworkers.utilities.CobbleworkersTypeUtils
+import accieo.cobbleworkers.utilities.WorkerVisualUtils
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import net.minecraft.block.Block
 import net.minecraft.block.Blocks
 import net.minecraft.block.FarmlandBlock
+import net.minecraft.particle.ParticleTypes
 import net.minecraft.util.math.BlockPos
 import net.minecraft.world.World
 
@@ -64,7 +66,7 @@ object CropIrrigator : Worker {
             CobbleworkersNavigationUtils.navigateTo(pokemonEntity, closestFarmland)
         }
 
-        if (CobbleworkersNavigationUtils.isPokemonAtPosition(pokemonEntity, currentTarget, 1.5)) {
+        if (WorkerVisualUtils.handleArrival(pokemonEntity, currentTarget, world, ParticleTypes.SPLASH, 1.5)) {
             irrigateFarmland(world, currentTarget, config.irrigationRadius)
             CobbleworkersNavigationUtils.releaseTarget(pokemonId, world)
         }

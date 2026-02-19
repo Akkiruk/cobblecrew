@@ -94,6 +94,8 @@ object PickUpLooter : Worker {
         }
     }
 
+    override fun hasActiveState(pokemonId: UUID): Boolean = pokemonId in heldItemsByPokemon
+
     override fun cleanup(pokemonId: UUID) {
         lastGenerationTime.remove(pokemonId)
         heldItemsByPokemon.remove(pokemonId)

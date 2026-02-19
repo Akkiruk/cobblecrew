@@ -8,27 +8,20 @@
 
 package accieo.cobbleworkers.jobs
 
-import accieo.cobbleworkers.cache.CobbleworkersCacheManager
 import accieo.cobbleworkers.config.CobbleworkersConfigHolder
 import accieo.cobbleworkers.enums.JobType
-import accieo.cobbleworkers.interfaces.Worker
-import accieo.cobbleworkers.utilities.CobbleworkersInventoryUtils
-import accieo.cobbleworkers.utilities.CobbleworkersNavigationUtils
 import accieo.cobbleworkers.utilities.CobbleworkersTypeUtils
 import com.cobblemon.mod.common.CobblemonBlocks
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import net.minecraft.block.Block
 import net.minecraft.block.Blocks
-import net.minecraft.item.ItemStack
-import net.minecraft.loot.context.LootContextParameterSet
-import net.minecraft.loot.context.LootContextParameters
-import net.minecraft.server.world.ServerWorld
+import net.minecraft.particle.ParticleEffect
+import net.minecraft.particle.ParticleTypes
 import net.minecraft.state.property.Properties
 import net.minecraft.util.math.BlockPos
 import net.minecraft.world.World
-import java.util.UUID
 
-object TumblestoneHarvester : Worker {
+object TumblestoneHarvester : BaseHarvester() {
     private val VALID_TUMBLESTONE_BLOCKS: Set<Block> = setOf(
         CobblemonBlocks.TUMBLESTONE_CLUSTER,
         CobblemonBlocks.BLACK_TUMBLESTONE_CLUSTER,
@@ -39,124 +32,34 @@ object TumblestoneHarvester : Worker {
         CobblemonBlocks.BLACK_TUMBLESTONE_CLUSTER to CobblemonBlocks.SMALL_BUDDING_BLACK_TUMBLESTONE,
         CobblemonBlocks.SKY_TUMBLESTONE_CLUSTER to CobblemonBlocks.SMALL_BUDDING_SKY_TUMBLESTONE
     )
-    private val heldItemsByPokemon = mutableMapOf<UUID, List<ItemStack>>()
-    private val failedDepositLocations = mutableMapOf<UUID, MutableSet<BlockPos>>()
     private val config get() = CobbleworkersConfigHolder.config.tumblestone
 
-    override val jobType: JobType = JobType.TumblestoneHarvester
-    override val blockValidator: ((World, BlockPos) -> Boolean) = { world: World, pos: BlockPos ->
-        val state = world.getBlockState(pos)
-        state.block in VALID_TUMBLESTONE_BLOCKS
+    override val jobType = JobType.TumblestoneHarvester
+    override val arrivalParticle: ParticleEffect = ParticleTypes.COMPOSTER
+    override val arrivalTolerance = 1.5
+    override val blockValidator: ((World, BlockPos) -> Boolean) = { world, pos ->
+        world.getBlockState(pos).block in VALID_TUMBLESTONE_BLOCKS
     }
 
-    /**
-     * Determines if Pokémon is eligible to be a tumblestone harvester.
-     * NOTE: This is used to prevent running the tick method unnecessarily.
-     */
-    override fun shouldRun(pokemonEntity: PokemonEntity): Boolean {
-        if (!config.tumblestoneHarvestersEnabled) return false
+    override fun isEnabled() = config.tumblestoneHarvestersEnabled
+    override fun isEligible(pokemonEntity: PokemonEntity) =
+        CobbleworkersTypeUtils.isAllowedByType(config.typeHarvestsTumblestone, pokemonEntity)
+            || CobbleworkersTypeUtils.isDesignatedBySpecies(pokemonEntity, config.tumblestoneHarvesters)
 
-        return CobbleworkersTypeUtils.isAllowedByType(config.typeHarvestsTumblestone, pokemonEntity) || CobbleworkersTypeUtils.isDesignatedBySpecies(pokemonEntity, config.tumblestoneHarvesters)
-    }
-
-    /**
-     * Main logic loop for the tumblestone harvester, executed each tick.
-     * Delegates to state handlers handleHarvesting and handleDepositing
-     * to manage the current task of the Pokémon.
-     *
-     * NOTE: Origin refers to the pasture's block position.
-     */
-    override fun tick(world: World, origin: BlockPos, pokemonEntity: PokemonEntity) {
-        val pokemonId = pokemonEntity.pokemon.uuid
-        val heldItems = heldItemsByPokemon[pokemonId]
-
-        if (heldItems.isNullOrEmpty()) {
-            failedDepositLocations.remove(pokemonId)
-            handleHarvesting(world, origin, pokemonEntity)
-        } else {
-            CobbleworkersInventoryUtils.handleDepositing(world, origin, pokemonEntity, heldItems, failedDepositLocations, heldItemsByPokemon)
-        }
-    }
-
-    /**
-     * Handles logic for finding and harvesting a tumblestone cluster when the Pokémon is not holding items.
-     */
-    private fun handleHarvesting(world: World, origin: BlockPos, pokemonEntity: PokemonEntity) {
-        val pokemonId = pokemonEntity.pokemon.uuid
-        val closestTumblestone = findClosestTumblestone(world, origin) ?: return
-        val currentTarget = CobbleworkersNavigationUtils.getTarget(pokemonId, world)
-
-        if (currentTarget == null) {
-            if (!CobbleworkersNavigationUtils.isTargeted(closestTumblestone, world) && !CobbleworkersNavigationUtils.isRecentlyExpired(closestTumblestone, world)) {
-                CobbleworkersNavigationUtils.claimTarget(pokemonId, closestTumblestone, world)
+    override fun harvest(world: World, targetPos: BlockPos, pokemonEntity: PokemonEntity) {
+        if (world.getBlockState(targetPos).block !in VALID_TUMBLESTONE_BLOCKS) return
+        harvestWithLoot(world, targetPos, pokemonEntity) { w, p, state ->
+            if (config.shouldReplantTumblestone) {
+                val replacement = REPLACEMENT_BLOCKS[state.block] ?: return@harvestWithLoot
+                var replacementState = replacement.defaultState
+                val facingProperty = Properties.FACING
+                if (replacementState.properties.contains(facingProperty) && state.contains(facingProperty)) {
+                    replacementState = replacementState.with(facingProperty, state.get(facingProperty))
+                }
+                w.setBlockState(p, replacementState)
+            } else {
+                w.setBlockState(p, Blocks.AIR.defaultState)
             }
-            return
         }
-
-        if (currentTarget == closestTumblestone) {
-            CobbleworkersNavigationUtils.navigateTo(pokemonEntity, closestTumblestone)
-        }
-
-        if (CobbleworkersNavigationUtils.isPokemonAtPosition(pokemonEntity, currentTarget, 1.5)) {
-            harvestTumblestone(world, closestTumblestone, pokemonEntity)
-            CobbleworkersNavigationUtils.releaseTarget(pokemonId, world)
-        }
-    }
-
-    /**
-     * Scans the pasture's block surrounding area for the closest tumblestone cluster.
-     */
-    private fun findClosestTumblestone(world: World, origin: BlockPos): BlockPos? {
-        val possibleTargets = CobbleworkersCacheManager.getTargets(origin, jobType)
-        if (possibleTargets.isEmpty()) return null
-
-        return possibleTargets
-            .filter { pos ->
-                val state = world.getBlockState(pos)
-                blockValidator(world, pos) && !CobbleworkersNavigationUtils.isRecentlyExpired(pos, world)
-            }
-            .minByOrNull { it.getSquaredDistance(origin) }
-    }
-
-    /**
-     * Executes the complete harvesting process for a single tumblestone cluster
-     */
-    private fun harvestTumblestone(world: World, tumblestonePos: BlockPos, pokemonEntity: PokemonEntity) {
-        val pokemonId = pokemonEntity.pokemon.uuid
-        val tumblestoneState = world.getBlockState(tumblestonePos)
-        if (tumblestoneState.block !in VALID_TUMBLESTONE_BLOCKS) return
-
-        val lootParams = LootContextParameterSet.Builder(world as ServerWorld)
-            .add(LootContextParameters.ORIGIN, tumblestonePos.toCenterPos())
-            .add(LootContextParameters.BLOCK_STATE, tumblestoneState)
-            .add(LootContextParameters.TOOL, ItemStack.EMPTY)
-            .addOptional(LootContextParameters.THIS_ENTITY, pokemonEntity)
-
-        val drops = tumblestoneState.getDroppedStacks(lootParams)
-
-        if (drops.isNotEmpty()) {
-            heldItemsByPokemon[pokemonId] = drops
-        }
-
-        if (config.shouldReplantTumblestone) {
-            val originalBlock = tumblestoneState.block
-            val replacementBlock = REPLACEMENT_BLOCKS[originalBlock] ?: return
-
-            var replacementState = replacementBlock.defaultState
-
-            val facingProperty = Properties.FACING
-            if (replacementState.properties.contains(facingProperty) && tumblestoneState.contains(facingProperty)) {
-                replacementState = replacementState.with(facingProperty, tumblestoneState.get(facingProperty))
-            }
-
-            world.setBlockState(tumblestonePos, replacementState)
-        } else {
-            world.setBlockState(tumblestonePos, Blocks.AIR.defaultState)
-        }
-    }
-
-    override fun cleanup(pokemonId: UUID) {
-        heldItemsByPokemon.remove(pokemonId)
-        failedDepositLocations.remove(pokemonId)
     }
 }

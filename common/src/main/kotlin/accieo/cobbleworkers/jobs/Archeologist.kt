@@ -15,6 +15,7 @@ import accieo.cobbleworkers.interfaces.Worker
 import accieo.cobbleworkers.utilities.CobbleworkersInventoryUtils
 import accieo.cobbleworkers.utilities.CobbleworkersNavigationUtils
 import accieo.cobbleworkers.utilities.CobbleworkersTypeUtils
+import accieo.cobbleworkers.utilities.WorkerVisualUtils
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import net.minecraft.block.Block
 import net.minecraft.block.Blocks
@@ -22,6 +23,7 @@ import net.minecraft.item.ItemStack
 import net.minecraft.loot.context.LootContextParameterSet
 import net.minecraft.loot.context.LootContextParameters
 import net.minecraft.loot.context.LootContextTypes
+import net.minecraft.particle.ParticleTypes
 import net.minecraft.registry.RegistryKey
 import net.minecraft.registry.RegistryKeys
 import net.minecraft.server.world.ServerWorld
@@ -103,7 +105,7 @@ object Archeologist : Worker {
             CobbleworkersNavigationUtils.navigateTo(pokemonEntity, closestBlock)
         }
 
-        if (CobbleworkersNavigationUtils.isPokemonAtPosition(pokemonEntity, currentTarget)) {
+        if (WorkerVisualUtils.handleArrival(pokemonEntity, currentTarget, world, ParticleTypes.COMPOSTER, 2.0)) {
             handleGeneration(world, closestBlock, pokemonEntity)
             CobbleworkersNavigationUtils.releaseTarget(pokemonId, world)
         }
@@ -155,6 +157,8 @@ object Archeologist : Worker {
             heldItemsByPokemon[pokemonId] = drops
         }
     }
+
+    override fun hasActiveState(pokemonId: UUID): Boolean = pokemonId in heldItemsByPokemon
 
     override fun cleanup(pokemonId: UUID) {
         lastGenerationTime.remove(pokemonId)

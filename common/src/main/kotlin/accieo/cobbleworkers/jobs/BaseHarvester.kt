@@ -1,0 +1,138 @@
+/*
+ * Copyright (C) 2025 Accieo
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
+package accieo.cobbleworkers.jobs
+
+import accieo.cobbleworkers.cache.CobbleworkersCacheManager
+import accieo.cobbleworkers.interfaces.Worker
+import accieo.cobbleworkers.utilities.CobbleworkersInventoryUtils
+import accieo.cobbleworkers.utilities.CobbleworkersNavigationUtils
+import accieo.cobbleworkers.utilities.WorkerVisualUtils
+import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
+import net.minecraft.block.BlockState
+import net.minecraft.item.ItemStack
+import net.minecraft.loot.context.LootContextParameterSet
+import net.minecraft.loot.context.LootContextParameters
+import net.minecraft.particle.ParticleEffect
+import net.minecraft.server.world.ServerWorld
+import net.minecraft.util.math.BlockPos
+import net.minecraft.world.World
+import java.util.UUID
+
+/**
+ * Base class for all harvester-style workers that find blocks, navigate to them,
+ * harvest items, and deposit them into nearby containers.
+ *
+ * Subclasses only need to define block-specific logic (validation, readiness,
+ * harvest behavior) — all navigation, depositing, and lifecycle boilerplate
+ * is handled here.
+ */
+abstract class BaseHarvester : Worker {
+    protected val heldItemsByPokemon = mutableMapOf<UUID, List<ItemStack>>()
+    protected val failedDepositLocations = mutableMapOf<UUID, MutableSet<BlockPos>>()
+
+    abstract val arrivalParticle: ParticleEffect
+    open val arrivalTolerance: Double = 1.0
+
+    abstract fun isEnabled(): Boolean
+    abstract fun isEligible(pokemonEntity: PokemonEntity): Boolean
+    abstract fun harvest(world: World, targetPos: BlockPos, pokemonEntity: PokemonEntity)
+
+    /** Additional readiness check beyond blockValidator (e.g. crop maturity). */
+    open fun isTargetReady(world: World, pos: BlockPos): Boolean = true
+
+    override fun shouldRun(pokemonEntity: PokemonEntity): Boolean {
+        if (!isEnabled()) return false
+        return isEligible(pokemonEntity)
+    }
+
+    override fun tick(world: World, origin: BlockPos, pokemonEntity: PokemonEntity) {
+        val pokemonId = pokemonEntity.pokemon.uuid
+        val heldItems = heldItemsByPokemon[pokemonId]
+
+        if (heldItems.isNullOrEmpty()) {
+            failedDepositLocations.remove(pokemonId)
+            handleHarvesting(world, origin, pokemonEntity)
+        } else {
+            CobbleworkersInventoryUtils.handleDepositing(
+                world, origin, pokemonEntity, heldItems,
+                failedDepositLocations, heldItemsByPokemon
+            )
+        }
+    }
+
+    protected open fun handleHarvesting(world: World, origin: BlockPos, pokemonEntity: PokemonEntity) {
+        val pokemonId = pokemonEntity.pokemon.uuid
+        val closestTarget = findClosestTarget(world, origin) ?: return
+        val currentTarget = CobbleworkersNavigationUtils.getTarget(pokemonId, world)
+
+        if (currentTarget == null) {
+            if (!CobbleworkersNavigationUtils.isTargeted(closestTarget, world)
+                && !CobbleworkersNavigationUtils.isRecentlyExpired(closestTarget, world)) {
+                CobbleworkersNavigationUtils.claimTarget(pokemonId, closestTarget, world)
+            }
+            return
+        }
+
+        if (currentTarget == closestTarget) {
+            CobbleworkersNavigationUtils.navigateTo(pokemonEntity, closestTarget)
+        }
+
+        if (WorkerVisualUtils.handleArrival(pokemonEntity, currentTarget, world, arrivalParticle, arrivalTolerance)) {
+            harvest(world, closestTarget, pokemonEntity)
+            CobbleworkersNavigationUtils.releaseTarget(pokemonId, world)
+        }
+    }
+
+    open fun findClosestTarget(world: World, origin: BlockPos): BlockPos? {
+        val possibleTargets = CobbleworkersCacheManager.getTargets(origin, jobType)
+        if (possibleTargets.isEmpty()) return null
+
+        return possibleTargets
+            .filter { pos ->
+                blockValidator?.invoke(world, pos) != false
+                    && isTargetReady(world, pos)
+                    && !CobbleworkersNavigationUtils.isRecentlyExpired(pos, world)
+            }
+            .minByOrNull { it.getSquaredDistance(origin) }
+    }
+
+    /**
+     * Extracts drops via loot context, stores them in heldItemsByPokemon,
+     * then calls [afterHarvest] with the original block state for cleanup.
+     */
+    protected fun harvestWithLoot(
+        world: World,
+        targetPos: BlockPos,
+        pokemonEntity: PokemonEntity,
+        afterHarvest: (World, BlockPos, BlockState) -> Unit
+    ) {
+        val pokemonId = pokemonEntity.pokemon.uuid
+        val state = world.getBlockState(targetPos)
+
+        val lootParams = LootContextParameterSet.Builder(world as ServerWorld)
+            .add(LootContextParameters.ORIGIN, targetPos.toCenterPos())
+            .add(LootContextParameters.BLOCK_STATE, state)
+            .add(LootContextParameters.TOOL, ItemStack.EMPTY)
+            .addOptional(LootContextParameters.THIS_ENTITY, pokemonEntity)
+
+        val drops = state.getDroppedStacks(lootParams)
+        if (drops.isNotEmpty()) {
+            heldItemsByPokemon[pokemonId] = drops
+        }
+
+        afterHarvest(world, targetPos, state)
+    }
+
+    override fun hasActiveState(pokemonId: UUID): Boolean = pokemonId in heldItemsByPokemon
+
+    override fun cleanup(pokemonId: UUID) {
+        heldItemsByPokemon.remove(pokemonId)
+        failedDepositLocations.remove(pokemonId)
+    }
+}

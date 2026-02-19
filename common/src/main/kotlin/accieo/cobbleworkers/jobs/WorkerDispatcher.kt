@@ -12,12 +12,11 @@ import accieo.cobbleworkers.enums.JobType
 import accieo.cobbleworkers.interfaces.Worker
 import accieo.cobbleworkers.utilities.CobbleworkersNavigationUtils
 import accieo.cobbleworkers.utilities.DeferredBlockScanner
+import accieo.cobbleworkers.utilities.WorkerVisualUtils
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import net.minecraft.util.math.BlockPos
 import net.minecraft.world.World
 import java.util.UUID
-import kotlin.collections.filter
-import kotlin.collections.forEach
 
 object WorkerDispatcher {
     /**
@@ -68,13 +67,48 @@ object WorkerDispatcher {
     }
 
     /**
+     * Tracks which worker each Pokémon is currently assigned to.
+     * Ensures one job at a time per Pokémon.
+     */
+    private val activeJobs = mutableMapOf<UUID, Worker>()
+
+    /**
      * Ticks the action logic for a specific Pokémon.
-     * Called ONCE per Pokémon in the pasture per tick.
+     * Assigns one job at a time — the Pokémon completes its current task before switching.
      */
     fun tickPokemon(world: World, pastureOrigin: BlockPos, pokemonEntity: PokemonEntity) {
-        workers
-            .filter { it.shouldRun(pokemonEntity) }
-            .forEach { it.tick(world, pastureOrigin, pokemonEntity) }
+        val pokemonId = pokemonEntity.pokemon.uuid
+        val eligible = workers.filter { it.shouldRun(pokemonEntity) }
+
+        if (eligible.isEmpty()) {
+            activeJobs.remove(pokemonId)
+            WorkerVisualUtils.setExcited(pokemonEntity, false)
+            returnToPasture(pokemonEntity, pastureOrigin)
+            return
+        }
+
+        val current = activeJobs[pokemonId]
+        val job = if (current != null && current in eligible) {
+            current
+        } else {
+            eligible.random().also { activeJobs[pokemonId] = it }
+        }
+
+        WorkerVisualUtils.setExcited(pokemonEntity, true)
+        job.tick(world, pastureOrigin, pokemonEntity)
+
+        // Allow job rotation when the current task cycle is done
+        if (CobbleworkersNavigationUtils.getTarget(pokemonId, world) == null &&
+            CobbleworkersNavigationUtils.getPlayerTarget(pokemonId, world) == null &&
+            !job.hasActiveState(pokemonId)) {
+            activeJobs.remove(pokemonId)
+        }
+    }
+
+    private fun returnToPasture(pokemonEntity: PokemonEntity, pastureOrigin: BlockPos) {
+        if (!CobbleworkersNavigationUtils.isPokemonAtPosition(pokemonEntity, pastureOrigin, 3.0)) {
+            CobbleworkersNavigationUtils.navigateTo(pokemonEntity, pastureOrigin)
+        }
     }
 
     /**
@@ -83,6 +117,8 @@ object WorkerDispatcher {
      */
     fun cleanupPokemon(pokemonId: UUID, world: World) {
         workers.forEach { it.cleanup(pokemonId) }
+        activeJobs.remove(pokemonId)
+        WorkerVisualUtils.cleanup(pokemonId)
         CobbleworkersNavigationUtils.cleanupPokemon(pokemonId, world)
     }
 }

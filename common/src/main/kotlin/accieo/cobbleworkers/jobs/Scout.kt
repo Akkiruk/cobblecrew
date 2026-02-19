@@ -15,6 +15,7 @@ import accieo.cobbleworkers.interfaces.Worker
 import accieo.cobbleworkers.utilities.CobbleworkersInventoryUtils
 import accieo.cobbleworkers.utilities.CobbleworkersNavigationUtils
 import accieo.cobbleworkers.utilities.CobbleworkersTypeUtils
+import accieo.cobbleworkers.utilities.WorkerVisualUtils
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import net.minecraft.component.DataComponentTypes
 import net.minecraft.component.type.MapColorComponent
@@ -24,6 +25,7 @@ import net.minecraft.item.ItemStack
 import net.minecraft.item.Items
 import net.minecraft.item.map.MapDecorationTypes
 import net.minecraft.item.map.MapState
+import net.minecraft.particle.ParticleTypes
 import net.minecraft.registry.RegistryKey
 import net.minecraft.registry.RegistryKeys
 import net.minecraft.registry.entry.RegistryEntry
@@ -197,7 +199,7 @@ object Scout : Worker {
             CobbleworkersNavigationUtils.navigateTo(pokemonEntity, closestItemPos)
         }
 
-        if (CobbleworkersNavigationUtils.isPokemonAtPosition(pokemonEntity, currentTarget)) {
+        if (WorkerVisualUtils.handleArrival(pokemonEntity, currentTarget, world, ParticleTypes.END_ROD)) {
             if (closestItem.stack.item == Items.MAP) {
                 val singleItem = closestItem.stack.split(1)
 
@@ -215,6 +217,8 @@ object Scout : Worker {
             CobbleworkersNavigationUtils.releaseTarget(pokemonId, world)
         }
     }
+
+    override fun hasActiveState(pokemonId: UUID): Boolean = pokemonId in heldItemsByPokemon
 
     override fun cleanup(pokemonId: UUID) {
         heldItemsByPokemon.remove(pokemonId)

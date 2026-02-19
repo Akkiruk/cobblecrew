@@ -15,7 +15,9 @@ import accieo.cobbleworkers.interfaces.Worker
 import net.minecraft.block.Blocks
 import accieo.cobbleworkers.utilities.CobbleworkersNavigationUtils
 import accieo.cobbleworkers.utilities.CobbleworkersTypeUtils
+import accieo.cobbleworkers.utilities.WorkerVisualUtils
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
+import net.minecraft.particle.ParticleTypes
 import net.minecraft.util.math.BlockPos
 import net.minecraft.world.World
 import kotlin.text.lowercase
@@ -66,7 +68,7 @@ object FireExtinguisher : Worker {
             CobbleworkersNavigationUtils.navigateTo(pokemonEntity, closestFire)
         }
 
-        if (CobbleworkersNavigationUtils.isPokemonAtPosition(pokemonEntity, currentTarget)) {
+        if (WorkerVisualUtils.handleArrival(pokemonEntity, currentTarget, world, ParticleTypes.SMOKE)) {
             extinguishFire(world, currentTarget, config.extinguishingRadius)
             CobbleworkersNavigationUtils.releaseTarget(pokemonId, world)
         }
