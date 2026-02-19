@@ -35,7 +35,7 @@ if ($gradleProcess.ExitCode -ne 0) {
 
 # 3. Find the built jar
 $buildDir = Join-Path $PSScriptRoot "fabric\build\libs"
-$jarFile = Get-ChildItem -Path $buildDir -Filter "cobbleworkers-fabric-*-*.jar" | 
+$jarFile = Get-ChildItem -Path $buildDir -Filter "cobbleworkers-fabric-*.jar" | 
     Where-Object { $_.Name -notmatch "-dev" -and $_.Name -notmatch "-sources" } | 
     Sort-Object LastWriteTime -Descending | Select-Object -First 1
 
