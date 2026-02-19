@@ -1,0 +1,127 @@
+/*
+ * Copyright (C) 2025 Accieo
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
+package accieo.cobbleworkers.jobs.dsl
+
+import accieo.cobbleworkers.config.JobConfig
+import accieo.cobbleworkers.config.JobConfigManager
+import accieo.cobbleworkers.enums.BlockCategory
+import accieo.cobbleworkers.enums.WorkerPriority
+import accieo.cobbleworkers.jobs.BaseHarvester
+import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
+import net.minecraft.block.BlockState
+import net.minecraft.item.ItemStack
+import net.minecraft.particle.ParticleEffect
+import net.minecraft.particle.ParticleTypes
+import net.minecraft.util.math.BlockPos
+import net.minecraft.world.World
+
+/**
+ * DSL-style gathering job. Most gathering jobs are 5-8 lines:
+ * ```
+ * val OVERWORLD_LOGGER = GatheringJob(
+ *     name = "overworld_logger",
+ *     category = "gathering",
+ *     targetCategory = BlockCategory.LOG_OVERWORLD,
+ *     qualifyingMoves = setOf("cut", "furycutter"),
+ *     particle = ParticleTypes.CAMPFIRE_COSY_SMOKE,
+ * )
+ * ```
+ */
+class GatheringJob(
+    override val name: String,
+    val category: String = "gathering",
+    override val targetCategory: BlockCategory,
+    val qualifyingMoves: Set<String> = emptySet(),
+    val typeGatedMoves: Map<String, String> = emptyMap(),
+    val fallbackType: String = "",
+    val fallbackSpecies: List<String> = emptyList(),
+    val particle: ParticleEffect = ParticleTypes.CAMPFIRE_COSY_SMOKE,
+    override val priority: WorkerPriority = WorkerPriority.TYPE,
+    val harvestOverride: ((World, BlockPos, PokemonEntity) -> List<ItemStack>)? = null,
+    val toolOverride: ItemStack = ItemStack.EMPTY,
+    val readyCheck: ((World, BlockPos) -> Boolean)? = null,
+    val afterHarvestAction: ((World, BlockPos, BlockState) -> Unit)? = null,
+) : BaseHarvester() {
+
+    private val config get() = JobConfigManager.get(name)
+
+    override val arrivalParticle: ParticleEffect = particle
+    override val harvestTool: ItemStack = toolOverride
+
+    fun defaultConfig(): JobConfig = JobConfig(
+        enabled = true,
+        qualifyingMoves = qualifyingMoves.toList(),
+        fallbackType = fallbackType,
+        fallbackSpecies = fallbackSpecies,
+    )
+
+    init {
+        JobConfigManager.registerDefault(category, name, defaultConfig())
+    }
+
+    override fun isEnabled(): Boolean = config.enabled
+
+    override fun isEligible(pokemonEntity: PokemonEntity): Boolean {
+        val moves = pokemonEntity.pokemon.moveSet.getMoves().map { it.name.lowercase() }.toSet()
+        val types = pokemonEntity.pokemon.types.map { it.name.uppercase() }.toSet()
+        val species = pokemonEntity.pokemon.species.translatedName.string.lowercase()
+
+        val effectiveMoves = config.qualifyingMoves.ifEmpty { qualifyingMoves }.map { it.lowercase() }.toSet()
+        val effectiveType = config.fallbackType.ifEmpty { fallbackType }.uppercase()
+        val effectiveSpecies = config.fallbackSpecies.ifEmpty { fallbackSpecies }
+
+        // Check standard qualifying moves
+        if (moves.any { it in effectiveMoves }) return true
+        // Check type-gated moves
+        for ((move, requiredType) in typeGatedMoves) {
+            if (move in moves && requiredType.uppercase() in types) return true
+        }
+        // Fallback: species
+        if (effectiveSpecies.any { it.equals(species, ignoreCase = true) }) return true
+        // Fallback: type
+        if (effectiveType.isNotEmpty() && effectiveType in types) return true
+
+        return false
+    }
+
+    override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean {
+        if (!config.enabled) return false
+
+        val effectiveMoves = config.qualifyingMoves.ifEmpty { qualifyingMoves }.map { it.lowercase() }.toSet()
+        val effectiveType = config.fallbackType.ifEmpty { fallbackType }.uppercase()
+        val effectiveSpecies = config.fallbackSpecies.ifEmpty { fallbackSpecies }
+
+        if (moves.any { it in effectiveMoves }) return true
+        for ((move, requiredType) in typeGatedMoves) {
+            if (move in moves && requiredType.uppercase() in types) return true
+        }
+        if (effectiveSpecies.any { it.equals(species, ignoreCase = true) }) return true
+        if (effectiveType.isNotEmpty() && effectiveType in types) return true
+
+        return false
+    }
+
+    override fun isTargetReady(world: World, pos: BlockPos): Boolean {
+        return readyCheck?.invoke(world, pos) ?: true
+    }
+
+    override fun harvest(world: World, targetPos: BlockPos, pokemonEntity: PokemonEntity) {
+        if (harvestOverride != null) {
+            val drops = harvestOverride.invoke(world, targetPos, pokemonEntity)
+            if (drops.isNotEmpty()) {
+                heldItemsByPokemon[pokemonEntity.pokemon.uuid] = drops
+            }
+        } else {
+            harvestWithLoot(world, targetPos, pokemonEntity) { w, pos, state ->
+                afterHarvestAction?.invoke(w, pos, state)
+                    ?: w.setBlockState(pos, net.minecraft.block.Blocks.AIR.defaultState)
+            }
+        }
+    }
+}

@@ -19,45 +19,44 @@ import net.minecraft.world.World
 import java.util.UUID
 
 object WorkerDispatcher {
-    /**
-     * Worker registry — all registered workers from WorkerRegistry.
-     */
     private val workers: List<Worker> get() = WorkerRegistry.workers
 
-    /**
-     * Gathers all block validators from registered workers.
-     */
     @Suppress("DEPRECATION")
     private val jobValidators: Map<JobType, (World, BlockPos) -> Boolean>
         get() = workers
             .mapNotNull { worker -> worker.blockValidator?.let { worker.jobType to it } }
             .toMap()
 
-    /**
-     * Ticks the deferred block scanning for a single pasture.
-     * Called ONCE per pasture per tick.
-     */
+    private val activeJobs = mutableMapOf<UUID, Worker>()
+    private val profiles = mutableMapOf<UUID, PokemonProfile>()
+
     fun tickAreaScan(world: World, pastureOrigin: BlockPos) {
-        DeferredBlockScanner.tickPastureAreaScan(
-            world,
-            pastureOrigin,
-            jobValidators
-        )
+        DeferredBlockScanner.tickPastureAreaScan(world, pastureOrigin, jobValidators)
     }
 
     /**
-     * Tracks which worker each Pokémon is currently assigned to.
-     * Ensures one job at a time per Pokémon.
+     * Builds or retrieves a cached PokemonProfile for the given entity.
+     * Profile caches which jobs a Pokémon qualifies for — eliminates
+     * per-tick shouldRun() calls across all workers.
      */
-    private val activeJobs = mutableMapOf<UUID, Worker>()
+    private fun getOrBuildProfile(pokemonEntity: PokemonEntity): PokemonProfile {
+        val pokemon = pokemonEntity.pokemon
+        val pokemonId = pokemon.uuid
+        profiles[pokemonId]?.let { return it }
 
-    /**
-     * Ticks the action logic for a specific Pokémon.
-     * Assigns one job at a time — the Pokémon completes its current task before switching.
-     */
+        val moves = pokemon.moveSet.getMoves().map { it.name.lowercase() }.toSet()
+        val types = pokemon.types.map { it.name.uppercase() }.toSet()
+        val species = pokemon.species.translatedName.string.lowercase()
+        val ability = pokemon.ability.name.lowercase()
+
+        return PokemonProfile.build(pokemonId, moves, types, species, ability, workers)
+            .also { profiles[pokemonId] = it }
+    }
+
     fun tickPokemon(world: World, pastureOrigin: BlockPos, pokemonEntity: PokemonEntity) {
         val pokemonId = pokemonEntity.pokemon.uuid
-        val eligible = workers.filter { it.shouldRun(pokemonEntity) }
+        val profile = getOrBuildProfile(pokemonEntity)
+        val eligible = profile.bestEligible()
 
         if (eligible.isEmpty()) {
             activeJobs.remove(pokemonId)
@@ -67,21 +66,26 @@ object WorkerDispatcher {
         }
 
         val current = activeJobs[pokemonId]
-        val job = if (current != null && current in eligible) {
-            current
-        } else {
-            eligible.random().also { activeJobs[pokemonId] = it }
+
+        // Stick with current job while it has work
+        if (current != null && current in eligible) {
+            if (current.hasActiveState(pokemonId)
+                || CobbleworkersNavigationUtils.getTarget(pokemonId, world) != null
+                || CobbleworkersNavigationUtils.getPlayerTarget(pokemonId, world) != null
+            ) {
+                WorkerVisualUtils.setExcited(pokemonEntity, true)
+                current.tick(world, pastureOrigin, pokemonEntity)
+                return
+            }
         }
+
+        // Select new job — prefer jobs with available targets
+        val available = eligible.filter { it.isAvailable(world, pastureOrigin, pokemonId) }
+        val pool = available.ifEmpty { eligible }
+        val job = pool.random().also { activeJobs[pokemonId] = it }
 
         WorkerVisualUtils.setExcited(pokemonEntity, true)
         job.tick(world, pastureOrigin, pokemonEntity)
-
-        // Allow job rotation when the current task cycle is done
-        if (CobbleworkersNavigationUtils.getTarget(pokemonId, world) == null &&
-            CobbleworkersNavigationUtils.getPlayerTarget(pokemonId, world) == null &&
-            !job.hasActiveState(pokemonId)) {
-            activeJobs.remove(pokemonId)
-        }
     }
 
     private fun returnToPasture(pokemonEntity: PokemonEntity, pastureOrigin: BlockPos) {
@@ -90,14 +94,16 @@ object WorkerDispatcher {
         }
     }
 
-    /**
-     * Cleans up all per-Pokémon state when a Pokémon leaves a pasture.
-     * Call this when a Pokémon is removed/recalled from a pasture.
-     */
     fun cleanupPokemon(pokemonId: UUID, world: World) {
         workers.forEach { it.cleanup(pokemonId) }
         activeJobs.remove(pokemonId)
+        profiles.remove(pokemonId)
         WorkerVisualUtils.cleanup(pokemonId)
         CobbleworkersNavigationUtils.cleanupPokemon(pokemonId, world)
+    }
+
+    /** Invalidate all cached profiles (e.g. on config reload). */
+    fun invalidateProfiles() {
+        profiles.clear()
     }
 }

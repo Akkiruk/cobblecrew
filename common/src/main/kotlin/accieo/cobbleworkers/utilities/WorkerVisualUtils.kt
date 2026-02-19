@@ -118,7 +118,7 @@ object WorkerVisualUtils {
         )
     }
 
-    private fun spawnParticles(world: World, pos: BlockPos, particleType: ParticleEffect, count: Int = 6) {
+    fun spawnParticles(world: World, pos: BlockPos, particleType: ParticleEffect, count: Int = 6) {
         val sw = world as? ServerWorld ?: return
         sw.spawnParticles(
             particleType,

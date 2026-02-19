@@ -10,11 +10,11 @@ package accieo.cobbleworkers.jobs
 
 import accieo.cobbleworkers.Cobbleworkers
 import accieo.cobbleworkers.interfaces.Worker
+import accieo.cobbleworkers.jobs.registry.*
 
 /**
  * Central registry of all Worker instances.
- * Replaces the hardcoded list in WorkerDispatcher.
- * Each category's init function adds its jobs here.
+ * Each category registers its jobs via register() calls.
  */
 object WorkerRegistry {
     private val _workers = mutableListOf<Worker>()
@@ -28,35 +28,20 @@ object WorkerRegistry {
         _workers.addAll(workers)
     }
 
-    /**
-     * Called once during mod init to register all existing (legacy) jobs.
-     * New DSL-based jobs will register via their category init blocks in later phases.
-     */
     fun init() {
-        registerAll(
-            ApricornHarvester,
-            AmethystHarvester,
-            Archeologist,
-            BerryHarvester,
-            BrewingStandFuelGenerator,
-            CropHarvester,
-            CropIrrigator,
-            DiveLooter,
-            FireExtinguisher,
-            FishingLootGenerator,
-            FuelGenerator,
-            GroundItemGatherer,
-            Healer,
-            HoneyCollector,
-            LavaGenerator,
-            MintHarvester,
-            NetherwartHarvester,
-            PickUpLooter,
-            Scout,
-            SnowGenerator,
-            TumblestoneHarvester,
-            WaterGenerator,
-        )
+        // Legacy jobs (original 22) — will migrate to DSL categories over time
+        LegacyJobs.register()
+
+        // DSL-based category registrations (populated in later phases)
+        GatheringJobs.register()
+        ProductionJobs.register()
+        ProcessingJobs.register()
+        PlacementJobs.register()
+        DefenseJobs.register()
+        SupportJobs.register()
+        EnvironmentalJobs.register()
+        LogisticsJobs.register()
+        ComboJobs.register()
 
         Cobbleworkers.LOGGER.info("[Cobbleworkers] Registered ${_workers.size} jobs")
     }

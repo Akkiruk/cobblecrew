@@ -1,3 +1,12 @@
+## 2.1.0
+- Phase 1: Base class infrastructure for V2 job system
+- PokemonProfile: eligibility caching computed once per Pokémon on pasture entry
+- WorkerDispatcher: profile-based job assignment with stickiness + isAvailable filtering
+- JobConfig + JobConfigManager: per-job JSON config under config/cobbleworkers/
+- New base classes: BaseProducer, BaseSupport, BaseProcessor, BasePlacer, BaseDefender
+- DSL builders: GatheringJob, ProductionJob, ProcessingJob, PlacementJob, DefenseJob, SupportJob
+- Registry categories: LegacyJobs + 9 category stubs for future DSL-based jobs
+
 ## 2.0.0
 - V2 Architecture: BlockCategory-based scanner, WorkerPriority tiers, WorkerRegistry
 - All 22 jobs declare V2 metadata (name, targetCategory, isEligible)
