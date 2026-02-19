@@ -9,6 +9,7 @@
 package accieo.cobbleworkers.jobs
 
 import accieo.cobbleworkers.config.CobbleworkersConfigHolder
+import accieo.cobbleworkers.enums.BlockCategory
 import accieo.cobbleworkers.enums.JobType
 import accieo.cobbleworkers.interfaces.Worker
 import accieo.cobbleworkers.utilities.CobbleworkersCropUtils

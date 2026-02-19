@@ -10,6 +10,7 @@ package accieo.cobbleworkers.jobs
 
 import accieo.cobbleworkers.config.CobbleworkersConfigHolder
 import accieo.cobbleworkers.enums.JobType
+import accieo.cobbleworkers.enums.WorkerPriority
 import accieo.cobbleworkers.interfaces.Worker
 import accieo.cobbleworkers.utilities.CobbleworkersInventoryUtils
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
@@ -34,6 +35,11 @@ object PickUpLooter : Worker {
 
     override val jobType: JobType = JobType.PickUpLooter
     override val blockValidator: ((World, BlockPos) -> Boolean)? = null
+
+    override val name = "pickup_looter"
+    override val priority = WorkerPriority.MOVE
+    override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String) =
+        config.pickUpLootersEnabled && ability == "pickup"
 
     /**
      * Determines if Pokémon is eligible to be a worker.

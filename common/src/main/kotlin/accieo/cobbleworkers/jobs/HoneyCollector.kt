@@ -10,6 +10,7 @@ package accieo.cobbleworkers.jobs
 
 import accieo.cobbleworkers.cache.CobbleworkersCacheManager
 import accieo.cobbleworkers.config.CobbleworkersConfigHolder
+import accieo.cobbleworkers.enums.BlockCategory
 import accieo.cobbleworkers.enums.JobType
 import accieo.cobbleworkers.interfaces.Worker
 import accieo.cobbleworkers.utilities.CobbleworkersInventoryUtils
@@ -53,6 +54,15 @@ object HoneyCollector : Worker {
         val state = world.getBlockState(pos)
         state.block is BeehiveBlock
     }
+
+    override val name = "honey_collector"
+    override val targetCategory = BlockCategory.HONEY
+    override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String) =
+        config.honeyCollectorsEnabled && (
+            (config.combeeLineCollectsHoney && species in VALID_TRANSLATED_SPECIES)
+            || config.honeyCollectors.any { it.equals(species, ignoreCase = true) }
+            || config.typeHarvestsHoney.name in types
+        )
 
     /**
      * Determines if Pokémon is eligible to be a honey collector.

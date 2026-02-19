@@ -11,6 +11,7 @@ package accieo.cobbleworkers.jobs
 import accieo.cobbleworkers.cache.CobbleworkersCacheManager
 import accieo.cobbleworkers.config.CobbleworkersConfigHolder
 import accieo.cobbleworkers.enums.JobType
+import accieo.cobbleworkers.enums.WorkerPriority
 import accieo.cobbleworkers.interfaces.Worker
 import accieo.cobbleworkers.utilities.CobbleworkersInventoryUtils
 import accieo.cobbleworkers.utilities.CobbleworkersNavigationUtils
@@ -52,6 +53,15 @@ object Scout : Worker {
 
     override val jobType: JobType = JobType.Scout
     override val blockValidator: ((World, BlockPos) -> Boolean)? = null
+
+    override val name = "scout"
+    override val priority = WorkerPriority.MOVE
+    override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String) =
+        config.scoutsEnabled && (
+            config.typeScouts.name in types
+            || config.scouts.any { it.equals(species, ignoreCase = true) }
+            || "fly" in moves
+        )
 
     /**
      * Determines if Pokémon is eligible to be a healer.

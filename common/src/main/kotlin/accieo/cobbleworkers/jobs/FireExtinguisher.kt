@@ -31,6 +31,11 @@ object FireExtinguisher : Worker {
         state.block == Blocks.FIRE
     }
 
+    override val name = "fire_extinguisher"
+    override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String) =
+        config.extinguishersEnabled && (config.typeExtinguishesFire.name in types
+            || config.extinguishers.any { it.equals(species, ignoreCase = true) })
+
     /**
      * Determines if Pokémon is eligible to be a worker.
      * NOTE: This is used to prevent running the tick method unnecessarily.

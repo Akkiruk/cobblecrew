@@ -9,6 +9,7 @@
 package accieo.cobbleworkers.jobs
 
 import accieo.cobbleworkers.config.CobbleworkersConfigHolder
+import accieo.cobbleworkers.enums.BlockCategory
 import accieo.cobbleworkers.enums.JobType
 import accieo.cobbleworkers.utilities.CobbleworkersTypeUtils
 import com.cobblemon.mod.common.block.MintBlock
@@ -31,6 +32,12 @@ object MintHarvester : BaseHarvester() {
     override val blockValidator: ((World, BlockPos) -> Boolean) = { world, pos ->
         world.getBlockState(pos).isIn(MINTS_TAG)
     }
+
+    override val name = "mint_harvester"
+    override val targetCategory = BlockCategory.MINT
+    override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String) =
+        isEnabled() && (config.typeHarvestsMints.name in types
+            || config.mintHarvesters.any { it.equals(species, ignoreCase = true) })
 
     override fun isEnabled() = config.mintHarvestersEnabled
     override fun isEligible(pokemonEntity: PokemonEntity) =

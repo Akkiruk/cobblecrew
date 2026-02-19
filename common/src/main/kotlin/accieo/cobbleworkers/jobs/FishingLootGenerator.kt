@@ -38,6 +38,11 @@ object FishingLootGenerator : Worker {
     override val jobType: JobType = JobType.FishingLootGenerator
     override val blockValidator: ((World, BlockPos) -> Boolean)? = null
 
+    override val name = "fishing_loot_generator"
+    override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String) =
+        config.fishingLootGeneratorsEnabled && (config.typeGeneratesFishingLoot.name in types
+            || config.fishingLootGenerators.any { it.equals(species, ignoreCase = true) })
+
     /**
      * Determines if Pokémon is eligible to be a worker.
      * NOTE: This is used to prevent running the tick method unnecessarily.

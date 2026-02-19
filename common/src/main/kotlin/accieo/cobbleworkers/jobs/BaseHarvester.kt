@@ -14,6 +14,7 @@ import accieo.cobbleworkers.utilities.CobbleworkersInventoryUtils
 import accieo.cobbleworkers.utilities.CobbleworkersNavigationUtils
 import accieo.cobbleworkers.utilities.WorkerVisualUtils
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
+import net.minecraft.block.Block
 import net.minecraft.block.BlockState
 import net.minecraft.item.ItemStack
 import net.minecraft.loot.context.LootContextParameterSet
@@ -35,9 +36,13 @@ import java.util.UUID
 abstract class BaseHarvester : Worker {
     protected val heldItemsByPokemon = mutableMapOf<UUID, List<ItemStack>>()
     protected val failedDepositLocations = mutableMapOf<UUID, MutableSet<BlockPos>>()
+    private val heldItemsSinceTick = mutableMapOf<UUID, Long>()
 
     abstract val arrivalParticle: ParticleEffect
     open val arrivalTolerance: Double = 1.0
+
+    /** Tool used in loot context. Override for silk touch/fortune. */
+    open val harvestTool: ItemStack = ItemStack.EMPTY
 
     abstract fun isEnabled(): Boolean
     abstract fun isEligible(pokemonEntity: PokemonEntity): Boolean
@@ -51,14 +56,29 @@ abstract class BaseHarvester : Worker {
         return isEligible(pokemonEntity)
     }
 
+    companion object {
+        private const val OVERFLOW_TIMEOUT_TICKS = 600L // 30 seconds
+    }
+
     override fun tick(world: World, origin: BlockPos, pokemonEntity: PokemonEntity) {
         val pokemonId = pokemonEntity.pokemon.uuid
         val heldItems = heldItemsByPokemon[pokemonId]
 
         if (heldItems.isNullOrEmpty()) {
             failedDepositLocations.remove(pokemonId)
+            heldItemsSinceTick.remove(pokemonId)
             handleHarvesting(world, origin, pokemonEntity)
         } else {
+            // Overflow protection: drop items if stuck for too long
+            val heldSince = heldItemsSinceTick.getOrPut(pokemonId) { world.time }
+            if (world.time - heldSince >= OVERFLOW_TIMEOUT_TICKS) {
+                heldItems.forEach { stack -> Block.dropStack(world, pokemonEntity.blockPos, stack) }
+                heldItemsByPokemon.remove(pokemonId)
+                failedDepositLocations.remove(pokemonId)
+                heldItemsSinceTick.remove(pokemonId)
+                return
+            }
+
             CobbleworkersInventoryUtils.handleDepositing(
                 world, origin, pokemonEntity, heldItems,
                 failedDepositLocations, heldItemsByPokemon
@@ -118,7 +138,7 @@ abstract class BaseHarvester : Worker {
         val lootParams = LootContextParameterSet.Builder(world as ServerWorld)
             .add(LootContextParameters.ORIGIN, targetPos.toCenterPos())
             .add(LootContextParameters.BLOCK_STATE, state)
-            .add(LootContextParameters.TOOL, ItemStack.EMPTY)
+            .add(LootContextParameters.TOOL, harvestTool)
             .addOptional(LootContextParameters.THIS_ENTITY, pokemonEntity)
 
         val drops = state.getDroppedStacks(lootParams)
@@ -134,5 +154,6 @@ abstract class BaseHarvester : Worker {
     override fun cleanup(pokemonId: UUID) {
         heldItemsByPokemon.remove(pokemonId)
         failedDepositLocations.remove(pokemonId)
+        heldItemsSinceTick.remove(pokemonId)
     }
 }

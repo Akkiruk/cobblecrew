@@ -9,6 +9,7 @@
 package accieo.cobbleworkers.jobs
 
 import accieo.cobbleworkers.config.CobbleworkersConfigHolder
+import accieo.cobbleworkers.enums.BlockCategory
 import accieo.cobbleworkers.enums.JobType
 import accieo.cobbleworkers.utilities.CobbleworkersTypeUtils
 import com.cobblemon.mod.common.block.ApricornBlock
@@ -31,6 +32,12 @@ object ApricornHarvester : BaseHarvester() {
     override val blockValidator: ((World, BlockPos) -> Boolean) = { world, pos ->
         world.getBlockState(pos).isIn(APRICORNS_TAG)
     }
+
+    override val name = "apricorn_harvester"
+    override val targetCategory = BlockCategory.APRICORN
+    override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String) =
+        isEnabled() && (config.typeHarvestsApricorns.name in types
+            || config.apricornHarvesters.any { it.equals(species, ignoreCase = true) })
 
     override fun isEnabled() = config.apricornHarvestersEnabled
     override fun isEligible(pokemonEntity: PokemonEntity) =

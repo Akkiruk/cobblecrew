@@ -9,6 +9,7 @@
 package accieo.cobbleworkers.jobs
 
 import accieo.cobbleworkers.config.CobbleworkersConfigHolder
+import accieo.cobbleworkers.enums.BlockCategory
 import accieo.cobbleworkers.enums.JobType
 import accieo.cobbleworkers.utilities.CobbleworkersCropUtils
 import accieo.cobbleworkers.utilities.CobbleworkersTypeUtils
@@ -26,6 +27,12 @@ object CropHarvester : BaseHarvester() {
     override val blockValidator: ((World, BlockPos) -> Boolean) = { world, pos ->
         world.getBlockState(pos).block in CobbleworkersCropUtils.validCropBlocks
     }
+
+    override val name = "crop_harvester"
+    override val targetCategory = BlockCategory.CROP_GRAIN
+    override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String) =
+        isEnabled() && (config.typeHarvestsCrops.name in types
+            || config.cropHarvesters.any { it.equals(species, ignoreCase = true) })
 
     override fun isEnabled() = config.cropHarvestersEnabled
     override fun isEligible(pokemonEntity: PokemonEntity) =

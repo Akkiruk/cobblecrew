@@ -9,6 +9,7 @@
 package accieo.cobbleworkers.jobs
 
 import accieo.cobbleworkers.config.CobbleworkersConfigHolder
+import accieo.cobbleworkers.enums.BlockCategory
 import accieo.cobbleworkers.enums.JobType
 import accieo.cobbleworkers.utilities.CobbleworkersTypeUtils
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
@@ -27,6 +28,12 @@ object AmethystHarvester : BaseHarvester() {
     override val blockValidator: ((World, BlockPos) -> Boolean) = { world, pos ->
         world.getBlockState(pos).block == Blocks.AMETHYST_CLUSTER
     }
+
+    override val name = "amethyst_harvester"
+    override val targetCategory = BlockCategory.AMETHYST
+    override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String) =
+        isEnabled() && (config.typeHarvestsAmethyst.name in types
+            || config.amethystHarvesters.any { it.equals(species, ignoreCase = true) })
 
     override fun isEnabled() = config.amethystHarvestersEnabled
     override fun isEligible(pokemonEntity: PokemonEntity) =

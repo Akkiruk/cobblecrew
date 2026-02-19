@@ -10,13 +10,15 @@ package accieo.cobbleworkers.utilities
 
 import accieo.cobbleworkers.cache.CobbleworkersCacheManager
 import accieo.cobbleworkers.config.CobbleworkersConfigHolder
+import accieo.cobbleworkers.enums.BlockCategory
 import accieo.cobbleworkers.enums.JobType
 import net.minecraft.util.math.BlockPos
 import net.minecraft.util.math.Box
+import net.minecraft.util.math.ChunkPos
 import net.minecraft.world.World
 
 object DeferredBlockScanner {
-    private val config = CobbleworkersConfigHolder.config.general
+    private val config get() = CobbleworkersConfigHolder.config.general
     private val BLOCKS_PER_TICK get() = config.blocksScannedPerTick
     private val searchRadius get() = config.searchRadius
     private val searchHeight get() = config.searchHeight
@@ -32,6 +34,7 @@ object DeferredBlockScanner {
 
     /**
      * Initiates or continues a deferred area scan for a pasture for one tick.
+     * Populates both legacy JobType caches and new BlockCategory caches.
      */
     fun tickPastureAreaScan(
         world: World,
@@ -47,7 +50,9 @@ object DeferredBlockScanner {
         }
 
         val scanJob = activeScans.getOrPut(pastureOrigin) {
+            @Suppress("DEPRECATION")
             CobbleworkersCacheManager.removeTargets(pastureOrigin)
+            CobbleworkersCacheManager.removeAllCategoryTargets(pastureOrigin)
 
             val radius = searchRadius.toDouble()
             val height = searchHeight.toDouble()
@@ -58,6 +63,8 @@ object DeferredBlockScanner {
         if (scanJob.lastTickProcessed == currentTick) return
         scanJob.lastTickProcessed = currentTick
 
+        val categoryValidators = BlockCategoryValidators.validators
+
         repeat(BLOCKS_PER_TICK) {
             if (!scanJob.iterator.hasNext()) {
                 activeScans.remove(pastureOrigin)
@@ -67,27 +74,38 @@ object DeferredBlockScanner {
 
             val pos = scanJob.iterator.next()
 
+            // Chunk loading guard
+            val chunkPos = ChunkPos(pos)
+            if (!world.isChunkLoaded(chunkPos.x, chunkPos.z)) return@repeat
+
+            val immutablePos = pos.toImmutable()
+
+            // V2 BlockCategory scanning
+            for ((category, validator) in categoryValidators) {
+                if (validator(world, pos)) {
+                    CobbleworkersCacheManager.addTarget(pastureOrigin, category, immutablePos)
+                }
+            }
+
+            // Legacy JobType scanning (kept during migration)
             val isValidInventory = CobbleworkersInventoryUtils.blockValidator(world, pos)
             if (isValidInventory) {
-                CobbleworkersCacheManager.addTarget(pastureOrigin, JobType.Generic, pos.toImmutable())
+                @Suppress("DEPRECATION")
+                CobbleworkersCacheManager.addTarget(pastureOrigin, JobType.Generic, immutablePos)
             }
 
             for ((jobType, validator) in jobValidators) {
                 if (validator(world, pos)) {
-                    CobbleworkersCacheManager.addTarget(pastureOrigin, jobType, pos.toImmutable())
+                    @Suppress("DEPRECATION")
+                    CobbleworkersCacheManager.addTarget(pastureOrigin, jobType, immutablePos)
                 }
             }
         }
     }
 
-    /**
-     * Checks whether a scan job is running for the given pasture origin.
-     */
+    /** Checks whether a scan job is running for the given pasture origin. */
     fun isScanActive(pastureOrigin: BlockPos): Boolean = activeScans.containsKey(pastureOrigin)
 
-    /**
-     * Clean up expired scan completions.
-     */
     private fun clearExpiredCompletions(currentTick: Long) {
         val iterator = lastScanCompletion.entries.iterator()
         while (iterator.hasNext()) {

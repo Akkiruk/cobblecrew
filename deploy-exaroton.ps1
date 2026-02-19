@@ -69,7 +69,15 @@ function Invoke-ExarotonApi {
         
         return Invoke-RestMethod @params
     } catch {
-        Write-Error "API Request Failed: $_"
+        Write-Host "API Request Failed." -ForegroundColor Red
+        if ($_.Exception.Response) {
+             $reader = New-Object System.IO.StreamReader($_.Exception.Response.GetResponseStream())
+             $responseText = $reader.ReadToEnd()
+             Write-Host "Response Body: $responseText" -ForegroundColor Red
+        } else {
+             Write-Host "Exception: $_" -ForegroundColor Red
+        }
+        throw $_
     }
 }
 

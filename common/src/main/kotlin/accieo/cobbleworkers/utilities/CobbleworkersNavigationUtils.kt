@@ -213,6 +213,27 @@ object CobbleworkersNavigationUtils {
     fun cleanupPokemon(pokemonId: UUID, world: World) {
         releaseTarget(pokemonId, world)
         releasePlayerTarget(pokemonId)
+        releaseMobTarget(pokemonId)
         lastPathfindTick.remove(pokemonId)
     }
+
+    // --- V2: Mob targeting (for defense/combat jobs) ---
+
+    private val pokemonToMobTarget = mutableMapOf<UUID, Int>()
+    private val targetedMobs = mutableMapOf<Int, UUID>()
+
+    fun claimMobTarget(pokemonId: UUID, entityId: Int) {
+        releaseMobTarget(pokemonId)
+        pokemonToMobTarget[pokemonId] = entityId
+        targetedMobs[entityId] = pokemonId
+    }
+
+    fun releaseMobTarget(pokemonId: UUID) {
+        val mobId = pokemonToMobTarget.remove(pokemonId)
+        if (mobId != null) targetedMobs.remove(mobId)
+    }
+
+    fun getMobTarget(pokemonId: UUID): Int? = pokemonToMobTarget[pokemonId]
+
+    fun isMobTargeted(entityId: Int): Boolean = targetedMobs.containsKey(entityId)
 }

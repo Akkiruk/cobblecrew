@@ -8,6 +8,7 @@
 
 package accieo.cobbleworkers.cache
 
+import accieo.cobbleworkers.enums.BlockCategory
 import accieo.cobbleworkers.enums.JobType
 import net.minecraft.registry.RegistryKeys
 import net.minecraft.registry.entry.RegistryEntry
@@ -27,25 +28,50 @@ object CobbleworkersCacheManager {
     private val structureLocationExpiry: MutableMap<Identifier, Long> = ConcurrentHashMap()
     private const val CACHE_TTL = 20L * 60L * 15L
 
-    /**
-     * Adds a target block for the given job type.
-     */
+    // --- BlockCategory-based API (V2) ---
+
+    fun addTarget(pastureOrigin: BlockPos, category: BlockCategory, pos: BlockPos) {
+        val cache = pastureCaches.getOrPut(pastureOrigin) { PastureCache() }
+        cache.targetsByCategory[category]?.add(pos)
+    }
+
+    fun getTargets(pastureOrigin: BlockPos, category: BlockCategory): Set<BlockPos> {
+        return pastureCaches[pastureOrigin]?.targetsByCategory?.get(category) ?: emptySet()
+    }
+
+    fun removeTarget(pastureOrigin: BlockPos, category: BlockCategory, pos: BlockPos) {
+        pastureCaches[pastureOrigin]?.targetsByCategory?.get(category)?.remove(pos)
+    }
+
+    /** Remove a position from ALL pasture caches (for overlapping pasture ranges). */
+    fun removeTargetGlobal(category: BlockCategory, pos: BlockPos) {
+        pastureCaches.values.forEach { cache ->
+            cache.targetsByCategory[category]?.remove(pos)
+        }
+    }
+
+    fun removeAllCategoryTargets(pastureOrigin: BlockPos) {
+        pastureCaches[pastureOrigin]?.targetsByCategory?.values?.forEach { it.clear() }
+    }
+
+    // --- Legacy JobType-based API (kept for migration period) ---
+
+    @Deprecated("Use BlockCategory overload")
     fun addTarget(pastureOrigin: BlockPos, jobType: JobType, pos: BlockPos) {
         val cache = pastureCaches.getOrPut(pastureOrigin) { PastureCache() }
+        @Suppress("DEPRECATION")
         cache.targetsByJob[jobType]?.add(pos)
     }
 
-    /**
-     * Removes a target block for the given job type.
-     */
+    @Deprecated("Use BlockCategory overload")
     fun removeTargets(pastureOrigin: BlockPos) {
+        @Suppress("DEPRECATION")
         pastureCaches[pastureOrigin]?.targetsByJob?.values?.forEach { it.clear() }
     }
 
-    /**
-     * Gets targets for a given job type.
-     */
+    @Deprecated("Use BlockCategory overload")
     fun getTargets(pastureOrigin: BlockPos, jobType: JobType): Set<BlockPos> {
+        @Suppress("DEPRECATION")
         return pastureCaches[pastureOrigin]?.targetsByJob?.get(jobType) ?: emptySet()
     }
 

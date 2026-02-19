@@ -1,3 +1,13 @@
+## 2.0.0
+- V2 Architecture: BlockCategory-based scanner, WorkerPriority tiers, WorkerRegistry
+- All 22 jobs declare V2 metadata (name, targetCategory, isEligible)
+- DeferredBlockScanner: fixed config caching bug, added chunk-loaded guard, dual category+legacy scanning
+- BaseHarvester: container overflow timeout (30s), harvestTool parameter
+- CobbleworkersCacheManager: BlockCategory API, removeTargetGlobal for overlapping pastures
+- CobbleworkersNavigationUtils: mob targeting for future combat jobs
+- CobbleworkersInventoryUtils: barrel extraction methods (findInputContainer, extractFromContainer)
+- WorkerDispatcher: now uses WorkerRegistry instead of hardcoded list
+
 ## 1.9.0
 - Added visual feedback: Pokémon swing hands, look at targets, spawn particles, and cry when working
 - Added one-job-at-a-time system: Pokémon focus on completing one task before switching jobs

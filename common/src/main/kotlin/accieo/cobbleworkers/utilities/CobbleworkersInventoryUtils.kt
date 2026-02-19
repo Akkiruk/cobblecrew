@@ -226,4 +226,54 @@ object CobbleworkersInventoryUtils {
             CobbleworkersNavigationUtils.navigateTo(pokemonEntity, inventoryPos)
         }
     }
+
+    // --- V2: Input container extraction (barrels = input, chests = output) ---
+
+    /**
+     * Finds the closest barrel-type container with items matching the predicate.
+     */
+    fun findInputContainer(
+        world: World,
+        origin: BlockPos,
+        predicate: (ItemStack) -> Boolean,
+        ignorePos: Set<BlockPos> = emptySet(),
+    ): BlockPos? {
+        val containerTargets = CobbleworkersCacheManager.getTargets(
+            origin,
+            accieo.cobbleworkers.enums.BlockCategory.CONTAINER
+        )
+        if (containerTargets.isEmpty()) return null
+
+        return containerTargets
+            .filter { pos ->
+                pos !in ignorePos
+                    && world.getBlockState(pos).block == Blocks.BARREL
+                    && (world.getBlockEntity(pos) as? Inventory)?.let { inv ->
+                        (0 until inv.size()).any { slot -> predicate(inv.getStack(slot)) }
+                    } == true
+            }
+            .minByOrNull { it.getSquaredDistance(origin) }
+    }
+
+    /**
+     * Extracts up to [maxAmount] items matching [predicate] from a barrel at [pos].
+     * Returns the extracted stack, or EMPTY if nothing matched.
+     */
+    fun extractFromContainer(
+        world: World,
+        pos: BlockPos,
+        predicate: (ItemStack) -> Boolean,
+        maxAmount: Int = 1,
+    ): ItemStack {
+        val inv = world.getBlockEntity(pos) as? Inventory ?: return ItemStack.EMPTY
+        for (slot in 0 until inv.size()) {
+            val stack = inv.getStack(slot)
+            if (!stack.isEmpty && predicate(stack)) {
+                val taken = stack.split(minOf(maxAmount, stack.count))
+                inv.markDirty()
+                return taken
+            }
+        }
+        return ItemStack.EMPTY
+    }
 }

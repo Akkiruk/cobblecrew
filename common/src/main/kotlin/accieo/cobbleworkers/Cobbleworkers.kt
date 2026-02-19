@@ -9,6 +9,7 @@
 package accieo.cobbleworkers
 
 import accieo.cobbleworkers.config.CobbleworkersConfigInitializer
+import accieo.cobbleworkers.jobs.WorkerRegistry
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 
@@ -22,5 +23,6 @@ object Cobbleworkers {
         LOGGER.info("Launching {}...", MODID)
 
         CobbleworkersConfigInitializer.init()
+        WorkerRegistry.init()
     }
 }

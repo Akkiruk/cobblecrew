@@ -9,6 +9,7 @@
 package accieo.cobbleworkers.jobs
 
 import accieo.cobbleworkers.config.CobbleworkersConfigHolder
+import accieo.cobbleworkers.enums.BlockCategory
 import accieo.cobbleworkers.enums.JobType
 import accieo.cobbleworkers.utilities.CobbleworkersTypeUtils
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
@@ -28,6 +29,12 @@ object NetherwartHarvester : BaseHarvester() {
     override val blockValidator: ((World, BlockPos) -> Boolean) = { world, pos ->
         world.getBlockState(pos).block is NetherWartBlock
     }
+
+    override val name = "netherwart_harvester"
+    override val targetCategory = BlockCategory.NETHERWART
+    override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String) =
+        isEnabled() && (config.typeHarvestsNetherwart.name in types
+            || config.netherwartHarvesters.any { it.equals(species, ignoreCase = true) })
 
     override fun isEnabled() = config.netherwartHarvestersEnabled
     override fun isEligible(pokemonEntity: PokemonEntity) =

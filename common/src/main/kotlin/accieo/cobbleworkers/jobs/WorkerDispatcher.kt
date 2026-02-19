@@ -20,39 +20,18 @@ import java.util.UUID
 
 object WorkerDispatcher {
     /**
-     * Worker registry.
+     * Worker registry — all registered workers from WorkerRegistry.
      */
-    private val workers: List<Worker> = listOf(
-        ApricornHarvester,
-        AmethystHarvester,
-        Archeologist,
-        BerryHarvester,
-        BrewingStandFuelGenerator,
-        CropHarvester,
-        CropIrrigator,
-        DiveLooter,
-        FireExtinguisher,
-        FishingLootGenerator,
-        FuelGenerator,
-        GroundItemGatherer,
-        Healer,
-        HoneyCollector,
-        LavaGenerator,
-        MintHarvester,
-        NetherwartHarvester,
-        PickUpLooter,
-        Scout,
-        SnowGenerator,
-        TumblestoneHarvester,
-        WaterGenerator,
-    )
+    private val workers: List<Worker> get() = WorkerRegistry.workers
 
     /**
      * Gathers all block validators from registered workers.
      */
-    private val jobValidators: Map<JobType, (World, BlockPos) -> Boolean> = workers
-        .mapNotNull { worker -> worker.blockValidator?.let { worker.jobType to it } }
-        .toMap()
+    @Suppress("DEPRECATION")
+    private val jobValidators: Map<JobType, (World, BlockPos) -> Boolean>
+        get() = workers
+            .mapNotNull { worker -> worker.blockValidator?.let { worker.jobType to it } }
+            .toMap()
 
     /**
      * Ticks the deferred block scanning for a single pasture.

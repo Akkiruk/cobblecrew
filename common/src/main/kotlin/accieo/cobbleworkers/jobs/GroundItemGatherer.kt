@@ -36,6 +36,11 @@ object GroundItemGatherer : Worker {
     override val jobType: JobType = JobType.GroundItemGatherer
     override val blockValidator: ((World, BlockPos) -> Boolean)? = null
 
+    override val name = "ground_item_gatherer"
+    override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String) =
+        config.groundItemGatheringEnabled && (config.typeGathersGroundItems.name in types
+            || config.groundItemGatherers.any { it.equals(species, ignoreCase = true) })
+
     /**
      * Determines if Pokémon is eligible to be a worker.
      * NOTE: This is used to prevent running the tick method unnecessarily.

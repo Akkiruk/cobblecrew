@@ -10,6 +10,7 @@ package accieo.cobbleworkers.jobs
 
 import accieo.cobbleworkers.config.CobbleworkersConfigHolder
 import accieo.cobbleworkers.enums.JobType
+import accieo.cobbleworkers.enums.WorkerPriority
 import accieo.cobbleworkers.interfaces.Worker
 import accieo.cobbleworkers.utilities.CobbleworkersNavigationUtils
 import accieo.cobbleworkers.utilities.CobbleworkersTypeUtils
@@ -42,6 +43,15 @@ object Healer : Worker {
 
     override val jobType: JobType = JobType.Healer
     override val blockValidator: ((World, BlockPos) -> Boolean)? = null
+
+    override val name = "healer"
+    override val priority = WorkerPriority.MOVE
+    override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String) =
+        config.healersEnabled && (
+            config.healers.any { it.equals(species, ignoreCase = true) }
+            || (config.chanseyLineHealsPlayers && species in VALID_TRANSLATED_SPECIES)
+            || moves.any { it in config.healingMoves }
+        )
 
     /**
      * Determines if Pokémon is eligible to be a healer.

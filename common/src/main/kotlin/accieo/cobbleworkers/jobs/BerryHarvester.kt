@@ -9,6 +9,7 @@
 package accieo.cobbleworkers.jobs
 
 import accieo.cobbleworkers.config.CobbleworkersConfigHolder
+import accieo.cobbleworkers.enums.BlockCategory
 import accieo.cobbleworkers.enums.JobType
 import accieo.cobbleworkers.utilities.CobbleworkersTypeUtils
 import com.cobblemon.mod.common.block.BerryBlock
@@ -33,6 +34,12 @@ object BerryHarvester : BaseHarvester() {
     override val blockValidator: ((World, BlockPos) -> Boolean) = { world, pos ->
         world.getBlockState(pos).isIn(BERRIES_TAG)
     }
+
+    override val name = "berry_harvester"
+    override val targetCategory = BlockCategory.BERRY
+    override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String) =
+        isEnabled() && (config.typeHarvestsBerries.name in types
+            || config.berryHarvesters.any { it.equals(species, ignoreCase = true) })
 
     override fun isEnabled() = config.berryHarvestersEnabled
     override fun isEligible(pokemonEntity: PokemonEntity) =
