@@ -1,3 +1,11 @@
+## 1.9.0
+- Added visual feedback: Pokémon swing hands, look at targets, spawn particles, and cry when working
+- Added one-job-at-a-time system: Pokémon focus on completing one task before switching jobs
+- Added EXCITED behavior flag while working and return-to-pasture when idle
+- Refactored all harvesters to use BaseHarvester class (eliminated 161 lines of duplicate code)
+- All workers now have 1.5-second work delays with animations at targets
+
+## 1.8.0
 - Fixed an issue with combee evolution line not generating honey if game was in a different language.
 - By default, irrigators now irrigate a 3x3 area (9 blocks). This setting is configurable.
 - By default, fire extinguishers now extinguish a 3x3 area (9 blocks). This setting is configurable.
