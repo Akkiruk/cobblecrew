@@ -12,13 +12,13 @@ import accieo.cobbleworkers.Cobbleworkers
 import accieo.cobbleworkers.config.CobbleworkersConfigHolder
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
+import java.nio.file.Path
+import kotlin.io.path.createDirectories
+import kotlin.io.path.writeText
 
 /**
- * Provides job eligibility rules for CobbleDex integration.
- * Called via reflection by CobbleDex — no compile-time dependency.
- *
- * Returns a JSON string describing all job eligibility criteria
- * so CobbleDex can evaluate per-species eligibility client-side.
+ * Exports job eligibility rules as a JSON file for CobbleDex.
+ * CobbleDex reads this file at runtime — no compile-time or reflection dependency.
  */
 object CobbledexDataProvider {
 
@@ -36,20 +36,21 @@ object CobbledexDataProvider {
         val priority: String,
     )
 
-    private val gson: Gson = GsonBuilder().create()
+    private val gson: Gson = GsonBuilder().setPrettyPrinting().create()
+    private val OUTPUT_FILE: Path = Path.of("config", "cobbleworkers", "cobbledex-job-rules.json")
 
     /**
-     * Entry point called by CobbleDex via reflection.
-     * Returns JSON array of all job rules.
+     * Writes all job rules to config/cobbleworkers/cobbledex-job-rules.json.
+     * Called during mod init so CobbleDex can read the file.
      */
-    @JvmStatic
-    fun getJobRulesJson(): String {
-        return try {
+    fun writeJobRulesFile() {
+        try {
+            OUTPUT_FILE.parent.createDirectories()
             val rules = buildJobRules()
-            gson.toJson(rules)
+            OUTPUT_FILE.writeText(gson.toJson(rules))
+            Cobbleworkers.LOGGER.info("[Cobbleworkers] Wrote ${rules.size} job rules for CobbleDex")
         } catch (e: Exception) {
-            Cobbleworkers.LOGGER.warn("[Cobbleworkers] Failed to build CobbleDex job rules: ${e.message}")
-            "[]"
+            Cobbleworkers.LOGGER.warn("[Cobbleworkers] Failed to write CobbleDex job rules: ${e.message}")
         }
     }
 

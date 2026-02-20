@@ -10,6 +10,7 @@ package accieo.cobbleworkers
 
 import accieo.cobbleworkers.config.CobbleworkersConfigInitializer
 import accieo.cobbleworkers.config.JobConfigManager
+import accieo.cobbleworkers.integration.cobbledex.CobbledexDataProvider
 import accieo.cobbleworkers.jobs.WorkerRegistry
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
@@ -26,5 +27,6 @@ object Cobbleworkers {
         CobbleworkersConfigInitializer.init()
         JobConfigManager.load()
         WorkerRegistry.init()
+        CobbledexDataProvider.writeJobRulesFile()
     }
 }
