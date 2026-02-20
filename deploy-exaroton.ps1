@@ -73,7 +73,7 @@ function Invoke-ExarotonApi {
         if ($_.Exception.Response) {
              $reader = New-Object System.IO.StreamReader($_.Exception.Response.GetResponseStream())
              $responseText = $reader.ReadToEnd()
-             Write-Host "Response Body: $responseText" -ForegroundColor Red
+             Write-Host "Response Body: $responseText" -ForegroundColor Red 
         } else {
              Write-Host "Exception: $_" -ForegroundColor Red
         }
