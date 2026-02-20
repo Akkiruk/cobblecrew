@@ -33,7 +33,7 @@ import net.minecraft.world.World
  * )
  * ```
  */
-class GatheringJob(
+open class GatheringJob(
     override val name: String,
     val category: String = "gathering",
     override val targetCategory: BlockCategory,

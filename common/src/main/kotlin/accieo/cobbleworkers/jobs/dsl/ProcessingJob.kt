@@ -20,7 +20,7 @@ import net.minecraft.particle.ParticleTypes
 /**
  * DSL-style processing job. Pulls items from barrels, transforms, deposits in chests.
  */
-class ProcessingJob(
+open class ProcessingJob(
     override val name: String,
     val category: String = "processing",
     val qualifyingMoves: Set<String> = emptySet(),

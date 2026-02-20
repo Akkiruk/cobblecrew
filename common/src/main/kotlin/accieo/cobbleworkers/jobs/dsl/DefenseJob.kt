@@ -22,7 +22,7 @@ import net.minecraft.world.World
 /**
  * DSL-style defense job. Finds hostile mobs and applies effects.
  */
-class DefenseJob(
+open class DefenseJob(
     override val name: String,
     val category: String = "defense",
     val qualifyingMoves: Set<String> = emptySet(),

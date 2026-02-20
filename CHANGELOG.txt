@@ -1,3 +1,14 @@
+## 2.4.0
+- Phase 8: 3 environmental jobs (frost former, obsidian forge, growth accelerator)
+- Phase 8: 2 logistics jobs (magnetizer, trash disposal)
+- Phase 9: 18 combo jobs requiring multiple moves for enhanced effects
+  - 7 gathering combos (demolisher, fortune miner, silk touch extractor, vein miner,
+    tree feller, fossil hunter, gem vein finder)
+  - 8 production combos (string crafter, book binder, candle maker, chain forger,
+    lantern builder, banner creator, deep sea trawler, magma diver)
+  - 1 processing combo (blast furnace with 2x output)
+  - 2 support combos (full restore, aura master)
+
 ## 2.3.0
 - Phase 3: 25 production jobs (wool, silk, slime, ink, bone, pearl, feather, scale, fruit,
   coin, gem, spore, pollen, gift, egg, milk, electric, wax, powder, ash, static, sap, toxin,

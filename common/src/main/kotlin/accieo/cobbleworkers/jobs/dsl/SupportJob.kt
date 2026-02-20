@@ -21,7 +21,7 @@ import net.minecraft.registry.entry.RegistryEntry
 /**
  * DSL-style support job. Applies status effects to nearby players.
  */
-class SupportJob(
+open class SupportJob(
     override val name: String,
     val category: String = "support",
     val qualifyingMoves: Set<String> = emptySet(),

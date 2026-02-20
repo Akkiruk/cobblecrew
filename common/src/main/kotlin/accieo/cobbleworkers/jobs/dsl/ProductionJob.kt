@@ -23,7 +23,7 @@ import net.minecraft.world.World
 /**
  * DSL-style production job. Self-generates items on cooldown without target blocks.
  */
-class ProductionJob(
+open class ProductionJob(
     override val name: String,
     val category: String = "production",
     val qualifyingMoves: Set<String> = emptySet(),
