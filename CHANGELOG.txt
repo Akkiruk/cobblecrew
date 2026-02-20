@@ -1,3 +1,7 @@
+## 2.6.0
+- Added public CobbleworkersApi for direct mod integration (replaces file/reflection approach)
+- Removed CobbledexDataProvider and file-based job rule export
+
 ## 2.5.0
 - Added CobbleDex integration: exports all 22 job eligibility rules via reflection API
   so CobbleDex can display which Pokémon qualify for which Cobbleworkers jobs
