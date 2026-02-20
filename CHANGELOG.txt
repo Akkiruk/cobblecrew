@@ -1,3 +1,7 @@
+## 2.5.0
+- Added CobbleDex integration: exports all 22 job eligibility rules via reflection API
+  so CobbleDex can display which Pokémon qualify for which Cobbleworkers jobs
+
 ## 2.4.0
 - Phase 8: 3 environmental jobs (frost former, obsidian forge, growth accelerator)
 - Phase 8: 2 logistics jobs (magnetizer, trash disposal)
