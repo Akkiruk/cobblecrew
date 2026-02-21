@@ -121,74 +121,7 @@ object LogisticsJobs {
         override fun cleanup(pokemonId: UUID) { targets.remove(pokemonId) }
     }
 
-    // ── H2: Trash Disposal ───────────────────────────────────────────
-    // Deletes configurable junk items from containers
-    object TrashDisposal : Worker {
-        override val name = "trash_disposal"
-        override val priority = WorkerPriority.MOVE
-        override val targetCategory: BlockCategory? = null
-
-        private val config get() = JobConfigManager.get(name)
-        private val qualifyingMoves = setOf("sludgebomb", "gunkshot")
-        private val targets = mutableMapOf<UUID, BlockPos>()
-
-        private val JUNK_ITEMS: Set<Item> = setOf(
-            Items.ROTTEN_FLESH, Items.POISONOUS_POTATO,
-            Items.DEAD_BUSH, Items.STRING,
-        )
-
-        init {
-            JobConfigManager.registerDefault("logistics", name, JobConfig(
-                enabled = true,
-                qualifyingMoves = qualifyingMoves.toList(),
-            ))
-        }
-
-        override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean {
-            if (!config.enabled) return false
-            val eff = config.qualifyingMoves.ifEmpty { qualifyingMoves }.map { it.lowercase() }.toSet()
-            return moves.any { it in eff }
-        }
-
-        override fun tick(world: World, origin: BlockPos, pokemonEntity: PokemonEntity) {
-            val pid = pokemonEntity.pokemon.uuid
-            val target = targets[pid]
-            if (target == null) {
-                val found = CobbleworkersInventoryUtils.findInputContainer(
-                    world, origin, predicate = { stack -> stack.item in JUNK_ITEMS }
-                ) ?: return
-                if (!CobbleworkersNavigationUtils.isTargeted(found, world)) {
-                    CobbleworkersNavigationUtils.claimTarget(pid, found, world)
-                    targets[pid] = found
-                    CobbleworkersNavigationUtils.navigateTo(pokemonEntity, found)
-                }
-                return
-            }
-            CobbleworkersNavigationUtils.navigateTo(pokemonEntity, target)
-            if (WorkerVisualUtils.handleArrival(pokemonEntity, target, world, ParticleTypes.SMOKE, 3.0)) {
-                removeJunk(world, target)
-                CobbleworkersNavigationUtils.releaseTarget(pid, world)
-                targets.remove(pid)
-            }
-        }
-
-        private fun removeJunk(world: World, pos: BlockPos) {
-            val be = world.getBlockEntity(pos) ?: return
-            val inv = be as? Inventory ?: return
-            for (i in 0 until inv.size()) {
-                val stack = inv.getStack(i)
-                if (stack.item in JUNK_ITEMS) {
-                    inv.setStack(i, ItemStack.EMPTY)
-                }
-            }
-            inv.markDirty()
-        }
-
-        override fun hasActiveState(pokemonId: UUID) = pokemonId in targets
-        override fun cleanup(pokemonId: UUID) { targets.remove(pokemonId) }
-    }
-
-    // ── H3: Ground Item Collector ────────────────────────────────────
+    // ── H2: Ground Item Collector ────────────────────────────────────
     // Picks up items from the ground and deposits in containers
     object GroundItemCollector : Worker {
         override val name = "ground_item_collector"
@@ -256,6 +189,6 @@ object LogisticsJobs {
     }
 
     fun register() {
-        WorkerRegistry.registerAll(Magnetizer, TrashDisposal, GroundItemCollector)
+        WorkerRegistry.registerAll(Magnetizer, GroundItemCollector)
     }
 }

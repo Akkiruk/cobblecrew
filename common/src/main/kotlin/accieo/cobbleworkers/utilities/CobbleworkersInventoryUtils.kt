@@ -111,17 +111,45 @@ object CobbleworkersInventoryUtils {
     }
 
     /**
-     * Finds closest inventory
+     * Finds closest inventory that has space for at least one of the given items.
+     * If no items are specified, returns any valid container.
      */
-    fun findClosestInventory(world: World, origin: BlockPos, ignorePos: Set<BlockPos> = emptySet()): BlockPos? {
+    fun findClosestInventory(
+        world: World,
+        origin: BlockPos,
+        ignorePos: Set<BlockPos> = emptySet(),
+        itemsToDeposit: List<ItemStack> = emptyList(),
+    ): BlockPos? {
         val possibleTargets = CobbleworkersCacheManager.getTargets(origin, BlockCategory.CONTAINER)
         if (possibleTargets.isEmpty()) return null
 
         return possibleTargets
             .filter { pos ->
-                blockValidator(world, pos) && pos !in ignorePos
+                blockValidator(world, pos)
+                    && pos !in ignorePos
+                    && (itemsToDeposit.isEmpty() || hasSpaceFor(world, pos, itemsToDeposit))
             }
             .minByOrNull { it.getSquaredDistance(origin) }
+    }
+
+    /**
+     * Returns true if the container at [pos] can accept at least one item from [items].
+     */
+    private fun hasSpaceFor(world: World, pos: BlockPos, items: List<ItemStack>): Boolean {
+        val inv = world.getBlockEntity(pos) as? Inventory ?: return false
+        val actual = getActualInventory(inv)
+        for (i in 0 until actual.size()) {
+            if (actual.getStack(i).isEmpty) return true
+        }
+        for (item in items) {
+            for (i in 0 until actual.size()) {
+                val slot = actual.getStack(i)
+                if (ItemStack.areItemsAndComponentsEqual(slot, item) && slot.count < slot.maxCount) {
+                    return true
+                }
+            }
+        }
+        return false
     }
 
     /**
@@ -241,7 +269,7 @@ object CobbleworkersInventoryUtils {
     ) {
         val pokemonId = pokemonEntity.pokemon.uuid
         val triedPositions = failedDepositLocations.getOrPut(pokemonId) { mutableSetOf() }
-        val inventoryPos = findClosestInventory(world, origin, triedPositions)
+        val inventoryPos = findClosestInventory(world, origin, triedPositions, itemsToDeposit)
 
         if (inventoryPos == null) {
             // Don't drop items yet if scan is running as inventory might be found within the next ticks.
@@ -261,8 +289,12 @@ object CobbleworkersInventoryUtils {
             val now = world.time
             val arrived = depositArrival[pokemonId]
 
-            // First tick at container: open it and start deposit delay
+            // First tick at container: verify space, then open and start deposit delay
             if (arrived == null) {
+                if (!hasSpaceFor(world, inventoryPos, itemsToDeposit)) {
+                    triedPositions.add(inventoryPos)
+                    return
+                }
                 depositArrival[pokemonId] = now
                 pokemonEntity.navigation.stop()
                 pokemonEntity.swingHand(Hand.MAIN_HAND)

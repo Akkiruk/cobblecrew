@@ -1,3 +1,8 @@
+## 2.10.6
+- Pokémon now check if a chest has space before interacting with it
+- Full chests are skipped silently instead of being opened/closed pointlessly
+- Container search filters out full chests so Pokémon don't even walk to them
+
 ## 2.10.5
 - Pokémon now shuffle through all eligible jobs and pick the first one with actual work available, instead of getting stuck on unavailable jobs
 - Removed priority tier lockout: Pokémon can now do ANY eligible job (combo/move/species/type) instead of being locked to only the highest tier

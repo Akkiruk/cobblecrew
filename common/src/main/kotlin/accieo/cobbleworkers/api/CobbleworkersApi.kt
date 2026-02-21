@@ -149,7 +149,6 @@ object CobbleworkersApi {
         "bee_pollinator" to "Increases honey levels in nearby beehives.",
         // Logistics
         "magnetizer" to "Consolidates 9 nuggets into ingots inside chests.",
-        "trash_disposal" to "Removes junk items from chests.",
         "ground_item_collector" to "Picks up items from the ground and stores them in chests.",
         // Combo
         "demolisher" to "Breaks any block type. Requires Cut + Rock Smash.",
