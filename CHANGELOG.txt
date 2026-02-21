@@ -1,3 +1,8 @@
+## 2.8.0
+- Added S2C network packet that sends job rules to connected clients on join
+- Enables client-only mods (like CobbleDex) to receive job data without needing server-side installation
+- Clients without a handler silently ignore the packet (no crash)
+
 ## 2.7.1
 - Fixed init order: WorkerRegistry.init() now runs before JobConfigManager.load()
 - DSL jobs register their default configs during init, so load() must happen after
