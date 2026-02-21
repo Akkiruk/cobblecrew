@@ -1,3 +1,8 @@
+## 2.7.1
+- Fixed init order: WorkerRegistry.init() now runs before JobConfigManager.load()
+- DSL jobs register their default configs during init, so load() must happen after
+- This was causing JobConfigManager to have 0 entries, making the API return empty data for all DSL jobs
+
 ## 2.7.0
 - CobbleworkersApi.getJobRules() now returns all DSL jobs (gathering, production, processing, placement, defense, support, environmental, logistics, combo)
 - Previously only returned the 22 legacy jobs, causing CobbleDex to miss ~80 new jobs

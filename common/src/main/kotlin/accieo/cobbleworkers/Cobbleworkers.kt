@@ -24,7 +24,7 @@ object Cobbleworkers {
         LOGGER.info("Launching {}...", MODID)
 
         CobbleworkersConfigInitializer.init()
+        WorkerRegistry.init()      // must run before load() — DSL jobs register defaults here
         JobConfigManager.load()
-        WorkerRegistry.init()
     }
 }
