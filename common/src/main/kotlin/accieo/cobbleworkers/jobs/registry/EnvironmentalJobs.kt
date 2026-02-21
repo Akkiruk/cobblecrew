@@ -82,11 +82,19 @@ object EnvironmentalJobs {
                 if (!CobbleworkersNavigationUtils.isTargeted(found, world)) {
                     CobbleworkersNavigationUtils.claimTarget(pid, found, world)
                     targets[pid] = found
+                    CobbleworkersNavigationUtils.navigateTo(pokemonEntity, found)
                 }
                 return
             }
+
+            if (world.getBlockState(target).isAir) {
+                CobbleworkersNavigationUtils.releaseTarget(pid, world)
+                targets.remove(pid)
+                return
+            }
+
             CobbleworkersNavigationUtils.navigateTo(pokemonEntity, target)
-            if (WorkerVisualUtils.handleArrival(pokemonEntity, target, world, ParticleTypes.SNOWFLAKE)) {
+            if (WorkerVisualUtils.handleArrival(pokemonEntity, target, world, ParticleTypes.SNOWFLAKE, 3.0)) {
                 val state = world.getBlockState(target)
                 val next = CHAIN[state.block]
                 if (next != null) {
@@ -146,11 +154,19 @@ object EnvironmentalJobs {
                 if (!CobbleworkersNavigationUtils.isTargeted(found, world)) {
                     CobbleworkersNavigationUtils.claimTarget(pid, found, world)
                     targets[pid] = found
+                    CobbleworkersNavigationUtils.navigateTo(pokemonEntity, found)
                 }
                 return
             }
+
+            if (world.getBlockState(target).isAir) {
+                CobbleworkersNavigationUtils.releaseTarget(pid, world)
+                targets.remove(pid)
+                return
+            }
+
             CobbleworkersNavigationUtils.navigateTo(pokemonEntity, target)
-            if (WorkerVisualUtils.handleArrival(pokemonEntity, target, world, ParticleTypes.CLOUD)) {
+            if (WorkerVisualUtils.handleArrival(pokemonEntity, target, world, ParticleTypes.CLOUD, 3.0)) {
                 val state = world.getBlockState(target)
                 if (state.block == Blocks.LAVA) {
                     world.setBlockState(target, Blocks.OBSIDIAN.defaultState)
@@ -207,11 +223,19 @@ object EnvironmentalJobs {
                 if (!CobbleworkersNavigationUtils.isTargeted(found, world)) {
                     CobbleworkersNavigationUtils.claimTarget(pid, found, world)
                     targets[pid] = found
+                    CobbleworkersNavigationUtils.navigateTo(pokemonEntity, found)
                 }
                 return
             }
+
+            if (world.getBlockState(target).isAir) {
+                CobbleworkersNavigationUtils.releaseTarget(pid, world)
+                targets.remove(pid)
+                return
+            }
+
             CobbleworkersNavigationUtils.navigateTo(pokemonEntity, target)
-            if (WorkerVisualUtils.handleArrival(pokemonEntity, target, world, ParticleTypes.HAPPY_VILLAGER)) {
+            if (WorkerVisualUtils.handleArrival(pokemonEntity, target, world, ParticleTypes.HAPPY_VILLAGER, 3.0)) {
                 val sw = world as? ServerWorld
                 if (sw != null) {
                     val state = world.getBlockState(target)
@@ -275,11 +299,12 @@ object EnvironmentalJobs {
             if (current == null) {
                 if (!CobbleworkersNavigationUtils.isTargeted(cauldron, world)) {
                     CobbleworkersNavigationUtils.claimTarget(pid, cauldron, world)
+                    CobbleworkersNavigationUtils.navigateTo(pokemonEntity, cauldron)
                 }
                 return
             }
             CobbleworkersNavigationUtils.navigateTo(pokemonEntity, current)
-            if (WorkerVisualUtils.handleArrival(pokemonEntity, current, world, ParticleTypes.LAVA)) {
+            if (WorkerVisualUtils.handleArrival(pokemonEntity, current, world, ParticleTypes.LAVA, 3.0)) {
                 CobbleworkersCauldronUtils.addFluid(world, current, CobbleworkersCauldronUtils.CauldronFluid.LAVA)
                 lastGenTime[pid] = now
                 CobbleworkersNavigationUtils.releaseTarget(pid, world)
@@ -328,11 +353,12 @@ object EnvironmentalJobs {
             if (current == null) {
                 if (!CobbleworkersNavigationUtils.isTargeted(cauldron, world)) {
                     CobbleworkersNavigationUtils.claimTarget(pid, cauldron, world)
+                    CobbleworkersNavigationUtils.navigateTo(pokemonEntity, cauldron)
                 }
                 return
             }
             CobbleworkersNavigationUtils.navigateTo(pokemonEntity, current)
-            if (WorkerVisualUtils.handleArrival(pokemonEntity, current, world, ParticleTypes.SPLASH)) {
+            if (WorkerVisualUtils.handleArrival(pokemonEntity, current, world, ParticleTypes.SPLASH, 3.0)) {
                 CobbleworkersCauldronUtils.addFluid(world, current, CobbleworkersCauldronUtils.CauldronFluid.WATER)
                 lastGenTime[pid] = now
                 CobbleworkersNavigationUtils.releaseTarget(pid, world)
@@ -381,11 +407,12 @@ object EnvironmentalJobs {
             if (current == null) {
                 if (!CobbleworkersNavigationUtils.isTargeted(cauldron, world)) {
                     CobbleworkersNavigationUtils.claimTarget(pid, cauldron, world)
+                    CobbleworkersNavigationUtils.navigateTo(pokemonEntity, cauldron)
                 }
                 return
             }
             CobbleworkersNavigationUtils.navigateTo(pokemonEntity, current)
-            if (WorkerVisualUtils.handleArrival(pokemonEntity, current, world, ParticleTypes.SNOWFLAKE)) {
+            if (WorkerVisualUtils.handleArrival(pokemonEntity, current, world, ParticleTypes.SNOWFLAKE, 3.0)) {
                 CobbleworkersCauldronUtils.addFluid(world, current, CobbleworkersCauldronUtils.CauldronFluid.POWDER_SNOW)
                 lastGenTime[pid] = now
                 CobbleworkersNavigationUtils.releaseTarget(pid, world)
@@ -435,11 +462,12 @@ object EnvironmentalJobs {
             if (current == null) {
                 if (!CobbleworkersNavigationUtils.isTargeted(furnace, world)) {
                     CobbleworkersNavigationUtils.claimTarget(pid, furnace, world)
+                    CobbleworkersNavigationUtils.navigateTo(pokemonEntity, furnace)
                 }
                 return
             }
             CobbleworkersNavigationUtils.navigateTo(pokemonEntity, current)
-            if (WorkerVisualUtils.handleArrival(pokemonEntity, current, world, ParticleTypes.FLAME)) {
+            if (WorkerVisualUtils.handleArrival(pokemonEntity, current, world, ParticleTypes.FLAME, 3.0)) {
                 addBurnTime(world, current)
                 lastGenTime[pid] = now
                 CobbleworkersNavigationUtils.releaseTarget(pid, world)
@@ -512,11 +540,12 @@ object EnvironmentalJobs {
             if (current == null) {
                 if (!CobbleworkersNavigationUtils.isTargeted(stand, world)) {
                     CobbleworkersNavigationUtils.claimTarget(pid, stand, world)
+                    CobbleworkersNavigationUtils.navigateTo(pokemonEntity, stand)
                 }
                 return
             }
             CobbleworkersNavigationUtils.navigateTo(pokemonEntity, current)
-            if (WorkerVisualUtils.handleArrival(pokemonEntity, current, world, ParticleTypes.FLAME)) {
+            if (WorkerVisualUtils.handleArrival(pokemonEntity, current, world, ParticleTypes.FLAME, 3.0)) {
                 addFuel(world, current)
                 lastGenTime[pid] = now
                 CobbleworkersNavigationUtils.releaseTarget(pid, world)
@@ -583,11 +612,12 @@ object EnvironmentalJobs {
                 if (!CobbleworkersNavigationUtils.isTargeted(found, world)) {
                     CobbleworkersNavigationUtils.claimTarget(pid, found, world)
                     targets[pid] = found
+                    CobbleworkersNavigationUtils.navigateTo(pokemonEntity, found)
                 }
                 return
             }
             CobbleworkersNavigationUtils.navigateTo(pokemonEntity, target)
-            if (WorkerVisualUtils.handleArrival(pokemonEntity, target, world, ParticleTypes.SMOKE)) {
+            if (WorkerVisualUtils.handleArrival(pokemonEntity, target, world, ParticleTypes.SMOKE, 3.0)) {
                 val r = config.radius?.takeIf { it > 0 } ?: 2
                 BlockPos.iterate(target.add(-r, 0, -r), target.add(r, 0, r)).forEach { p ->
                     if (world.getBlockState(p).block == Blocks.FIRE || world.getBlockState(p).block == Blocks.SOUL_FIRE) {
@@ -645,11 +675,12 @@ object EnvironmentalJobs {
                 if (!CobbleworkersNavigationUtils.isTargeted(found, world)) {
                     CobbleworkersNavigationUtils.claimTarget(pid, found, world)
                     targets[pid] = found
+                    CobbleworkersNavigationUtils.navigateTo(pokemonEntity, found)
                 }
                 return
             }
             CobbleworkersNavigationUtils.navigateTo(pokemonEntity, target)
-            if (WorkerVisualUtils.handleArrival(pokemonEntity, target, world, ParticleTypes.SPLASH, 1.5)) {
+            if (WorkerVisualUtils.handleArrival(pokemonEntity, target, world, ParticleTypes.SPLASH, 3.0)) {
                 val r = config.radius?.takeIf { it > 0 } ?: 2
                 BlockPos.iterate(target.add(-r, 0, -r), target.add(r, 0, r)).forEach { p ->
                     val s = world.getBlockState(p)
@@ -720,11 +751,12 @@ object EnvironmentalJobs {
                 if (!CobbleworkersNavigationUtils.isTargeted(found, world)) {
                     CobbleworkersNavigationUtils.claimTarget(pid, found, world)
                     targets[pid] = found
+                    CobbleworkersNavigationUtils.navigateTo(pokemonEntity, found)
                 }
                 return
             }
             CobbleworkersNavigationUtils.navigateTo(pokemonEntity, target)
-            if (WorkerVisualUtils.handleArrival(pokemonEntity, target, world, ParticleTypes.WAX_ON)) {
+            if (WorkerVisualUtils.handleArrival(pokemonEntity, target, world, ParticleTypes.WAX_ON, 3.0)) {
                 val state = world.getBlockState(target)
                 if (state.block is BeehiveBlock) {
                     val level = state.get(BeehiveBlock.HONEY_LEVEL)

@@ -22,6 +22,8 @@ object WorkerDispatcher {
 
     private val activeJobs = mutableMapOf<UUID, Worker>()
     private val profiles = mutableMapOf<UUID, PokemonProfile>()
+    private val jobAssignedTick = mutableMapOf<UUID, Long>()
+    private const val JOB_STICKINESS_TICKS = 100L // 5 seconds
 
     fun tickAreaScan(world: World, pastureOrigin: BlockPos) {
         DeferredBlockScanner.tickPastureAreaScan(world, pastureOrigin)
@@ -59,12 +61,15 @@ object WorkerDispatcher {
         }
 
         val current = activeJobs[pokemonId]
+        val now = world.time
 
-        // Stick with current job while it has work
+        // Stick with current job while it has work or stickiness hasn't expired
         if (current != null && current in eligible) {
+            val assignedAt = jobAssignedTick[pokemonId] ?: 0L
             if (current.hasActiveState(pokemonId)
                 || CobbleworkersNavigationUtils.getTarget(pokemonId, world) != null
                 || CobbleworkersNavigationUtils.getPlayerTarget(pokemonId, world) != null
+                || now - assignedAt < JOB_STICKINESS_TICKS
             ) {
                 WorkerVisualUtils.setExcited(pokemonEntity, true)
                 current.tick(world, pastureOrigin, pokemonEntity)
@@ -75,7 +80,10 @@ object WorkerDispatcher {
         // Select new job — prefer jobs with available targets
         val available = eligible.filter { it.isAvailable(world, pastureOrigin, pokemonId) }
         val pool = available.ifEmpty { eligible }
-        val job = pool.random().also { activeJobs[pokemonId] = it }
+        val job = pool.random().also {
+            activeJobs[pokemonId] = it
+            jobAssignedTick[pokemonId] = now
+        }
 
         WorkerVisualUtils.setExcited(pokemonEntity, true)
         job.tick(world, pastureOrigin, pokemonEntity)
@@ -91,6 +99,7 @@ object WorkerDispatcher {
         workers.forEach { it.cleanup(pokemonId) }
         activeJobs.remove(pokemonId)
         profiles.remove(pokemonId)
+        jobAssignedTick.remove(pokemonId)
         WorkerVisualUtils.cleanup(pokemonId)
         CobbleworkersNavigationUtils.cleanupPokemon(pokemonId, world)
     }

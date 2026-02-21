@@ -69,13 +69,12 @@ abstract class BaseSupport : Worker {
         if (currentTarget == null) {
             if (!CobbleworkersNavigationUtils.isPlayerTargeted(target, world)) {
                 CobbleworkersNavigationUtils.claimTarget(pokemonId, target, world)
+                CobbleworkersNavigationUtils.navigateToPlayer(pokemonEntity, target)
             }
             return
         }
 
-        if (currentTarget == target.uuid) {
-            CobbleworkersNavigationUtils.navigateToPlayer(pokemonEntity, target)
-        }
+        CobbleworkersNavigationUtils.navigateToPlayer(pokemonEntity, target)
 
         if (WorkerVisualUtils.handlePlayerArrival(pokemonEntity, target, world, arrivalParticle)) {
             applyEffect(target)

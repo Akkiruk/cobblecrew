@@ -546,11 +546,12 @@ object ProductionJobs {
                 if (!CobbleworkersNavigationUtils.isTargeted(found, world)) {
                     CobbleworkersNavigationUtils.claimTarget(pid, found, world)
                     targets[pid] = found
+                    CobbleworkersNavigationUtils.navigateTo(pokemonEntity, found)
                 }
                 return
             }
             CobbleworkersNavigationUtils.navigateTo(pokemonEntity, target)
-            if (WorkerVisualUtils.handleArrival(pokemonEntity, target, world, ParticleTypes.COMPOSTER, 2.0)) {
+            if (WorkerVisualUtils.handleArrival(pokemonEntity, target, world, ParticleTypes.COMPOSTER, 3.0)) {
                 generateLoot(world, target, pokemonEntity)
                 CobbleworkersNavigationUtils.releaseTarget(pid, world)
                 targets.remove(pid)

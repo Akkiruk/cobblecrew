@@ -11,6 +11,7 @@ package accieo.cobbleworkers.mixin;
 import accieo.cobbleworkers.Cobbleworkers;
 import accieo.cobbleworkers.cache.CobbleworkersCacheManager;
 import accieo.cobbleworkers.jobs.WorkerDispatcher;
+import accieo.cobbleworkers.utilities.CobbleworkersInventoryUtils;
 import com.cobblemon.mod.common.block.entity.PokemonPastureBlockEntity;
 import com.cobblemon.mod.common.entity.PoseType;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
@@ -33,6 +34,7 @@ public class PokemonPastureBlockEntityMixin {
 
 		try {
 			WorkerDispatcher.INSTANCE.tickAreaScan(world, blockPos);
+			CobbleworkersInventoryUtils.INSTANCE.tickAnimations(world);
 		} catch (Exception e) {
 			Cobbleworkers.LOGGER.error("[Cobbleworkers] - Error processing WorkerDispatcher tickAreaScan", e);
 		}

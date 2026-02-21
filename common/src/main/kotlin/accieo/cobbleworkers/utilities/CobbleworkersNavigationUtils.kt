@@ -30,9 +30,9 @@ object CobbleworkersNavigationUtils {
     private val expiredQueue = PriorityQueue<ExpiredTarget>(compareBy { it.expiryTick })
     private val lastPathfindTick = mutableMapOf<UUID, Long>()
     private var lastCleanUpTick = 0L
-    private const val CLAIM_TIMEOUT_TICKS = 140L
+    private const val CLAIM_TIMEOUT_TICKS = 100L
     private const val EXPIRED_TARGET_TIMEOUT_TICKS = 300L
-    private const val PATHFIND_INTERVAL_TICKS = 20L
+    private const val PATHFIND_INTERVAL_TICKS = 5L
 
     /**
      * Checks if the Pokémon's bounding box intersects with the target block area.

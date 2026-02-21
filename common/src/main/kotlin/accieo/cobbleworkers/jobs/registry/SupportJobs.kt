@@ -201,11 +201,12 @@ object SupportJobs {
             if (currentTarget == null) {
                 if (!CobbleworkersNavigationUtils.isTargeted(itemPos, world)) {
                     CobbleworkersNavigationUtils.claimTarget(pid, itemPos, world)
+                    CobbleworkersNavigationUtils.navigateTo(pokemonEntity, itemPos)
                 }
                 return
             }
             CobbleworkersNavigationUtils.navigateTo(pokemonEntity, currentTarget)
-            if (WorkerVisualUtils.handleArrival(pokemonEntity, currentTarget, world, ParticleTypes.END_ROD)) {
+            if (WorkerVisualUtils.handleArrival(pokemonEntity, currentTarget, world, ParticleTypes.END_ROD, 3.0)) {
                 if (mapItem.stack.item == Items.MAP) {
                     val singleItem = mapItem.stack.split(1)
                     if (mapItem.stack.isEmpty) mapItem.discard()

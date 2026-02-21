@@ -24,7 +24,9 @@ import java.util.UUID
  */
 object WorkerVisualUtils {
     private val arrivalTick = mutableMapOf<UUID, Long>()
+    private val graceTick = mutableMapOf<UUID, Long>()
     private const val WORK_DELAY_TICKS = 30L // 1.5 seconds
+    private const val GRACE_PERIOD_TICKS = 10L
 
     /**
      * Handles the "working" animation when a Pokémon arrives at its target block.
@@ -39,15 +41,26 @@ object WorkerVisualUtils {
         targetPos: BlockPos,
         world: World,
         particleType: ParticleEffect? = null,
-        offset: Double = 1.0
+        offset: Double = 3.0
     ): Boolean {
+        val pokemonId = pokemonEntity.pokemon.uuid
+        val now = world.time
+
         if (!CobbleworkersNavigationUtils.isPokemonAtPosition(pokemonEntity, targetPos, offset)) {
-            arrivalTick.remove(pokemonEntity.pokemon.uuid)
+            // Grace period: don't reset timer immediately if briefly bumped out
+            if (arrivalTick.containsKey(pokemonId)) {
+                val grace = graceTick.getOrPut(pokemonId) { now }
+                if (now - grace < GRACE_PERIOD_TICKS) {
+                    lookAt(pokemonEntity, targetPos)
+                    return false
+                }
+                arrivalTick.remove(pokemonId)
+                graceTick.remove(pokemonId)
+            }
             return false
         }
 
-        val pokemonId = pokemonEntity.pokemon.uuid
-        val now = world.time
+        graceTick.remove(pokemonId)
         val arrived = arrivalTick[pokemonId]
 
         if (arrived == null) {
@@ -129,5 +142,6 @@ object WorkerVisualUtils {
 
     fun cleanup(pokemonId: UUID) {
         arrivalTick.remove(pokemonId)
+        graceTick.remove(pokemonId)
     }
 }

@@ -47,7 +47,7 @@ open class GatheringJob(
     val toolOverride: ItemStack = ItemStack.EMPTY,
     val readyCheck: ((World, BlockPos) -> Boolean)? = null,
     val afterHarvestAction: ((World, BlockPos, BlockState) -> Unit)? = null,
-    val tolerance: Double = 1.0,
+    val tolerance: Double = 3.0,
 ) : BaseHarvester() {
 
     private val config get() = JobConfigManager.get(name)

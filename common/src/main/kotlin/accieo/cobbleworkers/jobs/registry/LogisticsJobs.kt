@@ -79,11 +79,12 @@ object LogisticsJobs {
                 if (!CobbleworkersNavigationUtils.isTargeted(found, world)) {
                     CobbleworkersNavigationUtils.claimTarget(pid, found, world)
                     targets[pid] = found
+                    CobbleworkersNavigationUtils.navigateTo(pokemonEntity, found)
                 }
                 return
             }
             CobbleworkersNavigationUtils.navigateTo(pokemonEntity, target)
-            if (WorkerVisualUtils.handleArrival(pokemonEntity, target, world, ParticleTypes.ELECTRIC_SPARK)) {
+            if (WorkerVisualUtils.handleArrival(pokemonEntity, target, world, ParticleTypes.ELECTRIC_SPARK, 3.0)) {
                 consolidateNuggets(world, target)
                 CobbleworkersNavigationUtils.releaseTarget(pid, world)
                 targets.remove(pid)
@@ -159,11 +160,12 @@ object LogisticsJobs {
                 if (!CobbleworkersNavigationUtils.isTargeted(found, world)) {
                     CobbleworkersNavigationUtils.claimTarget(pid, found, world)
                     targets[pid] = found
+                    CobbleworkersNavigationUtils.navigateTo(pokemonEntity, found)
                 }
                 return
             }
             CobbleworkersNavigationUtils.navigateTo(pokemonEntity, target)
-            if (WorkerVisualUtils.handleArrival(pokemonEntity, target, world, ParticleTypes.SMOKE)) {
+            if (WorkerVisualUtils.handleArrival(pokemonEntity, target, world, ParticleTypes.SMOKE, 3.0)) {
                 removeJunk(world, target)
                 CobbleworkersNavigationUtils.releaseTarget(pid, world)
                 targets.remove(pid)
@@ -233,11 +235,12 @@ object LogisticsJobs {
             if (currentTarget == null) {
                 if (!CobbleworkersNavigationUtils.isTargeted(itemPos, world)) {
                     CobbleworkersNavigationUtils.claimTarget(pid, itemPos, world)
+                    CobbleworkersNavigationUtils.navigateTo(pokemonEntity, itemPos)
                 }
                 return
             }
             CobbleworkersNavigationUtils.navigateTo(pokemonEntity, currentTarget)
-            if (WorkerVisualUtils.handleArrival(pokemonEntity, currentTarget, world, ParticleTypes.ENCHANT)) {
+            if (WorkerVisualUtils.handleArrival(pokemonEntity, currentTarget, world, ParticleTypes.ENCHANT, 3.0)) {
                 val stack = item.stack.copy()
                 item.discard()
                 heldItems[pid] = listOf(stack)

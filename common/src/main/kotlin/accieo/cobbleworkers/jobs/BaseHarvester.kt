@@ -39,7 +39,7 @@ abstract class BaseHarvester : Worker {
     private val heldItemsSinceTick = mutableMapOf<UUID, Long>()
 
     abstract val arrivalParticle: ParticleEffect
-    open val arrivalTolerance: Double = 1.0
+    open val arrivalTolerance: Double = 3.0
 
     /** Tool used in loot context. Override for silk touch/fortune. */
     open val harvestTool: ItemStack = ItemStack.EMPTY
@@ -81,23 +81,28 @@ abstract class BaseHarvester : Worker {
 
     protected open fun handleHarvesting(world: World, origin: BlockPos, pokemonEntity: PokemonEntity) {
         val pokemonId = pokemonEntity.pokemon.uuid
-        val closestTarget = findClosestTarget(world, origin) ?: return
         val currentTarget = CobbleworkersNavigationUtils.getTarget(pokemonId, world)
 
         if (currentTarget == null) {
+            val closestTarget = findClosestTarget(world, origin) ?: return
             if (!CobbleworkersNavigationUtils.isTargeted(closestTarget, world)
                 && !CobbleworkersNavigationUtils.isRecentlyExpired(closestTarget, world)) {
                 CobbleworkersNavigationUtils.claimTarget(pokemonId, closestTarget, world)
+                CobbleworkersNavigationUtils.navigateTo(pokemonEntity, closestTarget)
             }
             return
         }
 
-        if (currentTarget == closestTarget) {
-            CobbleworkersNavigationUtils.navigateTo(pokemonEntity, closestTarget)
+        // Validate target is still a real block
+        if (world.getBlockState(currentTarget).isAir) {
+            CobbleworkersNavigationUtils.releaseTarget(pokemonId, world)
+            return
         }
 
+        CobbleworkersNavigationUtils.navigateTo(pokemonEntity, currentTarget)
+
         if (WorkerVisualUtils.handleArrival(pokemonEntity, currentTarget, world, arrivalParticle, arrivalTolerance)) {
-            harvest(world, closestTarget, pokemonEntity)
+            harvest(world, currentTarget, pokemonEntity)
             CobbleworkersNavigationUtils.releaseTarget(pokemonId, world)
         }
     }

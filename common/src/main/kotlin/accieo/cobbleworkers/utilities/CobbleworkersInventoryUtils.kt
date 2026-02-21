@@ -12,12 +12,16 @@ import accieo.cobbleworkers.cache.CobbleworkersCacheManager
 import accieo.cobbleworkers.enums.BlockCategory
 import com.cobblemon.mod.common.CobblemonBlocks
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
+import net.minecraft.block.BarrelBlock
 import net.minecraft.block.Block
 import net.minecraft.block.Blocks
 import net.minecraft.block.ChestBlock
 import net.minecraft.block.entity.ChestBlockEntity
 import net.minecraft.inventory.Inventory
 import net.minecraft.item.ItemStack
+import net.minecraft.sound.SoundCategory
+import net.minecraft.sound.SoundEvents
+import net.minecraft.util.Hand
 import net.minecraft.util.math.BlockPos
 import net.minecraft.world.World
 import java.util.UUID
@@ -37,6 +41,59 @@ object CobbleworkersInventoryUtils {
         CobblemonBlocks.GREEN_GILDED_CHEST,
         CobblemonBlocks.YELLOW_GILDED_CHEST,
     )
+
+    // Chest open/close animation tracking
+    private data class PendingClose(val pos: BlockPos, val closeTick: Long)
+    private val pendingCloses = mutableListOf<PendingClose>()
+    private val depositArrival = mutableMapOf<UUID, Long>()
+    private const val CHEST_OPEN_DURATION = 20L // ticks chest stays open
+    private const val DEPOSIT_DELAY = 15L // ticks before depositing after arrival
+
+    /**
+     * Ticks pending chest close animations. Call once per server tick.
+     */
+    fun tickAnimations(world: World) {
+        if (pendingCloses.isEmpty()) return
+        val now = world.time
+        val iter = pendingCloses.iterator()
+        while (iter.hasNext()) {
+            val pending = iter.next()
+            if (now >= pending.closeTick) {
+                closeContainer(world, pending.pos)
+                iter.remove()
+            }
+        }
+    }
+
+    private fun openContainer(world: World, pos: BlockPos) {
+        val state = world.getBlockState(pos)
+        val block = state.block
+        when (block) {
+            is ChestBlock -> {
+                world.addSyncedBlockEvent(pos, block, 1, 1)
+                world.playSound(null, pos, SoundEvents.BLOCK_CHEST_OPEN, SoundCategory.BLOCKS, 0.5f, 1.0f)
+            }
+            is BarrelBlock -> {
+                world.setBlockState(pos, state.with(BarrelBlock.OPEN, true))
+                world.playSound(null, pos, SoundEvents.BLOCK_BARREL_OPEN, SoundCategory.BLOCKS, 0.5f, 1.0f)
+            }
+        }
+    }
+
+    private fun closeContainer(world: World, pos: BlockPos) {
+        val state = world.getBlockState(pos)
+        val block = state.block
+        when (block) {
+            is ChestBlock -> {
+                world.addSyncedBlockEvent(pos, block, 1, 0)
+                world.playSound(null, pos, SoundEvents.BLOCK_CHEST_CLOSE, SoundCategory.BLOCKS, 0.5f, 1.0f)
+            }
+            is BarrelBlock -> {
+                world.setBlockState(pos, state.with(BarrelBlock.OPEN, false))
+                world.playSound(null, pos, SoundEvents.BLOCK_BARREL_CLOSE, SoundCategory.BLOCKS, 0.5f, 1.0f)
+            }
+        }
+    }
 
     /**
      * Add inventory integrations dynamically at runtime
@@ -201,19 +258,47 @@ object CobbleworkersInventoryUtils {
         }
 
         if (CobbleworkersNavigationUtils.isPokemonAtPosition(pokemonEntity, inventoryPos, 2.0)) {
-            val inventory = world.getBlockEntity(inventoryPos) as? Inventory
-            if (inventory == null) {
-                // Block not an inventory, mark it as failed
-                triedPositions.add(inventoryPos)
+            val now = world.time
+            val arrived = depositArrival[pokemonId]
+
+            // First tick at container: open it and start deposit delay
+            if (arrived == null) {
+                depositArrival[pokemonId] = now
+                pokemonEntity.navigation.stop()
+                pokemonEntity.swingHand(Hand.MAIN_HAND)
+                pokemonEntity.lookControl.lookAt(
+                    inventoryPos.x + 0.5, inventoryPos.y + 0.5, inventoryPos.z + 0.5
+                )
+                openContainer(world, inventoryPos)
                 return
             }
 
+            // Wait for deposit delay
+            if (now - arrived < DEPOSIT_DELAY) {
+                pokemonEntity.lookControl.lookAt(
+                    inventoryPos.x + 0.5, inventoryPos.y + 0.5, inventoryPos.z + 0.5
+                )
+                return
+            }
+
+            depositArrival.remove(pokemonId)
+
+            val inventory = world.getBlockEntity(inventoryPos) as? Inventory
+            if (inventory == null) {
+                triedPositions.add(inventoryPos)
+                pendingCloses.add(PendingClose(inventoryPos.toImmutable(), now + 5L))
+                return
+            }
+
+            pokemonEntity.swingHand(Hand.MAIN_HAND)
             val remainingDrops = insertStacks(inventory, itemsToDeposit)
 
             if (remainingDrops.size == itemsToDeposit.size) {
-                //  No change in stack size, so mark as failed
                 triedPositions.add(inventoryPos)
             }
+
+            // Schedule chest close
+            pendingCloses.add(PendingClose(inventoryPos.toImmutable(), now + CHEST_OPEN_DURATION))
 
             if (remainingDrops.isNotEmpty()) {
                 heldItemsByPokemon[pokemonId] = remainingDrops

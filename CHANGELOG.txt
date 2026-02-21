@@ -1,3 +1,16 @@
+## 2.10.3
+- Workers now navigate immediately when claiming a target (eliminates 1-tick hesitation)
+- Pathfinding recalculation interval reduced from 20 to 5 ticks for smoother movement
+- Fixed harvest targeting wrong block (closestTarget vs claimed currentTarget)
+- Fixed workers not navigating at all when closest target differs from claimed target
+- Added air-block validation: workers abandon targets destroyed by other players
+- Work timer grace period: bumping a Pokémon briefly no longer resets its 1.5s work animation
+- Increased default work range from 1 to 3 blocks so shorter Pokémon can reach apricorns, crops, etc.
+- Job stickiness: workers now keep the same job for at least 5 seconds before re-rolling
+- Claim timeout reduced from 7s to 5s for faster recovery from stuck pathfinding
+- Chest/barrel open/close animation when depositing items with a visible work delay
+- Applied all navigation fixes consistently across all 25+ jobs (environmental, logistics, production, support)
+
 ## 2.10.2
 - FrostFormer, ObsidianForge, and GrowthAccelerator now use the deferred block cache instead of scanning ~4,913 blocks every tick
 - Added WATER, LAVA, and GROWABLE block category validators for the deferred scanner
