@@ -104,7 +104,7 @@ object PlacementJobs {
 
     val BONEMEAL_APPLICATOR = PlacementJob(
         name = "bonemeal_applicator",
-        qualifyingMoves = setOf("synthesis", "junglehealing"),
+        qualifyingMoves = setOf("synthesis"),
         particle = ParticleTypes.COMPOSTER,
         itemCheck = { it.item == Items.BONE_MEAL },
         findTarget = { world, origin ->

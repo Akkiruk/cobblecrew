@@ -23,7 +23,7 @@ object DefenseJobs {
 
     val GUARD = DefenseJob(
         name = "guard",
-        qualifyingMoves = setOf("bite", "crunch"),
+        qualifyingMoves = setOf("crunch"),
         particle = ParticleTypes.CRIT,
         effectFn = { world, pokemon, target ->
             (world as? ServerWorld)?.let { sw ->
@@ -72,7 +72,7 @@ object DefenseJobs {
 
     val FIRE_TRAP = DefenseJob(
         name = "fire_trap",
-        qualifyingMoves = setOf("flamewheel", "firelash"),
+        qualifyingMoves = setOf("flamewheel"),
         particle = ParticleTypes.FLAME,
         effectFn = { _, _, target ->
             target.setOnFireFor(5f)
@@ -81,7 +81,7 @@ object DefenseJobs {
 
     val POISON_TRAP = DefenseJob(
         name = "poison_trap",
-        qualifyingMoves = setOf("toxicspikes", "sludgewave"),
+        qualifyingMoves = setOf("toxicspikes"),
         particle = ParticleTypes.ITEM_SLIME,
         effectFn = { _, _, target ->
             target.addStatusEffect(StatusEffectInstance(StatusEffects.POISON, 200, 1))
@@ -90,7 +90,7 @@ object DefenseJobs {
 
     val ICE_TRAP = DefenseJob(
         name = "ice_trap",
-        qualifyingMoves = setOf("freezedry", "glaciate"),
+        qualifyingMoves = setOf("freezedry"),
         particle = ParticleTypes.SNOWFLAKE,
         effectFn = { _, _, target ->
             target.addStatusEffect(StatusEffectInstance(StatusEffects.SLOWNESS, 300, 3))

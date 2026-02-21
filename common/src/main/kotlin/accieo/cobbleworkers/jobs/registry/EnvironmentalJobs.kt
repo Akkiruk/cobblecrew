@@ -43,7 +43,7 @@ object EnvironmentalJobs {
         override val targetCategory = BlockCategory.WATER
 
         private val config get() = JobConfigManager.get(name)
-        private val qualifyingMoves = setOf("icebeam", "auroraveil")
+        private val qualifyingMoves = setOf("icebeam")
         private val targets = mutableMapOf<UUID, BlockPos>()
 
         private val CHAIN = mapOf(
@@ -266,7 +266,7 @@ object EnvironmentalJobs {
         override val targetCategory = BlockCategory.CAULDRON
 
         private val config get() = JobConfigManager.get(name)
-        private val qualifyingMoves = setOf("lavaplume", "eruption")
+        private val qualifyingMoves = setOf("lavaplume")
         private val lastGenTime = mutableMapOf<UUID, Long>()
 
         init {
@@ -321,7 +321,7 @@ object EnvironmentalJobs {
         override val targetCategory = BlockCategory.CAULDRON
 
         private val config get() = JobConfigManager.get(name)
-        private val qualifyingMoves = setOf("surf", "watergun")
+        private val qualifyingMoves = setOf("surf")
         private val lastGenTime = mutableMapOf<UUID, Long>()
 
         init {
@@ -376,7 +376,7 @@ object EnvironmentalJobs {
         override val targetCategory = BlockCategory.CAULDRON
 
         private val config get() = JobConfigManager.get(name)
-        private val qualifyingMoves = setOf("blizzard", "powdersnow")
+        private val qualifyingMoves = setOf("blizzard")
         private val lastGenTime = mutableMapOf<UUID, Long>()
 
         init {
@@ -431,7 +431,7 @@ object EnvironmentalJobs {
         override val targetCategory = BlockCategory.FURNACE
 
         private val config get() = JobConfigManager.get(name)
-        private val qualifyingMoves = setOf("flamethrower", "fireblast")
+        private val qualifyingMoves = setOf("flamethrower")
         private val lastGenTime = mutableMapOf<UUID, Long>()
 
         init {
@@ -510,7 +510,7 @@ object EnvironmentalJobs {
         override val targetCategory = BlockCategory.BREWING_STAND
 
         private val config get() = JobConfigManager.get(name)
-        private val qualifyingMoves = setOf("dragonbreath", "dragonpulse")
+        private val qualifyingMoves = setOf("dragonbreath")
         private val lastGenTime = mutableMapOf<UUID, Long>()
 
         init {
@@ -722,7 +722,7 @@ object EnvironmentalJobs {
         override val targetCategory = BlockCategory.HONEY
 
         private val config get() = JobConfigManager.get(name)
-        private val qualifyingMoves = setOf("pollenpuff", "healorder")
+        private val qualifyingMoves = setOf("pollenpuff")
         private val fallbackSpecies = listOf("Combee", "Vespiquen")
         private val lastGenTime = mutableMapOf<UUID, Long>()
         private val targets = mutableMapOf<UUID, BlockPos>()

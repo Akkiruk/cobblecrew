@@ -42,7 +42,7 @@ object LogisticsJobs {
         override val targetCategory: BlockCategory? = null
 
         private val config get() = JobConfigManager.get(name)
-        private val qualifyingMoves = setOf("magnetrise", "flashcannon")
+        private val qualifyingMoves = setOf("magnetrise")
         private val fallbackSpecies = listOf("Magnemite", "Magneton", "Magnezone")
         private val targets = mutableMapOf<UUID, BlockPos>()
 
@@ -129,7 +129,7 @@ object LogisticsJobs {
         override val targetCategory: BlockCategory? = null
 
         private val config get() = JobConfigManager.get(name)
-        private val qualifyingMoves = setOf("psychic", "telekinesis")
+        private val qualifyingMoves = setOf("telekinesis")
         private val heldItems = mutableMapOf<UUID, List<ItemStack>>()
         private val failedDeposits = mutableMapOf<UUID, MutableSet<BlockPos>>()
 

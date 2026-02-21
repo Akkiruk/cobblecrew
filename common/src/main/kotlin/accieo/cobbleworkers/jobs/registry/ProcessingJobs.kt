@@ -22,7 +22,7 @@ object ProcessingJobs {
 
     val ORE_SMELTER = ProcessingJob(
         name = "ore_smelter",
-        qualifyingMoves = setOf("flamethrower", "magmastorm"),
+        qualifyingMoves = setOf("flamethrower"),
         particle = ParticleTypes.FLAME,
         inputCheck = { stack ->
             stack.item in setOf(Items.RAW_IRON, Items.RAW_GOLD, Items.RAW_COPPER)
@@ -39,7 +39,7 @@ object ProcessingJobs {
 
     val FOOD_COOKER = ProcessingJob(
         name = "food_cooker",
-        qualifyingMoves = setOf("ember", "flamecharge"),
+        qualifyingMoves = setOf("flamecharge"),
         particle = ParticleTypes.FLAME,
         inputCheck = { stack ->
             stack.item in setOf(
@@ -66,7 +66,7 @@ object ProcessingJobs {
 
     val GLASS_MAKER = ProcessingJob(
         name = "glass_maker",
-        qualifyingMoves = setOf("heatwave", "mysticalfire"),
+        qualifyingMoves = setOf("heatwave"),
         particle = ParticleTypes.FLAME,
         inputCheck = { it.item == Items.SAND || it.item == Items.RED_SAND },
         transformFn = { input -> listOf(ItemStack(Items.GLASS, input.count)) },
@@ -74,7 +74,7 @@ object ProcessingJobs {
 
     val BRICK_BAKER = ProcessingJob(
         name = "brick_baker",
-        qualifyingMoves = setOf("firespin", "lavaplume"),
+        qualifyingMoves = setOf("firespin"),
         particle = ParticleTypes.FLAME,
         inputCheck = { it.item == Items.CLAY_BALL },
         transformFn = { input -> listOf(ItemStack(Items.BRICK, input.count)) },
@@ -82,7 +82,7 @@ object ProcessingJobs {
 
     val CHARCOAL_BURNER = ProcessingJob(
         name = "charcoal_burner",
-        qualifyingMoves = setOf("blastburn", "burnup"),
+        qualifyingMoves = setOf("burnup"),
         particle = ParticleTypes.CAMPFIRE_COSY_SMOKE,
         inputCheck = { stack ->
             stack.item in setOf(
@@ -95,7 +95,7 @@ object ProcessingJobs {
 
     val PAPER_MAKER = object : ProcessingJob(
         name = "paper_maker",
-        qualifyingMoves = setOf("slash", "guillotine"),
+        qualifyingMoves = setOf("slash"),
         particle = ParticleTypes.CLOUD,
         inputCheck = { it.item == Items.SUGAR_CANE && it.count >= 3 },
         transformFn = { input ->
@@ -164,7 +164,7 @@ object ProcessingJobs {
 
     val COMPOSTER = object : ProcessingJob(
         name = "composter",
-        qualifyingMoves = setOf("stockpile", "acidspray"),
+        qualifyingMoves = setOf("stockpile"),
         particle = ParticleTypes.COMPOSTER,
         inputCheck = { stack ->
             stack.item in setOf(

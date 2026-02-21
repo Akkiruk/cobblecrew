@@ -63,7 +63,7 @@ object SupportJobs {
 
     val SPEED_BOOSTER = SupportJob(
         name = "speed_booster",
-        qualifyingMoves = setOf("tailwind", "agility"),
+        qualifyingMoves = setOf("tailwind"),
         particle = ParticleTypes.CLOUD,
         statusEffect = StatusEffects.SPEED,
         defaultDurationSeconds = 30,
@@ -72,7 +72,7 @@ object SupportJobs {
 
     val STRENGTH_BOOSTER = SupportJob(
         name = "strength_booster",
-        qualifyingMoves = setOf("howl", "swordsdance"),
+        qualifyingMoves = setOf("howl"),
         particle = ParticleTypes.CRIT,
         statusEffect = StatusEffects.STRENGTH,
         defaultDurationSeconds = 30,
@@ -81,7 +81,7 @@ object SupportJobs {
 
     val RESISTANCE_PROVIDER = SupportJob(
         name = "resistance_provider",
-        qualifyingMoves = setOf("irondefense", "barrier"),
+        qualifyingMoves = setOf("irondefense"),
         particle = ParticleTypes.ENCHANT,
         statusEffect = StatusEffects.RESISTANCE,
         defaultDurationSeconds = 30,
@@ -90,7 +90,7 @@ object SupportJobs {
 
     val HASTE_PROVIDER = SupportJob(
         name = "haste_provider",
-        qualifyingMoves = setOf("nastyplot", "focusenergy"),
+        qualifyingMoves = setOf("focusenergy"),
         particle = ParticleTypes.ENCHANT,
         statusEffect = StatusEffects.HASTE,
         defaultDurationSeconds = 30,
@@ -99,7 +99,7 @@ object SupportJobs {
 
     val JUMP_BOOSTER = SupportJob(
         name = "jump_booster",
-        qualifyingMoves = setOf("bounce", "highjumpkick"),
+        qualifyingMoves = setOf("bounce"),
         particle = ParticleTypes.CLOUD,
         statusEffect = StatusEffects.JUMP_BOOST,
         defaultDurationSeconds = 30,
@@ -117,7 +117,7 @@ object SupportJobs {
 
     val WATER_BREATHER = SupportJob(
         name = "water_breather",
-        qualifyingMoves = setOf("aquaring", "raindance"),
+        qualifyingMoves = setOf("aquaring"),
         particle = ParticleTypes.BUBBLE,
         statusEffect = StatusEffects.WATER_BREATHING,
         defaultDurationSeconds = 60,
@@ -126,7 +126,7 @@ object SupportJobs {
 
     val HUNGER_RESTORER = SupportJob(
         name = "hunger_restorer",
-        qualifyingMoves = setOf("swallow", "slackoff"),
+        qualifyingMoves = setOf("swallow"),
         particle = ParticleTypes.HAPPY_VILLAGER,
         statusEffect = StatusEffects.SATURATION,
         defaultDurationSeconds = 5,
@@ -141,7 +141,7 @@ object SupportJobs {
         override val targetCategory: BlockCategory? = null
 
         private val config get() = JobConfigManager.get(name)
-        private val qualifyingMoves = setOf("fly", "aerialace")
+        private val qualifyingMoves = setOf("fly")
         private val heldItems = mutableMapOf<UUID, List<ItemStack>>()
         private val failedDeposits = mutableMapOf<UUID, MutableSet<BlockPos>>()
         private val lastGenTime = mutableMapOf<UUID, Long>()

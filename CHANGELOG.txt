@@ -1,3 +1,9 @@
+## 2.12.0
+- ~70% of jobs now require exactly 1 specific move for clear specialization
+- ~30% of jobs keep 2 moves, only where both are a genuinely perfect thematic fit
+- Removed overly common moves (bite, ember, watergun) and legendary signatures (glaciate, diamondstorm, magmastorm, sacredsword)
+- Each job's move was chosen for thematic resonance and moderate rarity
+
 ## 2.11.1
 - Added species-based eligibility for thematically fitting Pokémon (e.g. Magnemite→Magnetizer, Combee→Bee Pollinator/Honey/Wax, Chansey→Healer/Egg Layer, Miltank→Milk, Wooloo→Wool, Meowth→Coin Minter, Delibird→Gift Giver, Tropius→Berry/Fruit, etc.)
 - These Pokémon can always do their thematic job regardless of current moveset
