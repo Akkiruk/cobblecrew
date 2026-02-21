@@ -335,9 +335,8 @@ Container-internal operations. Pattern: find container → navigate → modify i
 | # | Job | Tier | Moves | Fallback | Effect |
 |---|---|---|---|---|---|
 | H1 | Magnetizer | C | magnetrise, flashcannon, steelbeam, magneticflux | Magnemite line, Magnezone | Consolidates 9 nuggets → 1 ingot within containers |
-| H2 | Trash Disposal | C | sludgebomb, gunkshot | — | Deletes configurable junk items from containers (rotten flesh, poisonous potato, etc.) |
 
-**Logistics total: 2**
+**Logistics total: 1**
 
 ---
 

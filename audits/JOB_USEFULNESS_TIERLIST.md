@@ -89,7 +89,6 @@ the next wave. Each one solves a real problem or provides a meaningful buff.
 | F4 Resistance Provider | Resistance I. Tankier near base |
 | F5 Haste Provider | Haste I. Faster mining near base |
 | G3 Growth Accelerator | Random ticks crops in range. No items consumed, just faster growth |
-| H2 Trash Disposal | Auto-deletes rotten flesh, poisonous potatoes from chests. Quality of life |
 | CM17 Fossil Hunter ★ | Bone blocks, skull items, rare treasures from digging. Fun loot table |
 | CM6 Book Binder ★ | Auto-produces books. Enchanting tables eat books endlessly |
 | CM3 String Crafter ★ | Arrows, leads, fishing rods. Cycles through useful items |

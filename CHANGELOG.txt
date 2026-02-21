@@ -1,3 +1,6 @@
+## 2.10.7
+- Removed trash_disposal job (item deletion risk)
+
 ## 2.10.6
 - Pokémon now check if a chest has space before interacting with it
 - Full chests are skipped silently instead of being opened/closed pointlessly
@@ -84,7 +87,7 @@
 
 ## 2.4.0
 - Phase 8: 3 environmental jobs (frost former, obsidian forge, growth accelerator)
-- Phase 8: 2 logistics jobs (magnetizer, trash disposal)
+- Phase 8: 1 logistics job (magnetizer)
 - Phase 9: 18 combo jobs requiring multiple moves for enhanced effects
   - 7 gathering combos (demolisher, fortune miner, silk touch extractor, vein miner,
     tree feller, fossil hunter, gem vein finder)

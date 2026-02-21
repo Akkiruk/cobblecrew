@@ -502,10 +502,7 @@ All jobs are now configured via JSON in `config/cobbleworkers/`. Every job suppo
     - Moves: `magnetrise`, `flashcannon`, `steelbeam`, `magneticflux`
     - Fallback Species: Magnemite, Magneton, Magnezone
 
-99. **trash_disposal** — Deletes junk items from containers (rotten flesh, poisonous potato, etc.)
-    - Moves: `sludgebomb`, `gunkshot`
-
-100. **ground_item_collector** — Picks up items from ground, deposits in containers
+99. **ground_item_collector** — Picks up items from ground, deposits in containers
      - Moves: `psychic`, `telekinesis`, `confusion`
      - Fallback Type: PSYCHIC
      - Config: `radius: <blocks>`
