@@ -9,6 +9,7 @@
 package accieo.cobbleworkers.neoforge
 
 import accieo.cobbleworkers.Cobbleworkers
+import accieo.cobbleworkers.commands.CobbleworkersCommand
 import accieo.cobbleworkers.integration.CobbleworkersIntegrationHandler
 import accieo.cobbleworkers.neoforge.client.config.CobbleworkersModListScreen
 import accieo.cobbleworkers.neoforge.integration.NeoForgeIntegrationHelper
@@ -16,6 +17,8 @@ import net.minecraft.client.MinecraftClient
 import net.neoforged.fml.common.EventBusSubscriber
 import net.neoforged.fml.common.Mod
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent
+import net.neoforged.neoforge.common.NeoForge
+import net.neoforged.neoforge.event.RegisterCommandsEvent
 import thedarkcolour.kotlinforforge.neoforge.forge.MOD_BUS
 import thedarkcolour.kotlinforforge.neoforge.forge.runForDist
 import net.neoforged.bus.api.SubscribeEvent
@@ -30,6 +33,10 @@ import net.neoforged.fml.event.lifecycle.FMLDedicatedServerSetupEvent
 object CobbleworkersNeoForge {
     init {
         Cobbleworkers.init()
+
+        NeoForge.EVENT_BUS.addListener { event: RegisterCommandsEvent ->
+            CobbleworkersCommand.register(event.dispatcher)
+        }
 
         val obj = runForDist(
             clientTarget = {

@@ -1,3 +1,9 @@
+## 2.7.0
+- CobbleworkersApi.getJobRules() now returns all DSL jobs (gathering, production, processing, placement, defense, support, environmental, logistics, combo)
+- Previously only returned the 22 legacy jobs, causing CobbleDex to miss ~80 new jobs
+- Added /cobbleworkers debug command (op-only) — generates full diagnostic report and uploads to mclo.gs
+- Added CobbleworkersApi.generateDiagnosticReport() for programmatic diagnostics
+
 ## 2.6.0
 - Added public CobbleworkersApi for direct mod integration (replaces file/reflection approach)
 - Removed CobbledexDataProvider and file-based job rule export

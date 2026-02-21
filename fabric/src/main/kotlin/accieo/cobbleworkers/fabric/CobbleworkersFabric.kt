@@ -9,9 +9,11 @@
 package accieo.cobbleworkers.fabric
 
 import accieo.cobbleworkers.Cobbleworkers
+import accieo.cobbleworkers.commands.CobbleworkersCommand
 import accieo.cobbleworkers.fabric.integration.FabricIntegrationHelper
 import accieo.cobbleworkers.integration.CobbleworkersIntegrationHandler
 import net.fabricmc.api.ModInitializer
+import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents
 
 /**
@@ -20,6 +22,10 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents
 object CobbleworkersFabric : ModInitializer {
     override fun onInitialize() {
         Cobbleworkers.init()
+
+        CommandRegistrationCallback.EVENT.register { dispatcher, _, _ ->
+            CobbleworkersCommand.register(dispatcher)
+        }
 
         ServerLifecycleEvents.SERVER_STARTING.register { _ ->
             val integrationHandler = CobbleworkersIntegrationHandler(FabricIntegrationHelper)

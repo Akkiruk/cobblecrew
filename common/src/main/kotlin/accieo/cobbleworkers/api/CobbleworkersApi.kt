@@ -9,6 +9,8 @@
 package accieo.cobbleworkers.api
 
 import accieo.cobbleworkers.config.CobbleworkersConfigHolder
+import accieo.cobbleworkers.config.JobConfigManager
+import accieo.cobbleworkers.jobs.WorkerRegistry
 
 /**
  * Public API for Cobbleworkers. Other mods can depend on this at compile time
@@ -32,9 +34,97 @@ object CobbleworkersApi {
 
     /**
      * Returns the current list of all job eligibility rules based on the active config.
-     * Each rule describes a job type and the criteria for a Pokémon to qualify.
+     * Includes both legacy config-based jobs and DSL-registered jobs from WorkerRegistry.
      */
     fun getJobRules(): List<JobRule> {
+        val rules = mutableListOf<JobRule>()
+        val legacyIds = mutableSetOf<String>()
+
+        // Legacy rules from CobbleworkersConfigHolder (original 22 jobs)
+        val legacy = legacyRules()
+        legacy.forEach { legacyIds += it.id }
+        rules.addAll(legacy)
+
+        // Dynamic rules from WorkerRegistry — skip legacy duplicates
+        val seen = legacyIds.toMutableSet()
+        for (worker in WorkerRegistry.workers) {
+            if (worker.name in seen) continue
+            seen += worker.name
+
+            val config = JobConfigManager.get(worker.name)
+            if (config.qualifyingMoves.isEmpty() && config.fallbackType.isEmpty() && config.fallbackSpecies.isEmpty()) continue
+
+            rules += JobRule(
+                id = worker.name,
+                displayName = formatName(worker.name),
+                description = "",
+                enabled = config.enabled,
+                requiredType = config.fallbackType.takeIf { it.isNotEmpty() },
+                designatedSpecies = emptyList(),
+                requiredMoves = config.qualifyingMoves,
+                requiredAbility = null,
+                hardcodedSpecies = config.fallbackSpecies,
+                hardcodedSpeciesEnabled = config.fallbackSpecies.isNotEmpty(),
+                priority = worker.priority.name,
+            )
+        }
+
+        return rules
+    }
+
+    private fun formatName(snakeCase: String): String =
+        snakeCase.split("_").joinToString(" ") { it.replaceFirstChar { c -> c.uppercase() } }
+
+    /**
+     * Generates a full diagnostic report of all registered jobs and their eligibility data.
+     */
+    fun generateDiagnosticReport(): String {
+        val sb = StringBuilder()
+        sb.appendLine("=== Cobbleworkers Diagnostic Report ===")
+        sb.appendLine("Generated: ${java.time.Instant.now()}")
+        sb.appendLine()
+
+        sb.appendLine("--- Worker Registry ---")
+        sb.appendLine("Total registered workers: ${WorkerRegistry.workers.size}")
+        sb.appendLine()
+
+        for (worker in WorkerRegistry.workers) {
+            val config = JobConfigManager.get(worker.name)
+            sb.appendLine("  [${worker.name}]")
+            sb.appendLine("    Priority: ${worker.priority.name}")
+            sb.appendLine("    Enabled: ${config.enabled}")
+            sb.appendLine("    Moves: ${config.qualifyingMoves.ifEmpty { listOf("(none)") }.joinToString(", ")}")
+            sb.appendLine("    Fallback Type: ${config.fallbackType.ifEmpty { "(none)" }}")
+            sb.appendLine("    Fallback Species: ${config.fallbackSpecies.ifEmpty { listOf("(none)") }.joinToString(", ")}")
+            sb.appendLine()
+        }
+
+        sb.appendLine("--- API Rules ---")
+        val rules = getJobRules()
+        sb.appendLine("Total API rules: ${rules.size}")
+        sb.appendLine()
+
+        for (rule in rules) {
+            sb.appendLine("  [${rule.id}] ${rule.displayName}")
+            sb.appendLine("    Enabled: ${rule.enabled}")
+            sb.appendLine("    Priority: ${rule.priority}")
+            sb.appendLine("    Required Type: ${rule.requiredType ?: "(none)"}")
+            sb.appendLine("    Required Moves: ${rule.requiredMoves.ifEmpty { listOf("(none)") }.joinToString(", ")}")
+            sb.appendLine("    Required Ability: ${rule.requiredAbility ?: "(none)"}")
+            sb.appendLine("    Designated Species: ${rule.designatedSpecies.ifEmpty { listOf("(none)") }.joinToString(", ")}")
+            sb.appendLine("    Hardcoded Species: ${rule.hardcodedSpecies.ifEmpty { listOf("(none)") }.joinToString(", ")} (enabled: ${rule.hardcodedSpeciesEnabled})")
+            sb.appendLine()
+        }
+
+        sb.appendLine("--- JobConfigManager ---")
+        val allNames = JobConfigManager.allJobNames()
+        sb.appendLine("Total config entries: ${allNames.size}")
+        sb.appendLine("Job names: ${allNames.sorted().joinToString(", ")}")
+
+        return sb.toString()
+    }
+
+    private fun legacyRules(): List<JobRule> {
         val config = CobbleworkersConfigHolder.config
         return listOf(
             // --- Harvesters ---
