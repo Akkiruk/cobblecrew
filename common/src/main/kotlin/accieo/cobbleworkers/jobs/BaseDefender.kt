@@ -34,6 +34,10 @@ abstract class BaseDefender : Worker {
 
     open val attackParticle: ParticleEffect = ParticleTypes.CRIT
 
+    private val lastHostileScan = mutableMapOf<UUID, Long>()
+    private val cachedHostiles = mutableMapOf<UUID, List<HostileEntity>>()
+    private companion object { const val HOSTILE_SCAN_INTERVAL = 20L }
+
     /** Apply the defense effect to the target mob. */
     abstract fun applyEffect(world: World, pokemonEntity: PokemonEntity, target: HostileEntity)
 
@@ -55,8 +59,14 @@ abstract class BaseDefender : Worker {
             return
         }
 
-        // Find a new hostile target
-        val hostiles = findNearbyHostiles(world, origin)
+        // Find a new hostile target (throttled to every 20 ticks)
+        val now = world.time
+        val hostiles = if (now - (lastHostileScan[pokemonId] ?: 0L) >= HOSTILE_SCAN_INTERVAL) {
+            lastHostileScan[pokemonId] = now
+            findNearbyHostiles(world, origin).also { cachedHostiles[pokemonId] = it }
+        } else {
+            cachedHostiles[pokemonId] ?: emptyList()
+        }
         if (hostiles.isEmpty()) return
 
         val target = hostiles
@@ -74,5 +84,7 @@ abstract class BaseDefender : Worker {
 
     override fun cleanup(pokemonId: UUID) {
         CobbleworkersNavigationUtils.releaseMobTarget(pokemonId)
+        lastHostileScan.remove(pokemonId)
+        cachedHostiles.remove(pokemonId)
     }
 }

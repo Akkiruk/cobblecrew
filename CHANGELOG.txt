@@ -1,3 +1,9 @@
+## 2.10.2
+- FrostFormer, ObsidianForge, and GrowthAccelerator now use the deferred block cache instead of scanning ~4,913 blocks every tick
+- Added WATER, LAVA, and GROWABLE block category validators for the deferred scanner
+- BaseDefender hostile-mob scan throttled to every 20 ticks (was every tick)
+- Deferred scanner now only runs validators for categories used by registered jobs (skips ~30 unused validators per block)
+
 ## 2.10.1
 - Removed server-side TM lore enrichment (moved to CobbleDex client-side tooltip instead)
 - Removed getMoveToJobsIndex() and MoveJobEntry from CobbleworkersApi

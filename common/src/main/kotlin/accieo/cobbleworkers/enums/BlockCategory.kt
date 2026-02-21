@@ -44,6 +44,9 @@ enum class BlockCategory {
     // Fluids / farmland
     WATER, LAVA, FARMLAND,
 
+    // Growable (crops + saplings for Growth Accelerator)
+    GROWABLE,
+
     // Aquatic (pending test)
     KELP, LILY_PAD, SEA_PICKLE,
 }

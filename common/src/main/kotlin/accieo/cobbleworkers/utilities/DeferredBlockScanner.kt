@@ -11,6 +11,7 @@ package accieo.cobbleworkers.utilities
 import accieo.cobbleworkers.cache.CobbleworkersCacheManager
 import accieo.cobbleworkers.config.CobbleworkersConfigHolder
 import accieo.cobbleworkers.enums.BlockCategory
+import accieo.cobbleworkers.jobs.WorkerRegistry
 import net.minecraft.util.math.BlockPos
 import net.minecraft.util.math.Box
 import net.minecraft.util.math.ChunkPos
@@ -30,6 +31,20 @@ object DeferredBlockScanner {
 
     private val activeScans = mutableMapOf<BlockPos, ScanJob>()
     private val lastScanCompletion = mutableMapOf<BlockPos, Long>()
+
+    /** Categories actually needed by registered workers — computed once after init. */
+    private var neededCategories: Set<BlockCategory>? = null
+
+    private fun getNeededCategories(): Set<BlockCategory> {
+        neededCategories?.let { return it }
+        val cats = WorkerRegistry.workers.mapNotNull { it.targetCategory }.toMutableSet()
+        // CONTAINER is always needed (deposit targets)
+        cats.add(BlockCategory.CONTAINER)
+        return cats.also { neededCategories = it }
+    }
+
+    /** Call on config reload to recompute needed categories. */
+    fun invalidate() { neededCategories = null }
 
     /**
      * Initiates or continues a deferred area scan for a pasture for one tick.
@@ -60,6 +75,7 @@ object DeferredBlockScanner {
         scanJob.lastTickProcessed = currentTick
 
         val categoryValidators = BlockCategoryValidators.validators
+        val needed = getNeededCategories()
 
         repeat(BLOCKS_PER_TICK) {
             if (!scanJob.iterator.hasNext()) {
@@ -76,6 +92,7 @@ object DeferredBlockScanner {
             val immutablePos = pos.toImmutable()
 
             for ((category, validator) in categoryValidators) {
+                if (category !in needed) continue
                 if (validator(world, pos)) {
                     CobbleworkersCacheManager.addTarget(pastureOrigin, category, immutablePos)
                 }

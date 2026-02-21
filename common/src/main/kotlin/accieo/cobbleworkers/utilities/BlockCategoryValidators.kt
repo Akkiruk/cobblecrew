@@ -125,6 +125,20 @@ object BlockCategoryValidators {
             block == Blocks.FIRE || block == Blocks.SOUL_FIRE
         },
 
+        // Fluids (source blocks only — flowing would be too noisy)
+        BlockCategory.WATER to { world, pos ->
+            world.getBlockState(pos).fluidState.isOf(net.minecraft.fluid.Fluids.WATER)
+        },
+        BlockCategory.LAVA to { world, pos ->
+            world.getBlockState(pos).fluidState.isOf(net.minecraft.fluid.Fluids.LAVA)
+        },
+
+        // Growable (crops + saplings — Growth Accelerator)
+        BlockCategory.GROWABLE to { world, pos ->
+            val block = world.getBlockState(pos).block
+            block is CropBlock || block is SaplingBlock
+        },
+
         // Farmland (irrigation)
         BlockCategory.FARMLAND to { world, pos -> world.getBlockState(pos).block == Blocks.FARMLAND },
 

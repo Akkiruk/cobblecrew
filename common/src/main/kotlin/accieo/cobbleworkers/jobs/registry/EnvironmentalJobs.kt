@@ -40,7 +40,7 @@ object EnvironmentalJobs {
     object FrostFormer : Worker {
         override val name = "frost_former"
         override val priority = WorkerPriority.MOVE
-        override val targetCategory: BlockCategory? = null
+        override val targetCategory = BlockCategory.WATER
 
         private val config get() = JobConfigManager.get(name)
         private val qualifyingMoves = setOf("icebeam", "sheercold", "auroraveil")
@@ -68,6 +68,12 @@ object EnvironmentalJobs {
             return ft in types
         }
 
+        override fun isAvailable(world: World, origin: BlockPos, pokemonId: UUID): Boolean {
+            val water = CobbleworkersCacheManager.getTargets(origin, BlockCategory.WATER)
+            val ice = CobbleworkersCacheManager.getTargets(origin, BlockCategory.ICE)
+            return water.isNotEmpty() || ice.isNotEmpty()
+        }
+
         override fun tick(world: World, origin: BlockPos, pokemonEntity: PokemonEntity) {
             val pid = pokemonEntity.pokemon.uuid
             val target = targets[pid]
@@ -92,12 +98,11 @@ object EnvironmentalJobs {
         }
 
         private fun findFrostTarget(world: World, origin: BlockPos): BlockPos? {
-            val r = 8
-            return BlockPos.iterateOutwards(origin, r, r, r)
-                .filter { CHAIN.containsKey(world.getBlockState(it).block) }
+            val water = CobbleworkersCacheManager.getTargets(origin, BlockCategory.WATER)
+            val ice = CobbleworkersCacheManager.getTargets(origin, BlockCategory.ICE)
+            return (water + ice)
                 .filter { !CobbleworkersNavigationUtils.isTargeted(it, world) }
                 .minByOrNull { it.getSquaredDistance(origin) }
-                ?.toImmutable()
         }
 
         override fun hasActiveState(pokemonId: UUID) = pokemonId in targets
@@ -111,7 +116,7 @@ object EnvironmentalJobs {
     object ObsidianForge : Worker {
         override val name = "obsidian_forge"
         override val priority = WorkerPriority.MOVE
-        override val targetCategory: BlockCategory? = null
+        override val targetCategory = BlockCategory.LAVA
 
         private val config get() = JobConfigManager.get(name)
         private val qualifyingMoves = setOf("hydropump", "scald", "aquatail", "brine")
@@ -156,12 +161,9 @@ object EnvironmentalJobs {
         }
 
         private fun findLava(world: World, origin: BlockPos): BlockPos? {
-            val r = 8
-            return BlockPos.iterateOutwards(origin, r, r, r)
-                .filter { world.getBlockState(it).block == Blocks.LAVA }
+            return CobbleworkersCacheManager.getTargets(origin, BlockCategory.LAVA)
                 .filter { !CobbleworkersNavigationUtils.isTargeted(it, world) }
                 .minByOrNull { it.getSquaredDistance(origin) }
-                ?.toImmutable()
         }
 
         override fun hasActiveState(pokemonId: UUID) = pokemonId in targets
@@ -175,7 +177,7 @@ object EnvironmentalJobs {
     object GrowthAccelerator : Worker {
         override val name = "growth_accelerator"
         override val priority = WorkerPriority.MOVE
-        override val targetCategory: BlockCategory? = null
+        override val targetCategory = BlockCategory.GROWABLE
 
         private val config get() = JobConfigManager.get(name)
         private val qualifyingMoves = setOf("growth", "sunnyday", "grassyterrain")
@@ -214,7 +216,6 @@ object EnvironmentalJobs {
                 if (sw != null) {
                     val state = world.getBlockState(target)
                     if (state.block is CropBlock) {
-                        // Apply several random ticks to accelerate growth
                         repeat(3) { state.randomTick(sw, target, sw.random) }
                     }
                 }
@@ -224,15 +225,9 @@ object EnvironmentalJobs {
         }
 
         private fun findGrowable(world: World, origin: BlockPos): BlockPos? {
-            val r = 8
-            return BlockPos.iterateOutwards(origin, r, r, r)
-                .filter { pos ->
-                    val block = world.getBlockState(pos).block
-                    block is CropBlock || block is SaplingBlock
-                }
+            return CobbleworkersCacheManager.getTargets(origin, BlockCategory.GROWABLE)
                 .filter { !CobbleworkersNavigationUtils.isTargeted(it, world) }
                 .minByOrNull { it.getSquaredDistance(origin) }
-                ?.toImmutable()
         }
 
         override fun hasActiveState(pokemonId: UUID) = pokemonId in targets

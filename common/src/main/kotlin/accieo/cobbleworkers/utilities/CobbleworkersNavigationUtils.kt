@@ -53,7 +53,7 @@ object CobbleworkersNavigationUtils {
     /**
      * Commands the Pokémon entity to move towards the target destination.
      */
-    fun navigateTo(pokemonEntity: PokemonEntity, targetPos: BlockPos, speed: Double = 1.0) {
+    fun navigateTo(pokemonEntity: PokemonEntity, targetPos: BlockPos, speed: Double = 0.35) {
         val world = pokemonEntity.world
         val now = world.time
         val id = pokemonEntity.pokemon.uuid
@@ -79,7 +79,7 @@ object CobbleworkersNavigationUtils {
     /**
      * Commands the Pokémon entity to move towards the player's current position.
      */
-    fun navigateToPlayer(pokemonEntity: PokemonEntity, player: PlayerEntity, speed: Double = 1.0) {
+    fun navigateToPlayer(pokemonEntity: PokemonEntity, player: PlayerEntity, speed: Double = 0.35) {
         pokemonEntity.lookControl.lookAt(player.x, player.eyeY, player.z)
 
         pokemonEntity.navigation.startMovingTo(
