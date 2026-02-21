@@ -1,3 +1,8 @@
+## 2.11.1
+- Added species-based eligibility for thematically fitting Pokémon (e.g. Magnemite→Magnetizer, Combee→Bee Pollinator/Honey/Wax, Chansey→Healer/Egg Layer, Miltank→Milk, Wooloo→Wool, Meowth→Coin Minter, Delibird→Gift Giver, Tropius→Berry/Fruit, etc.)
+- These Pokémon can always do their thematic job regardless of current moveset
+- Server owners can customize species lists per job via JSON config
+
 ## 2.11.0
 - Job eligibility is now purely move-based: Pokémon must know 1-2 specific moves to qualify for each job
 - Removed type and species fallbacks that made every Pokémon of a given type eligible for dozens of jobs

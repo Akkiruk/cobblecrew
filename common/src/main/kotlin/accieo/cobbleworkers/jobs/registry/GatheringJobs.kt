@@ -67,6 +67,7 @@ object GatheringJobs {
         name = "bamboo_chopper",
         targetCategory = BlockCategory.BAMBOO,
         qualifyingMoves = setOf("falseswipe", "bulletpunch"),
+        fallbackSpecies = listOf("Pancham", "Pangoro"),
         particle = ParticleTypes.COMPOSTER,
         readyCheck = { world, pos ->
             // Only harvest if the block above is not bamboo (top segment only)
@@ -88,6 +89,7 @@ object GatheringJobs {
         name = "cactus_pruner",
         targetCategory = BlockCategory.CACTUS,
         qualifyingMoves = setOf("needlearm", "pinmissile"),
+        fallbackSpecies = listOf("Cacnea", "Cacturne", "Maractus"),
         particle = ParticleTypes.CRIT,
         readyCheck = { world, pos ->
             world.getBlockState(pos.up()).block != Blocks.CACTUS
@@ -98,6 +100,7 @@ object GatheringJobs {
         name = "vine_trimmer",
         targetCategory = BlockCategory.VINE,
         qualifyingMoves = setOf("vinewhip", "powerwhip"),
+        fallbackSpecies = listOf("Tangela", "Tangrowth"),
         particle = ParticleTypes.COMPOSTER,
     )
 
@@ -124,6 +127,7 @@ object GatheringJobs {
         name = "sweet_berry_harvester",
         targetCategory = BlockCategory.SWEET_BERRY,
         qualifyingMoves = setOf("stuffcheeks"),
+        fallbackSpecies = listOf("Greedent"),
         particle = ParticleTypes.COMPOSTER,
         readyCheck = { world, pos ->
             val state = world.getBlockState(pos)
@@ -251,6 +255,7 @@ object GatheringJobs {
         name = "mushroom_forager",
         targetCategory = BlockCategory.MUSHROOM,
         qualifyingMoves = setOf("stunspore", "poisonpowder"),
+        fallbackSpecies = listOf("Foongus", "Amoonguss", "Shroomish", "Breloom"),
         particle = ParticleTypes.SPORE_BLOSSOM_AIR,
     )
 
@@ -258,6 +263,7 @@ object GatheringJobs {
         name = "flower_picker",
         targetCategory = BlockCategory.FLOWER,
         qualifyingMoves = setOf("petalblizzard", "petaldance"),
+        fallbackSpecies = listOf("Comfey"),
         particle = ParticleTypes.CHERRY_LEAVES,
     )
 
@@ -316,6 +322,7 @@ object GatheringJobs {
         name = "berry_harvester",
         targetCategory = BlockCategory.BERRY,
         qualifyingMoves = setOf("pluck", "stuffcheeks"),
+        fallbackSpecies = listOf("Tropius"),
         particle = ParticleTypes.HAPPY_VILLAGER,
         readyCheck = { world, pos ->
             val state = world.getBlockState(pos)
@@ -424,6 +431,7 @@ object GatheringJobs {
         name = "honey_harvester",
         targetCategory = BlockCategory.HONEY,
         qualifyingMoves = setOf("bugbuzz", "attackorder"),
+        fallbackSpecies = listOf("Combee", "Vespiquen"),
         particle = ParticleTypes.HAPPY_VILLAGER,
         readyCheck = { world, pos ->
             val state = world.getBlockState(pos)

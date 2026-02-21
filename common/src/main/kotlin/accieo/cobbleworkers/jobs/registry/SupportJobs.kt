@@ -53,6 +53,7 @@ object SupportJobs {
     val HEALER = SupportJob(
         name = "healer",
         qualifyingMoves = setOf("healpulse", "lifedew"),
+        fallbackSpecies = listOf("Chansey", "Blissey", "Happiny", "Audino"),
         particle = ParticleTypes.HEART,
         statusEffect = StatusEffects.REGENERATION,
         defaultDurationSeconds = 30,

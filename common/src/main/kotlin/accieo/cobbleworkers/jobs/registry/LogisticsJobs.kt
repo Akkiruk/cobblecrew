@@ -43,6 +43,7 @@ object LogisticsJobs {
 
         private val config get() = JobConfigManager.get(name)
         private val qualifyingMoves = setOf("magnetrise", "flashcannon")
+        private val fallbackSpecies = listOf("Magnemite", "Magneton", "Magnezone")
         private val targets = mutableMapOf<UUID, BlockPos>()
 
         private val NUGGET_TO_INGOT = mapOf(
@@ -54,13 +55,16 @@ object LogisticsJobs {
             JobConfigManager.registerDefault("logistics", name, JobConfig(
                 enabled = true,
                 qualifyingMoves = qualifyingMoves.toList(),
+                fallbackSpecies = fallbackSpecies,
             ))
         }
 
         override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean {
             if (!config.enabled) return false
             val eff = config.qualifyingMoves.ifEmpty { qualifyingMoves }.map { it.lowercase() }.toSet()
-            return moves.any { it in eff }
+            if (moves.any { it in eff }) return true
+            val sp = config.fallbackSpecies.ifEmpty { fallbackSpecies }
+            return sp.any { it.equals(species, ignoreCase = true) }
         }
 
         override fun tick(world: World, origin: BlockPos, pokemonEntity: PokemonEntity) {

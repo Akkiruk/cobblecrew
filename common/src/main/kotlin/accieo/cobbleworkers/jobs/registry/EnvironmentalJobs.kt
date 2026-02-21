@@ -723,6 +723,7 @@ object EnvironmentalJobs {
 
         private val config get() = JobConfigManager.get(name)
         private val qualifyingMoves = setOf("pollenpuff", "healorder")
+        private val fallbackSpecies = listOf("Combee", "Vespiquen")
         private val lastGenTime = mutableMapOf<UUID, Long>()
         private val targets = mutableMapOf<UUID, BlockPos>()
 
@@ -731,13 +732,16 @@ object EnvironmentalJobs {
                 enabled = true,
                 cooldownSeconds = 120,
                 qualifyingMoves = qualifyingMoves.toList(),
+                fallbackSpecies = fallbackSpecies,
             ))
         }
 
         override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean {
             if (!config.enabled) return false
             val eff = config.qualifyingMoves.ifEmpty { qualifyingMoves }.map { it.lowercase() }.toSet()
-            return moves.any { it in eff }
+            if (moves.any { it in eff }) return true
+            val sp = config.fallbackSpecies.ifEmpty { fallbackSpecies }
+            return sp.any { it.equals(species, ignoreCase = true) }
         }
 
         override fun isAvailable(world: World, origin: BlockPos, pokemonId: UUID): Boolean {

@@ -59,6 +59,8 @@ open class SupportJob(
     override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean {
         if (!config.enabled) return false
         val effectiveMoves = config.qualifyingMoves.ifEmpty { qualifyingMoves }.map { it.lowercase() }.toSet()
-        return moves.any { it in effectiveMoves }
+        if (moves.any { it in effectiveMoves }) return true
+        val sp = config.fallbackSpecies.ifEmpty { fallbackSpecies }
+        return sp.any { it.equals(species, ignoreCase = true) }
     }
 }
