@@ -119,6 +119,12 @@ object BlockCategoryValidators {
         // Honey
         BlockCategory.HONEY to { world, pos -> world.getBlockState(pos).block is BeehiveBlock },
 
+        // Fire
+        BlockCategory.FIRE to { world, pos ->
+            val block = world.getBlockState(pos).block
+            block == Blocks.FIRE || block == Blocks.SOUL_FIRE
+        },
+
         // Farmland (irrigation)
         BlockCategory.FARMLAND to { world, pos -> world.getBlockState(pos).block == Blocks.FARMLAND },
 

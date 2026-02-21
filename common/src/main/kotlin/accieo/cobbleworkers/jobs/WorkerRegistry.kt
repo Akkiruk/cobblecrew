@@ -29,10 +29,6 @@ object WorkerRegistry {
     }
 
     fun init() {
-        // Legacy jobs (original 22) — will migrate to DSL categories over time
-        LegacyJobs.register()
-
-        // DSL-based category registrations (populated in later phases)
         GatheringJobs.register()
         ProductionJobs.register()
         ProcessingJobs.register()

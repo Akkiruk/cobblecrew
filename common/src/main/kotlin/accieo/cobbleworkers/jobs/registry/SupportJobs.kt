@@ -8,10 +8,41 @@
 
 package accieo.cobbleworkers.jobs.registry
 
+import accieo.cobbleworkers.cache.CobbleworkersCacheManager
+import accieo.cobbleworkers.config.JobConfig
+import accieo.cobbleworkers.config.JobConfigManager
+import accieo.cobbleworkers.enums.BlockCategory
+import accieo.cobbleworkers.enums.WorkerPriority
+import accieo.cobbleworkers.interfaces.Worker
 import accieo.cobbleworkers.jobs.WorkerRegistry
 import accieo.cobbleworkers.jobs.dsl.SupportJob
+import accieo.cobbleworkers.utilities.CobbleworkersInventoryUtils
+import accieo.cobbleworkers.utilities.CobbleworkersNavigationUtils
+import accieo.cobbleworkers.utilities.WorkerVisualUtils
+import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
+import net.minecraft.component.DataComponentTypes
+import net.minecraft.component.type.MapColorComponent
+import net.minecraft.entity.ItemEntity
 import net.minecraft.entity.effect.StatusEffects
+import net.minecraft.item.FilledMapItem
+import net.minecraft.item.ItemStack
+import net.minecraft.item.Items
+import net.minecraft.item.map.MapDecorationTypes
+import net.minecraft.item.map.MapState
 import net.minecraft.particle.ParticleTypes
+import net.minecraft.registry.RegistryKey
+import net.minecraft.registry.RegistryKeys
+import net.minecraft.registry.entry.RegistryEntry
+import net.minecraft.registry.entry.RegistryEntryList
+import net.minecraft.server.world.ServerWorld
+import net.minecraft.text.Text
+import net.minecraft.util.Identifier
+import net.minecraft.util.math.BlockPos
+import net.minecraft.util.math.Box
+import net.minecraft.world.World
+import net.minecraft.world.gen.structure.Structure
+import java.util.UUID
+import java.util.concurrent.CompletableFuture
 
 /**
  * Standard support jobs (F1–F8, F10). Apply positive status effects to nearby players.
@@ -22,6 +53,7 @@ object SupportJobs {
     val HEALER = SupportJob(
         name = "healer",
         qualifyingMoves = setOf("wish", "recover", "moonlight", "healpulse", "lifedew"),
+        fallbackSpecies = listOf("Happiny", "Chansey", "Blissey"),
         particle = ParticleTypes.HEART,
         statusEffect = StatusEffects.REGENERATION,
         defaultDurationSeconds = 30,
@@ -103,11 +135,152 @@ object SupportJobs {
         effectAmplifier = 0,
     )
 
+    // ── Scout (migrated from legacy) ─────────────────────────────────
+    // Picks up blank Maps, converts to structure-locating filled maps
+    object ScoutWorker : Worker {
+        override val name = "scout"
+        override val priority = WorkerPriority.MOVE
+        override val targetCategory: BlockCategory? = null
+
+        private val config get() = JobConfigManager.get(name)
+        private val qualifyingMoves = setOf("fly", "aerialace", "bravebird")
+        private val heldItems = mutableMapOf<UUID, List<ItemStack>>()
+        private val failedDeposits = mutableMapOf<UUID, MutableSet<BlockPos>>()
+        private val lastGenTime = mutableMapOf<UUID, Long>()
+        private val pendingLookups = mutableMapOf<Identifier, CompletableFuture<com.mojang.datafixers.util.Pair<BlockPos, RegistryEntry<Structure>>?>>()
+
+        init {
+            JobConfigManager.registerDefault("support", name, JobConfig(
+                enabled = true,
+                cooldownSeconds = 600,
+                qualifyingMoves = qualifyingMoves.toList(),
+                fallbackType = "FLYING",
+                structureTags = listOf("minecraft:village", "minecraft:shipwreck"),
+                useAllStructures = false,
+                mapNameIsHidden = false,
+            ))
+        }
+
+        override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean {
+            if (!config.enabled) return false
+            val eff = config.qualifyingMoves.ifEmpty { qualifyingMoves }.map { it.lowercase() }.toSet()
+            if (moves.any { it in eff }) return true
+            val ft = config.fallbackType.ifEmpty { "FLYING" }.uppercase()
+            return ft in types
+        }
+
+        override fun tick(world: World, origin: BlockPos, pokemonEntity: PokemonEntity) {
+            val pid = pokemonEntity.pokemon.uuid
+            val ownerId = pokemonEntity.ownerUuid ?: return
+            val now = world.time
+            val last = lastGenTime[ownerId] ?: 0L
+            val cd = (config.cooldownSeconds.takeIf { it > 0 } ?: 600) * 20L
+            if (now - last < cd) return
+            lastGenTime[ownerId] = now
+
+            val held = heldItems[pid]
+            if (!held.isNullOrEmpty()) {
+                CobbleworkersInventoryUtils.handleDepositing(world, origin, pokemonEntity, held, failedDeposits, heldItems)
+                return
+            }
+            failedDeposits.remove(pid)
+            handleMapPickup(world, origin, pokemonEntity)
+        }
+
+        private fun handleMapPickup(world: World, origin: BlockPos, pokemonEntity: PokemonEntity) {
+            val pid = pokemonEntity.pokemon.uuid
+            val r = 8
+            val searchArea = Box(origin).expand(r.toDouble(), r.toDouble(), r.toDouble())
+            val mapItem = world.getEntitiesByClass(ItemEntity::class.java, searchArea) { true }
+                .filter { it.isOnGround && it.stack.item == Items.MAP }
+                .minByOrNull { it.squaredDistanceTo(origin.x + 0.5, origin.y + 0.5, origin.z + 0.5) }
+                ?: return
+
+            val itemPos = mapItem.blockPos
+            val currentTarget = CobbleworkersNavigationUtils.getTarget(pid, world)
+            if (currentTarget == null) {
+                if (!CobbleworkersNavigationUtils.isTargeted(itemPos, world)) {
+                    CobbleworkersNavigationUtils.claimTarget(pid, itemPos, world)
+                }
+                return
+            }
+            CobbleworkersNavigationUtils.navigateTo(pokemonEntity, currentTarget)
+            if (WorkerVisualUtils.handleArrival(pokemonEntity, currentTarget, world, ParticleTypes.END_ROD)) {
+                if (mapItem.stack.item == Items.MAP) {
+                    val singleItem = mapItem.stack.split(1)
+                    if (mapItem.stack.isEmpty) mapItem.discard()
+                    val map = createStructureMap(world as ServerWorld, origin)
+                    heldItems[pid] = listOf(map ?: singleItem)
+                }
+                CobbleworkersNavigationUtils.releaseTarget(pid, world)
+            }
+        }
+
+        private fun createStructureMap(world: ServerWorld, origin: BlockPos): ItemStack? {
+            val now = world.time
+            val useAll = config.useAllStructures ?: false
+            val tags = (config.structureTags ?: emptyList()).ifEmpty { listOf("minecraft:village") }
+            val structures = CobbleworkersCacheManager.getStructures(world, useAll, tags)
+            if (structures.isEmpty()) return null
+
+            val selectedId = structures.random()
+            val cached = CobbleworkersCacheManager.getCachedStructure(selectedId, now)
+            val searchResult = if (cached != null) {
+                cached
+            } else {
+                val existing = pendingLookups[selectedId]
+                if (existing == null) {
+                    val reg = world.server.registryManager.get(RegistryKeys.STRUCTURE)
+                    val entry = reg.getEntry(RegistryKey.of(RegistryKeys.STRUCTURE, selectedId)).orElse(null) ?: return null
+                    val entryList = RegistryEntryList.of(entry)
+                    val cg = world.chunkManager.chunkGenerator
+                    val sp = origin.toImmutable()
+                    pendingLookups[selectedId] = CompletableFuture.supplyAsync {
+                        cg.locateStructure(world, entryList, sp, 100, false)
+                    }
+                    return null
+                } else if (!existing.isDone) {
+                    return null
+                } else {
+                    pendingLookups.remove(selectedId)
+                    val result = existing.join() ?: return null
+                    CobbleworkersCacheManager.cacheStructure(selectedId, result, now)
+                    result
+                }
+            }
+
+            val structurePos = searchResult.first
+            val structureEntry = searchResult.second
+            val map = FilledMapItem.createMap(world, structurePos.x, structurePos.z, 2.toByte(), true, true)
+            MapState.addDecorationsNbt(map, structurePos, "target", MapDecorationTypes.RED_X)
+
+            val hidden = config.mapNameIsHidden ?: false
+            val mapName = if (hidden) Text.of("Scout's map")
+            else Text.of(cleanMapName(structureEntry.idAsString))
+            map.set(DataComponentTypes.CUSTOM_NAME, mapName)
+            map.set(DataComponentTypes.MAP_COLOR, MapColorComponent(0xCC84ED))
+            return map
+        }
+
+        private fun cleanMapName(rawName: String): String =
+            rawName.substringAfterLast(":").substringAfterLast("/")
+                .replace("_", " ").split(" ")
+                .joinToString(" ") { it.replaceFirstChar { c -> c.uppercase() } }
+
+        override fun hasActiveState(pokemonId: UUID) = pokemonId in heldItems
+        override fun cleanup(pokemonId: UUID) {
+            heldItems.remove(pokemonId)
+            failedDeposits.remove(pokemonId)
+            lastGenTime.remove(pokemonId)
+        }
+    }
+
     fun register() {
         WorkerRegistry.registerAll(
             HEALER, SPEED_BOOSTER, STRENGTH_BOOSTER, RESISTANCE_PROVIDER,
             HASTE_PROVIDER, JUMP_BOOSTER, NIGHT_VISION_PROVIDER,
             WATER_BREATHER, HUNGER_RESTORER,
+            ScoutWorker,
         )
     }
 }

@@ -8,15 +8,36 @@
 
 package accieo.cobbleworkers.jobs.registry
 
+import accieo.cobbleworkers.cache.CobbleworkersCacheManager
+import accieo.cobbleworkers.config.JobConfig
+import accieo.cobbleworkers.config.JobConfigManager
+import accieo.cobbleworkers.enums.BlockCategory
+import accieo.cobbleworkers.enums.WorkerPriority
+import accieo.cobbleworkers.interfaces.Worker
 import accieo.cobbleworkers.jobs.WorkerRegistry
 import accieo.cobbleworkers.jobs.dsl.ProductionJob
+import accieo.cobbleworkers.utilities.CobbleworkersInventoryUtils
+import accieo.cobbleworkers.utilities.CobbleworkersNavigationUtils
+import accieo.cobbleworkers.utilities.WorkerVisualUtils
+import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import net.minecraft.item.ItemStack
 import net.minecraft.item.Items
+import net.minecraft.loot.LootTables
+import net.minecraft.loot.context.LootContextParameterSet
+import net.minecraft.loot.context.LootContextParameters
+import net.minecraft.loot.context.LootContextTypes
 import net.minecraft.particle.ParticleTypes
+import net.minecraft.registry.RegistryKey
+import net.minecraft.registry.RegistryKeys
+import net.minecraft.server.world.ServerWorld
+import net.minecraft.util.Identifier
+import net.minecraft.util.math.BlockPos
+import net.minecraft.world.World
+import java.util.UUID
 
 /**
- * Production jobs (B1–B25). Self-generate items on cooldown, deposit in containers.
- * Legacy production jobs (DiveLooter, FishingLootGenerator, PickUpLooter) stay in LegacyJobs.
+ * Production jobs. Self-generate items on cooldown, deposit in containers.
+ * Includes DSL ProductionJob instances and custom Worker implementations for loot-based jobs.
  */
 object ProductionJobs {
 
@@ -262,6 +283,323 @@ object ProductionJobs {
         output = { _, _ -> listOf(ItemStack(Items.GHAST_TEAR)) },
     )
 
+    // ── Loot-based Workers (migrated from legacy) ──────────────────
+
+    object FishingLooter : Worker {
+        override val name = "fishing_looter"
+        override val priority = WorkerPriority.MOVE
+        override val targetCategory: BlockCategory? = null
+
+        private val config get() = JobConfigManager.get(name)
+        private val qualifyingMoves = setOf("dive", "surf", "whirlpool")
+        private val lastGenTime = mutableMapOf<UUID, Long>()
+        private val heldItems = mutableMapOf<UUID, List<ItemStack>>()
+        private val failedDeposits = mutableMapOf<UUID, MutableSet<BlockPos>>()
+
+        init {
+            JobConfigManager.registerDefault("production", name, JobConfig(
+                enabled = true,
+                cooldownSeconds = 120,
+                qualifyingMoves = qualifyingMoves.toList(),
+                fallbackType = "WATER",
+                treasureChance = 10,
+                requiresWater = true,
+            ))
+        }
+
+        override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean {
+            if (!config.enabled) return false
+            val eff = config.qualifyingMoves.ifEmpty { qualifyingMoves }.map { it.lowercase() }.toSet()
+            if (moves.any { it in eff }) return true
+            val ft = config.fallbackType.ifEmpty { "WATER" }.uppercase()
+            return ft in types
+        }
+
+        override fun tick(world: World, origin: BlockPos, pokemonEntity: PokemonEntity) {
+            val pid = pokemonEntity.pokemon.uuid
+            if (config.requiresWater == true && !pokemonEntity.isTouchingWater) return
+            val held = heldItems[pid]
+            if (held.isNullOrEmpty()) {
+                failedDeposits.remove(pid)
+                produce(world, origin, pokemonEntity)
+            } else {
+                CobbleworkersInventoryUtils.handleDepositing(world, origin, pokemonEntity, held, failedDeposits, heldItems)
+            }
+        }
+
+        private fun produce(world: World, origin: BlockPos, pokemonEntity: PokemonEntity) {
+            val pid = pokemonEntity.pokemon.uuid
+            val now = world.time
+            val last = lastGenTime[pid] ?: 0L
+            val cd = (config.cooldownSeconds.takeIf { it > 0 } ?: 120) * 20L
+            if (now - last < cd) return
+
+            val chance = (config.treasureChance?.takeIf { it > 0 } ?: 10).toDouble() / 100
+            val useTreasure = world.random.nextFloat() < chance
+
+            val lootParams = LootContextParameterSet.Builder(world as ServerWorld)
+                .add(LootContextParameters.ORIGIN, origin.toCenterPos())
+                .add(LootContextParameters.TOOL, ItemStack(Items.FISHING_ROD))
+                .addOptional(LootContextParameters.THIS_ENTITY, pokemonEntity)
+                .build(LootContextTypes.FISHING)
+
+            val table = if (useTreasure)
+                world.server.reloadableRegistries.getLootTable(LootTables.FISHING_TREASURE_GAMEPLAY)
+            else
+                world.server.reloadableRegistries.getLootTable(LootTables.FISHING_GAMEPLAY)
+
+            val drops = table.generateLoot(lootParams)
+            if (drops.isNotEmpty()) {
+                lastGenTime[pid] = now
+                heldItems[pid] = drops
+            }
+        }
+
+        override fun hasActiveState(pokemonId: UUID) = pokemonId in heldItems
+        override fun cleanup(pokemonId: UUID) {
+            lastGenTime.remove(pokemonId)
+            heldItems.remove(pokemonId)
+            failedDeposits.remove(pokemonId)
+        }
+    }
+
+    object PickupLooter : Worker {
+        override val name = "pickup_looter"
+        override val priority = WorkerPriority.MOVE
+        override val targetCategory: BlockCategory? = null
+
+        private val config get() = JobConfigManager.get(name)
+        private val lastGenTime = mutableMapOf<UUID, Long>()
+        private val heldItems = mutableMapOf<UUID, List<ItemStack>>()
+        private val failedDeposits = mutableMapOf<UUID, MutableSet<BlockPos>>()
+
+        init {
+            JobConfigManager.registerDefault("production", name, JobConfig(
+                enabled = true,
+                cooldownSeconds = 120,
+                requiredAbility = "pickup",
+                lootTables = listOf("cobblemon:gameplay/pickup"),
+            ))
+        }
+
+        override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean {
+            if (!config.enabled) return false
+            val req = config.requiredAbility?.lowercase() ?: "pickup"
+            return ability.lowercase() == req
+        }
+
+        override fun tick(world: World, origin: BlockPos, pokemonEntity: PokemonEntity) {
+            val pid = pokemonEntity.pokemon.uuid
+            val held = heldItems[pid]
+            if (held.isNullOrEmpty()) {
+                failedDeposits.remove(pid)
+                produce(world, origin, pokemonEntity)
+            } else {
+                CobbleworkersInventoryUtils.handleDepositing(world, origin, pokemonEntity, held, failedDeposits, heldItems)
+            }
+        }
+
+        private fun produce(world: World, origin: BlockPos, pokemonEntity: PokemonEntity) {
+            val pid = pokemonEntity.pokemon.uuid
+            val now = world.time
+            val last = lastGenTime[pid] ?: 0L
+            val cd = (config.cooldownSeconds.takeIf { it > 0 } ?: 120) * 20L
+            if (now - last < cd) return
+
+            val tables = (config.lootTables ?: emptyList()).ifEmpty { listOf("cobblemon:gameplay/pickup") }
+                .mapNotNull { Identifier.tryParse(it) }
+            if (tables.isEmpty()) return
+
+            val lootParams = LootContextParameterSet.Builder(world as ServerWorld)
+                .add(LootContextParameters.ORIGIN, origin.toCenterPos())
+                .add(LootContextParameters.THIS_ENTITY, pokemonEntity)
+                .build(LootContextTypes.CHEST)
+
+            val key = RegistryKey.of(RegistryKeys.LOOT_TABLE, tables.random())
+            val drops = world.server.reloadableRegistries.getLootTable(key).generateLoot(lootParams)
+            if (drops.isNotEmpty()) {
+                lastGenTime[pid] = now
+                heldItems[pid] = drops
+            }
+        }
+
+        override fun hasActiveState(pokemonId: UUID) = pokemonId in heldItems
+        override fun cleanup(pokemonId: UUID) {
+            lastGenTime.remove(pokemonId)
+            heldItems.remove(pokemonId)
+            failedDeposits.remove(pokemonId)
+        }
+    }
+
+    object DiveCollector : Worker {
+        override val name = "dive_collector"
+        override val priority = WorkerPriority.MOVE
+        override val targetCategory: BlockCategory? = null
+
+        private val config get() = JobConfigManager.get(name)
+        private val qualifyingMoves = setOf("dive")
+        private val lastGenTime = mutableMapOf<UUID, Long>()
+        private val heldItems = mutableMapOf<UUID, List<ItemStack>>()
+        private val failedDeposits = mutableMapOf<UUID, MutableSet<BlockPos>>()
+
+        init {
+            JobConfigManager.registerDefault("production", name, JobConfig(
+                enabled = true,
+                cooldownSeconds = 210,
+                qualifyingMoves = qualifyingMoves.toList(),
+                requiresWater = true,
+                lootTables = listOf("cobblemon:gameplay/pickup"),
+            ))
+        }
+
+        override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean {
+            if (!config.enabled) return false
+            val eff = config.qualifyingMoves.ifEmpty { qualifyingMoves }.map { it.lowercase() }.toSet()
+            return moves.any { it in eff }
+        }
+
+        override fun tick(world: World, origin: BlockPos, pokemonEntity: PokemonEntity) {
+            val pid = pokemonEntity.pokemon.uuid
+            if (config.requiresWater == true && !pokemonEntity.isTouchingWater) return
+            val held = heldItems[pid]
+            if (held.isNullOrEmpty()) {
+                failedDeposits.remove(pid)
+                produce(world, origin, pokemonEntity)
+            } else {
+                CobbleworkersInventoryUtils.handleDepositing(world, origin, pokemonEntity, held, failedDeposits, heldItems)
+            }
+        }
+
+        private fun produce(world: World, origin: BlockPos, pokemonEntity: PokemonEntity) {
+            val pid = pokemonEntity.pokemon.uuid
+            val now = world.time
+            val last = lastGenTime[pid] ?: 0L
+            val cd = (config.cooldownSeconds.takeIf { it > 0 } ?: 210) * 20L
+            if (now - last < cd) return
+
+            val tables = (config.lootTables ?: emptyList()).ifEmpty { listOf("cobblemon:gameplay/pickup") }
+                .mapNotNull { Identifier.tryParse(it) }
+            if (tables.isEmpty()) return
+
+            val lootParams = LootContextParameterSet.Builder(world as ServerWorld)
+                .add(LootContextParameters.ORIGIN, origin.toCenterPos())
+                .add(LootContextParameters.THIS_ENTITY, pokemonEntity)
+                .build(LootContextTypes.CHEST)
+
+            val key = RegistryKey.of(RegistryKeys.LOOT_TABLE, tables.random())
+            val drops = world.server.reloadableRegistries.getLootTable(key).generateLoot(lootParams)
+            if (drops.isNotEmpty()) {
+                lastGenTime[pid] = now
+                heldItems[pid] = drops
+            }
+        }
+
+        override fun hasActiveState(pokemonId: UUID) = pokemonId in heldItems
+        override fun cleanup(pokemonId: UUID) {
+            lastGenTime.remove(pokemonId)
+            heldItems.remove(pokemonId)
+            failedDeposits.remove(pokemonId)
+        }
+    }
+
+    object DigSiteExcavator : Worker {
+        override val name = "dig_site_excavator"
+        override val priority = WorkerPriority.TYPE
+        override val targetCategory = BlockCategory.SUSPICIOUS
+
+        private val config get() = JobConfigManager.get(name)
+        private val qualifyingMoves = setOf("dig", "sandtomb", "scorchingsands")
+        private val lastGenTime = mutableMapOf<UUID, Long>()
+        private val heldItems = mutableMapOf<UUID, List<ItemStack>>()
+        private val failedDeposits = mutableMapOf<UUID, MutableSet<BlockPos>>()
+        private val targets = mutableMapOf<UUID, BlockPos>()
+
+        init {
+            JobConfigManager.registerDefault("production", name, JobConfig(
+                enabled = true,
+                cooldownSeconds = 120,
+                qualifyingMoves = qualifyingMoves.toList(),
+                fallbackType = "GROUND",
+                lootTables = listOf("cobblemon:gameplay/pickup"),
+            ))
+        }
+
+        override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean {
+            if (!config.enabled) return false
+            val eff = config.qualifyingMoves.ifEmpty { qualifyingMoves }.map { it.lowercase() }.toSet()
+            if (moves.any { it in eff }) return true
+            val ft = config.fallbackType.ifEmpty { "GROUND" }.uppercase()
+            return ft in types
+        }
+
+        override fun tick(world: World, origin: BlockPos, pokemonEntity: PokemonEntity) {
+            val pid = pokemonEntity.pokemon.uuid
+            val held = heldItems[pid]
+            if (!held.isNullOrEmpty()) {
+                CobbleworkersInventoryUtils.handleDepositing(world, origin, pokemonEntity, held, failedDeposits, heldItems)
+                return
+            }
+            failedDeposits.remove(pid)
+            val target = targets[pid]
+            if (target == null) {
+                val found = findDigSpot(world, origin) ?: return
+                if (!CobbleworkersNavigationUtils.isTargeted(found, world)) {
+                    CobbleworkersNavigationUtils.claimTarget(pid, found, world)
+                    targets[pid] = found
+                }
+                return
+            }
+            CobbleworkersNavigationUtils.navigateTo(pokemonEntity, target)
+            if (WorkerVisualUtils.handleArrival(pokemonEntity, target, world, ParticleTypes.COMPOSTER, 2.0)) {
+                generateLoot(world, target, pokemonEntity)
+                CobbleworkersNavigationUtils.releaseTarget(pid, world)
+                targets.remove(pid)
+            }
+        }
+
+        private fun findDigSpot(world: World, origin: BlockPos): BlockPos? {
+            val cached = CobbleworkersCacheManager.getTargets(origin, BlockCategory.SUSPICIOUS)
+            return cached
+                .filter { pos ->
+                    val above = world.getBlockState(pos.up())
+                    above.isAir && !CobbleworkersNavigationUtils.isRecentlyExpired(pos, world)
+                }
+                .minByOrNull { it.getSquaredDistance(origin) }
+        }
+
+        private fun generateLoot(world: World, pos: BlockPos, pokemonEntity: PokemonEntity) {
+            val pid = pokemonEntity.pokemon.uuid
+            val now = world.time
+            val last = lastGenTime[pid] ?: 0L
+            val cd = (config.cooldownSeconds.takeIf { it > 0 } ?: 120) * 20L
+            if (now - last < cd) return
+
+            val tables = (config.lootTables ?: emptyList()).ifEmpty { listOf("cobblemon:gameplay/pickup") }
+                .mapNotNull { Identifier.tryParse(it) }
+            if (tables.isEmpty()) return
+
+            val lootParams = LootContextParameterSet.Builder(world as ServerWorld)
+                .add(LootContextParameters.ORIGIN, pos.toCenterPos())
+                .add(LootContextParameters.THIS_ENTITY, pokemonEntity)
+                .build(LootContextTypes.CHEST)
+
+            val key = RegistryKey.of(RegistryKeys.LOOT_TABLE, tables.random())
+            val drops = world.server.reloadableRegistries.getLootTable(key).generateLoot(lootParams)
+            if (drops.isNotEmpty()) {
+                lastGenTime[pid] = now
+                heldItems[pid] = drops
+            }
+        }
+
+        override fun hasActiveState(pokemonId: UUID) = pokemonId in heldItems || pokemonId in targets
+        override fun cleanup(pokemonId: UUID) {
+            lastGenTime.remove(pokemonId)
+            heldItems.remove(pokemonId)
+            failedDeposits.remove(pokemonId)
+            targets.remove(pokemonId)
+        }
+    }
+
     fun register() {
         WorkerRegistry.registerAll(
             WOOL_PRODUCER,
@@ -289,6 +627,11 @@ object ProductionJobs {
             TOXIN_DISTILLER,
             CRYSTAL_GROWER,
             TEAR_COLLECTOR,
+            // Loot-based (migrated from legacy)
+            FishingLooter,
+            PickupLooter,
+            DiveCollector,
+            DigSiteExcavator,
         )
     }
 }

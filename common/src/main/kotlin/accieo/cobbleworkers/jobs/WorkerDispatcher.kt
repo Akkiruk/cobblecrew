@@ -8,7 +8,6 @@
 
 package accieo.cobbleworkers.jobs
 
-import accieo.cobbleworkers.enums.JobType
 import accieo.cobbleworkers.interfaces.Worker
 import accieo.cobbleworkers.utilities.CobbleworkersNavigationUtils
 import accieo.cobbleworkers.utilities.DeferredBlockScanner
@@ -21,17 +20,11 @@ import java.util.UUID
 object WorkerDispatcher {
     private val workers: List<Worker> get() = WorkerRegistry.workers
 
-    @Suppress("DEPRECATION")
-    private val jobValidators: Map<JobType, (World, BlockPos) -> Boolean>
-        get() = workers
-            .mapNotNull { worker -> worker.blockValidator?.let { worker.jobType to it } }
-            .toMap()
-
     private val activeJobs = mutableMapOf<UUID, Worker>()
     private val profiles = mutableMapOf<UUID, PokemonProfile>()
 
     fun tickAreaScan(world: World, pastureOrigin: BlockPos) {
-        DeferredBlockScanner.tickPastureAreaScan(world, pastureOrigin, jobValidators)
+        DeferredBlockScanner.tickPastureAreaScan(world, pastureOrigin)
     }
 
     /**

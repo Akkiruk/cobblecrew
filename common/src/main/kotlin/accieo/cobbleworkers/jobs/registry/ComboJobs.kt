@@ -67,8 +67,6 @@ object ComboJobs {
         particle = ParticleTypes.EXPLOSION,
         priority = WorkerPriority.COMBO,
     ) {
-        override fun isEligible(pokemonEntity: PokemonEntity) =
-            comboEligibleEntity(qualifyingMoves, JobConfigManager.get(name), pokemonEntity)
         override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String) =
             comboEligible(qualifyingMoves, JobConfigManager.get(name), moves, types, species)
     }
@@ -83,8 +81,6 @@ object ComboJobs {
         particle = ParticleTypes.ENCHANT,
         priority = WorkerPriority.COMBO,
     ) {
-        override fun isEligible(pokemonEntity: PokemonEntity) =
-            comboEligibleEntity(qualifyingMoves, JobConfigManager.get(name), pokemonEntity)
         override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String) =
             comboEligible(qualifyingMoves, JobConfigManager.get(name), moves, types, species)
     }
@@ -101,10 +97,6 @@ object ComboJobs {
     ) {
         private val gatheringMoves = setOf("cut", "rocksmash", "dig", "icebeam")
 
-        override fun isEligible(pokemonEntity: PokemonEntity): Boolean {
-            val moves = pokemonEntity.pokemon.moveSet.getMoves().map { it.name.lowercase() }.toSet()
-            return JobConfigManager.get(name).enabled && "psychic" in moves && gatheringMoves.any { it in moves }
-        }
         override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean {
             if (!JobConfigManager.get(name).enabled) return false
             return "psychic" in moves && gatheringMoves.any { it in moves }
@@ -121,8 +113,6 @@ object ComboJobs {
         particle = ParticleTypes.EXPLOSION,
         priority = WorkerPriority.COMBO,
     ) {
-        override fun isEligible(pokemonEntity: PokemonEntity) =
-            comboEligibleEntity(qualifyingMoves, JobConfigManager.get(name), pokemonEntity)
         override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String) =
             comboEligible(qualifyingMoves, JobConfigManager.get(name), moves, types, species)
     }
@@ -137,8 +127,6 @@ object ComboJobs {
         particle = ParticleTypes.CAMPFIRE_COSY_SMOKE,
         priority = WorkerPriority.COMBO,
     ) {
-        override fun isEligible(pokemonEntity: PokemonEntity) =
-            comboEligibleEntity(qualifyingMoves, JobConfigManager.get(name), pokemonEntity)
         override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String) =
             comboEligible(qualifyingMoves, JobConfigManager.get(name), moves, types, species)
     }
@@ -153,8 +141,6 @@ object ComboJobs {
         particle = ParticleTypes.CRIT,
         priority = WorkerPriority.COMBO,
     ) {
-        override fun isEligible(pokemonEntity: PokemonEntity) =
-            comboEligibleEntity(qualifyingMoves, JobConfigManager.get(name), pokemonEntity)
         override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String) =
             comboEligible(qualifyingMoves, JobConfigManager.get(name), moves, types, species)
     }
@@ -169,8 +155,6 @@ object ComboJobs {
         particle = ParticleTypes.ENCHANT,
         priority = WorkerPriority.COMBO,
     ) {
-        override fun isEligible(pokemonEntity: PokemonEntity) =
-            comboEligibleEntity(qualifyingMoves, JobConfigManager.get(name), pokemonEntity)
         override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String) =
             comboEligible(qualifyingMoves, JobConfigManager.get(name), moves, types, species)
     }

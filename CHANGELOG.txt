@@ -1,3 +1,11 @@
+## 2.9.0
+- Replaced all 22 legacy hardcoded jobs with the V2 DSL/Worker system
+- Legacy jobs are now split into more specific sub-jobs (e.g. HoneyCollector → honey_harvester + bee_pollinator)
+- Removed CobbleworkersConfigHolder group classes for all individual jobs; general settings (searchRadius, searchHeight, blocksScannedPerTick) retained
+- All job eligibility (types, species, moves, cooldowns, radii, etc.) now configured via per-category JSON under config/cobbleworkers/
+- Removed JobType enum, CobbleworkersConfigPokemonType enum, CobbleworkersTypeUtils, TypeExtensions, and all 22 legacy job files
+- Removed legacyRules() from CobbleworkersApi; API now returns only V2 DSL jobs
+
 ## 2.8.0
 - Added S2C network packet that sends job rules to connected clients on join
 - Enables client-only mods (like CobbleDex) to receive job data without needing server-side installation

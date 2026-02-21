@@ -9,11 +9,9 @@
 package accieo.cobbleworkers.utilities
 
 import accieo.cobbleworkers.cache.CobbleworkersCacheManager
-import accieo.cobbleworkers.config.CobbleworkersConfig
-import accieo.cobbleworkers.enums.JobType
+import accieo.cobbleworkers.config.JobConfigManager
+import accieo.cobbleworkers.enums.BlockCategory
 import accieo.cobbleworkers.integration.FarmersDelightBlocks
-import accieo.cobbleworkers.jobs.CropHarvester
-import accieo.cobbleworkers.jobs.CropIrrigator
 import com.cobblemon.mod.common.CobblemonBlocks
 import com.cobblemon.mod.common.block.HeartyGrainsBlock
 import com.cobblemon.mod.common.block.MedicinalLeekBlock
@@ -67,41 +65,11 @@ object CobbleworkersCropUtils {
     }
 
     /**
-     * Finds the closest dry farmland
+     * DSL-compatible harvest: reads replant setting from JobConfigManager, returns drops.
      */
-    fun findClosestFarmland(world: World, origin: BlockPos): BlockPos? {
-        val possibleTargets = CobbleworkersCacheManager.getTargets(origin, JobType.CropIrrigator)
-        if (possibleTargets.isEmpty()) return null
-
-        return possibleTargets
-            .filter { pos ->
-                val state = world.getBlockState(pos)
-                CropIrrigator.blockValidator(world, pos) && state.get(FarmlandBlock.MOISTURE) <= 2 && !CobbleworkersNavigationUtils.isRecentlyExpired(pos, world)
-            }
-            .minByOrNull { it.getSquaredDistance(origin) }
-    }
-
-    /**
-     * Finds the closest crop
-     */
-    fun findClosestCrop(world: World, origin: BlockPos): BlockPos? {
-        val possibleTargets = CobbleworkersCacheManager.getTargets(origin, JobType.CropHarvester)
-        if (possibleTargets.isEmpty()) return null
-
-        return possibleTargets
-            .filter { pos ->
-                CropHarvester.blockValidator(world, pos) && isMatureCrop(world, pos) && !CobbleworkersNavigationUtils.isRecentlyExpired(pos, world)
-            }
-            .minByOrNull { it.getSquaredDistance(origin) }
-    }
-
-    /**
-     * Executes the complete harvesting processes for a single crop
-     */
-    // TODO: Clean this whole function
-    fun harvestCrop(world: World, blockPos: BlockPos, pokemonEntity: PokemonEntity, pokemonHeldItems:  MutableMap<UUID, List<ItemStack>>, config: CobbleworkersConfig.CropHarvestGroup) {
+    fun harvestCropDsl(world: World, blockPos: BlockPos, pokemonEntity: PokemonEntity): List<ItemStack> {
         val blockState = world.getBlockState(blockPos)
-        if (blockState.block !in validCropBlocks) return
+        if (blockState.block !in validCropBlocks) return emptyList()
 
         val lootParams = LootContextParameterSet.Builder(world as ServerWorld)
             .add(LootContextParameters.ORIGIN, blockPos.toCenterPos())
@@ -110,15 +78,9 @@ object CobbleworkersCropUtils {
             .addOptional(LootContextParameters.THIS_ENTITY, pokemonEntity)
 
         val drops = blockState.getDroppedStacks(lootParams)
-
-        if (drops.isNotEmpty()) {
-            pokemonHeldItems[pokemonEntity.pokemon.uuid] = drops
-        }
-
         val block = blockState.block
         val blockId = Registries.BLOCK.getId(block).path
 
-        /** Integration stuff **/
         val isFarmersDelightCrop = blockId in FarmersDelightBlocks.ALL
         val isTomato = blockId == FarmersDelightBlocks.TOMATOES
         val isRice = blockId == FarmersDelightBlocks.RICE_PANICLES
@@ -130,32 +92,32 @@ object CobbleworkersCropUtils {
             if (belowState.block == CobblemonBlocks.HEARTY_GRAINS) {
                 world.setBlockState(blockPos, Blocks.AIR.defaultState, Block.NOTIFY_LISTENERS)
             }
-            return
+            return drops
         }
 
+        // Try both crop_harvester and root_harvester for replant config
+        val replant = (JobConfigManager.get("crop_harvester").replant
+            ?: JobConfigManager.get("root_harvester").replant) ?: true
+
         val newState = when {
-            config.shouldReplantCrops ->
-                when {
-                    /** Farmer's delight **/
-                    isRice && blockState.contains(AGE_3) -> Blocks.AIR.defaultState
-                    isTomato && blockState.contains(AGE_3) -> blockState.with(AGE_3, 0)
-                    isMushroomColony && blockState.contains(AGE_3) -> blockState.with(AGE_3, 0)
-                    isFarmersDelightCrop && blockState.contains(CropBlock.AGE) -> blockState.with(CropBlock.AGE, 0)
-                    /** Vanilla **/
-                    block == Blocks.POTATOES -> blockState.with(PotatoesBlock.AGE, 0)
-                    block == Blocks.BEETROOTS -> blockState.with(BeetrootsBlock.AGE, 0)
-                    block == Blocks.CARROTS -> blockState.with(CarrotsBlock.AGE, 0)
-                    block == Blocks.WHEAT -> blockState.with(CropBlock.AGE, 0)
-                    block == Blocks.SWEET_BERRY_BUSH -> blockState.with(SweetBerryBushBlock.AGE, 1)
-                    block == Blocks.CAVE_VINES -> blockState.with(CaveVinesBodyBlock.BERRIES, false)
-                    block == Blocks.CAVE_VINES_PLANT -> blockState.with(CaveVinesBodyBlock.BERRIES, false)
-                    /** Cobblemon **/
-                    block == CobblemonBlocks.REVIVAL_HERB -> blockState.with(RevivalHerbBlock.AGE, RevivalHerbBlock.MIN_AGE)
-                    block == CobblemonBlocks.MEDICINAL_LEEK -> blockState.with(MedicinalLeekBlock.AGE, 0)
-                    block == CobblemonBlocks.VIVICHOKE_SEEDS -> blockState.with(CropBlock.AGE, 0)
-                    block == CobblemonBlocks.GALARICA_NUT_BUSH -> blockState.with(NutBushBlock.AGE, 1)
-                    else -> return
-                }
+            replant -> when {
+                isRice && blockState.contains(AGE_3) -> Blocks.AIR.defaultState
+                isTomato && blockState.contains(AGE_3) -> blockState.with(AGE_3, 0)
+                isMushroomColony && blockState.contains(AGE_3) -> blockState.with(AGE_3, 0)
+                isFarmersDelightCrop && blockState.contains(CropBlock.AGE) -> blockState.with(CropBlock.AGE, 0)
+                block == Blocks.POTATOES -> blockState.with(PotatoesBlock.AGE, 0)
+                block == Blocks.BEETROOTS -> blockState.with(BeetrootsBlock.AGE, 0)
+                block == Blocks.CARROTS -> blockState.with(CarrotsBlock.AGE, 0)
+                block == Blocks.WHEAT -> blockState.with(CropBlock.AGE, 0)
+                block == Blocks.SWEET_BERRY_BUSH -> blockState.with(SweetBerryBushBlock.AGE, 1)
+                block == Blocks.CAVE_VINES -> blockState.with(CaveVinesBodyBlock.BERRIES, false)
+                block == Blocks.CAVE_VINES_PLANT -> blockState.with(CaveVinesBodyBlock.BERRIES, false)
+                block == CobblemonBlocks.REVIVAL_HERB -> blockState.with(RevivalHerbBlock.AGE, RevivalHerbBlock.MIN_AGE)
+                block == CobblemonBlocks.MEDICINAL_LEEK -> blockState.with(MedicinalLeekBlock.AGE, 0)
+                block == CobblemonBlocks.VIVICHOKE_SEEDS -> blockState.with(CropBlock.AGE, 0)
+                block == CobblemonBlocks.GALARICA_NUT_BUSH -> blockState.with(NutBushBlock.AGE, 1)
+                else -> return drops
+            }
             block == Blocks.SWEET_BERRY_BUSH -> blockState.with(SweetBerryBushBlock.AGE, 1)
             block == Blocks.CAVE_VINES -> blockState.with(CaveVinesBodyBlock.BERRIES, false)
             block == Blocks.CAVE_VINES_PLANT -> blockState.with(CaveVinesBodyBlock.BERRIES, false)
@@ -164,12 +126,13 @@ object CobbleworkersCropUtils {
         }
 
         world.setBlockState(blockPos, newState)
+        return drops
     }
 
     /**
      * Checks if the crop is its mature state
      */
-    private fun isMatureCrop(world: World, pos: BlockPos): Boolean {
+    fun isMatureCrop(world: World, pos: BlockPos): Boolean {
         val state = world.getBlockState(pos)
         val block = state.block
         val blockId = Registries.BLOCK.getId(block).path

@@ -8,20 +8,43 @@
 
 package accieo.cobbleworkers.jobs.registry
 
+import accieo.cobbleworkers.config.JobConfigManager
 import accieo.cobbleworkers.enums.BlockCategory
 import accieo.cobbleworkers.jobs.WorkerRegistry
 import accieo.cobbleworkers.jobs.dsl.GatheringJob
+import accieo.cobbleworkers.utilities.CobbleworkersCropUtils
+import com.cobblemon.mod.common.CobblemonBlocks
+import com.cobblemon.mod.common.block.ApricornBlock
+import com.cobblemon.mod.common.block.BerryBlock
+import com.cobblemon.mod.common.block.MintBlock
+import com.cobblemon.mod.common.block.entity.BerryBlockEntity
 import net.minecraft.block.*
 import net.minecraft.item.ItemStack
 import net.minecraft.item.Items
 import net.minecraft.particle.ParticleTypes
+import net.minecraft.registry.RegistryKeys
+import net.minecraft.registry.tag.TagKey
+import net.minecraft.state.property.Properties
+import net.minecraft.util.Identifier
 
 /**
- * New DSL-based gathering jobs (A1–A37).
- * Legacy gathering jobs (Berry, Apricorn, Mint, Netherwart, Tumblestone,
- * Amethyst, Crop, Honey) remain in LegacyJobs until migrated.
+ * All gathering jobs — find blocks, walk to them, harvest drops, deposit in chests.
  */
 object GatheringJobs {
+    private val APRICORNS_TAG = TagKey.of(RegistryKeys.BLOCK, Identifier.of("cobblemon", "apricorns"))
+    private val BERRIES_TAG = TagKey.of(RegistryKeys.BLOCK, Identifier.of("cobblemon", "berries"))
+    private val MINTS_TAG = TagKey.of(RegistryKeys.BLOCK, Identifier.of("cobblemon", "mints"))
+
+    private val TUMBLESTONE_BLOCKS: Set<Block> = setOf(
+        CobblemonBlocks.TUMBLESTONE_CLUSTER,
+        CobblemonBlocks.BLACK_TUMBLESTONE_CLUSTER,
+        CobblemonBlocks.SKY_TUMBLESTONE_CLUSTER,
+    )
+    private val TUMBLESTONE_REPLACEMENTS: Map<Block, Block> = mapOf(
+        CobblemonBlocks.TUMBLESTONE_CLUSTER to CobblemonBlocks.SMALL_BUDDING_TUMBLESTONE,
+        CobblemonBlocks.BLACK_TUMBLESTONE_CLUSTER to CobblemonBlocks.SMALL_BUDDING_BLACK_TUMBLESTONE,
+        CobblemonBlocks.SKY_TUMBLESTONE_CLUSTER to CobblemonBlocks.SMALL_BUDDING_SKY_TUMBLESTONE,
+    )
 
     // ── Wood ────────────────────────────────────────────────────────────
 
@@ -240,7 +263,6 @@ object GatheringJobs {
     )
 
     // ── Nature & Cleanup ───────────────────────────────────────────────
-    // A35 Honey Extractor is handled by LegacyJobs (HoneyCollector)
 
     val MUSHROOM_FORAGER = GatheringJob(
         name = "mushroom_forager",
@@ -295,6 +317,157 @@ object GatheringJobs {
         particle = ParticleTypes.CRIT,
     )
 
+    // ── Cobblemon Growables (migrated from legacy) ─────────────────────
+
+    val APRICORN_HARVESTER = GatheringJob(
+        name = "apricorn_harvester",
+        targetCategory = BlockCategory.APRICORN,
+        qualifyingMoves = setOf("pluck", "bugbite", "furycutter"),
+        fallbackType = "BUG",
+        particle = ParticleTypes.HAPPY_VILLAGER,
+        readyCheck = { world, pos ->
+            world.getBlockState(pos).isIn(APRICORNS_TAG)
+                && world.getBlockState(pos).get(ApricornBlock.AGE) == ApricornBlock.MAX_AGE
+        },
+        afterHarvestAction = { world, pos, state ->
+            if (state.isIn(APRICORNS_TAG)) {
+                world.setBlockState(pos, state.with(ApricornBlock.AGE, 0), Block.NOTIFY_ALL)
+            }
+        },
+    )
+
+    val BERRY_HARVESTER = GatheringJob(
+        name = "berry_harvester",
+        targetCategory = BlockCategory.BERRY,
+        qualifyingMoves = setOf("pluck", "bugbite", "stuffcheeks"),
+        fallbackType = "GRASS",
+        particle = ParticleTypes.HAPPY_VILLAGER,
+        readyCheck = { world, pos ->
+            val state = world.getBlockState(pos)
+            state.isIn(BERRIES_TAG) && state.get(BerryBlock.AGE) == BerryBlock.FRUIT_AGE
+        },
+        harvestOverride = { world, pos, pokemon ->
+            val state = world.getBlockState(pos)
+            val be = world.getBlockEntity(pos) as? BerryBlockEntity
+            val drops = be?.harvest(world, state, pos, null) ?: emptyList()
+            world.setBlockState(pos, state.with(BerryBlock.AGE, BerryBlock.MATURE_AGE), Block.NOTIFY_ALL)
+            @Suppress("UNCHECKED_CAST")
+            drops as List<ItemStack>
+        },
+    )
+
+    val MINT_HARVESTER = GatheringJob(
+        name = "mint_harvester",
+        targetCategory = BlockCategory.MINT,
+        qualifyingMoves = setOf("aromatherapy", "sweetscent", "grassysurge"),
+        fallbackType = "FAIRY",
+        particle = ParticleTypes.HAPPY_VILLAGER,
+        readyCheck = { world, pos ->
+            world.getBlockState(pos).isIn(MINTS_TAG)
+                && world.getBlockState(pos).get(MintBlock.AGE) == MintBlock.MATURE_AGE
+        },
+        afterHarvestAction = { world, pos, state ->
+            if (state.isIn(MINTS_TAG)) {
+                world.setBlockState(pos, state.with(MintBlock.AGE, 0), Block.NOTIFY_ALL)
+            }
+        },
+    )
+
+    val AMETHYST_HARVESTER = GatheringJob(
+        name = "amethyst_harvester",
+        targetCategory = BlockCategory.AMETHYST,
+        qualifyingMoves = setOf("rockblast", "rockslide", "powergem"),
+        fallbackType = "ROCK",
+        particle = ParticleTypes.END_ROD,
+        tolerance = 1.5,
+    )
+
+    val TUMBLESTONE_HARVESTER = GatheringJob(
+        name = "tumblestone_harvester",
+        targetCategory = BlockCategory.TUMBLESTONE,
+        qualifyingMoves = setOf("ironhead", "meteormash", "bulletpunch"),
+        fallbackType = "STEEL",
+        particle = ParticleTypes.COMPOSTER,
+        tolerance = 1.5,
+        afterHarvestAction = { world, pos, state ->
+            val replant = JobConfigManager.get("tumblestone_harvester").replant ?: true
+            if (replant && state.block in TUMBLESTONE_BLOCKS) {
+                val replacement = TUMBLESTONE_REPLACEMENTS[state.block] ?: return@GatheringJob
+                var rState = replacement.defaultState
+                val facing = Properties.FACING
+                if (rState.properties.contains(facing) && state.contains(facing)) {
+                    rState = rState.with(facing, state.get(facing))
+                }
+                world.setBlockState(pos, rState)
+            } else {
+                world.setBlockState(pos, Blocks.AIR.defaultState)
+            }
+        },
+    )
+
+    val NETHERWART_HARVESTER = GatheringJob(
+        name = "netherwart_harvester",
+        targetCategory = BlockCategory.NETHERWART,
+        qualifyingMoves = setOf("shadowclaw", "nightmare", "hex"),
+        fallbackType = "GHOST",
+        particle = ParticleTypes.SMOKE,
+        readyCheck = { world, pos ->
+            world.getBlockState(pos).get(NetherWartBlock.AGE) == NetherWartBlock.MAX_AGE
+        },
+        afterHarvestAction = { world, pos, state ->
+            val replant = JobConfigManager.get("netherwart_harvester").replant ?: true
+            val newState = if (replant) state.with(NetherWartBlock.AGE, 0) else Blocks.AIR.defaultState
+            world.setBlockState(pos, newState, Block.NOTIFY_ALL)
+        },
+    )
+
+    val CROP_HARVESTER = GatheringJob(
+        name = "crop_harvester",
+        targetCategory = BlockCategory.CROP_GRAIN,
+        qualifyingMoves = setOf("razorleaf", "leafstorm", "magicalleaf", "harvest"),
+        fallbackType = "GRASS",
+        particle = ParticleTypes.HAPPY_VILLAGER,
+        readyCheck = { world, pos ->
+            CobbleworkersCropUtils.isMatureCrop(world, pos)
+        },
+        harvestOverride = { world, pos, pokemon ->
+            CobbleworkersCropUtils.harvestCropDsl(world, pos, pokemon)
+        },
+    )
+
+    val ROOT_HARVESTER = GatheringJob(
+        name = "root_harvester",
+        targetCategory = BlockCategory.CROP_ROOT,
+        qualifyingMoves = setOf("dig", "strength", "mudshot"),
+        fallbackType = "GROUND",
+        particle = ParticleTypes.COMPOSTER,
+        readyCheck = { world, pos ->
+            val state = world.getBlockState(pos)
+            val block = state.block
+            block is CropBlock && block.getAge(state) == block.maxAge
+        },
+        harvestOverride = { world, pos, pokemon ->
+            CobbleworkersCropUtils.harvestCropDsl(world, pos, pokemon)
+        },
+    )
+
+    val HONEY_HARVESTER = GatheringJob(
+        name = "honey_harvester",
+        targetCategory = BlockCategory.HONEY,
+        qualifyingMoves = setOf("bugbuzz", "attackorder", "defendorder"),
+        fallbackSpecies = listOf("Combee", "Vespiquen"),
+        particle = ParticleTypes.HAPPY_VILLAGER,
+        readyCheck = { world, pos ->
+            val state = world.getBlockState(pos)
+            state.block is BeehiveBlock && state.get(BeehiveBlock.HONEY_LEVEL) == BeehiveBlock.FULL_HONEY_LEVEL
+        },
+        harvestOverride = { world, pos, _ ->
+            val state = world.getBlockState(pos)
+            world.setBlockState(pos, state.with(BeehiveBlock.HONEY_LEVEL, 0), Block.NOTIFY_ALL)
+            listOf(ItemStack(Items.HONEYCOMB, 3))
+        },
+    )
+
     fun register() {
         WorkerRegistry.registerAll(
             // Wood
@@ -330,6 +503,16 @@ object GatheringJobs {
             MOSS_SCRAPER,
             DECOMPOSER,
             TERRAIN_FLATTENER,
+            // Cobblemon Growables (migrated from legacy)
+            APRICORN_HARVESTER,
+            BERRY_HARVESTER,
+            MINT_HARVESTER,
+            AMETHYST_HARVESTER,
+            TUMBLESTONE_HARVESTER,
+            NETHERWART_HARVESTER,
+            CROP_HARVESTER,
+            ROOT_HARVESTER,
+            HONEY_HARVESTER,
         )
     }
 }

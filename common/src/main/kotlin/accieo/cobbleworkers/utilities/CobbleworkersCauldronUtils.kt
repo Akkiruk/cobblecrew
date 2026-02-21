@@ -9,8 +9,7 @@
 package accieo.cobbleworkers.utilities
 
 import accieo.cobbleworkers.cache.CobbleworkersCacheManager
-import accieo.cobbleworkers.enums.JobType
-import accieo.cobbleworkers.jobs.LavaGenerator.blockValidator
+import accieo.cobbleworkers.enums.BlockCategory
 import net.minecraft.block.Blocks
 import net.minecraft.block.LeveledCauldronBlock
 import net.minecraft.util.math.BlockPos
@@ -25,12 +24,13 @@ object CobbleworkersCauldronUtils {
      * Finds the closest empty cauldron
      */
     fun findClosestCauldron(world: World, origin: BlockPos): BlockPos? {
-        val possibleTargets = CobbleworkersCacheManager.getTargets(origin, JobType.CauldronGenerator)
+        val possibleTargets = CobbleworkersCacheManager.getTargets(origin, BlockCategory.CAULDRON)
         if (possibleTargets.isEmpty()) return null
 
         return possibleTargets
             .filter { pos ->
-                blockValidator(world, pos) && !CobbleworkersNavigationUtils.isRecentlyExpired(pos, world)
+                world.getBlockState(pos).isOf(Blocks.CAULDRON)
+                    && !CobbleworkersNavigationUtils.isRecentlyExpired(pos, world)
             }
             .minByOrNull { it.getSquaredDistance(origin) }
     }

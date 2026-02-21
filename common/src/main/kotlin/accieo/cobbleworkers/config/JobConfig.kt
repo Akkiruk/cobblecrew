@@ -24,4 +24,13 @@ data class JobConfig(
     val lootTables: List<String>? = null,
     val effectDurationSeconds: Int? = null,
     val effectAmplifier: Int? = null,
+    val radius: Int? = null,
+    val burnTimeSeconds: Int? = null,
+    val addedFuel: Int? = null,
+    val treasureChance: Int? = null,
+    val structureTags: List<String>? = null,
+    val useAllStructures: Boolean? = null,
+    val mapNameIsHidden: Boolean? = null,
+    val requiredAbility: String? = null,
+    val requiresWater: Boolean? = null,
 )

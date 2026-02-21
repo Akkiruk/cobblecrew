@@ -47,11 +47,13 @@ open class GatheringJob(
     val toolOverride: ItemStack = ItemStack.EMPTY,
     val readyCheck: ((World, BlockPos) -> Boolean)? = null,
     val afterHarvestAction: ((World, BlockPos, BlockState) -> Unit)? = null,
+    val tolerance: Double = 1.0,
 ) : BaseHarvester() {
 
     private val config get() = JobConfigManager.get(name)
 
     override val arrivalParticle: ParticleEffect = particle
+    override val arrivalTolerance: Double = tolerance
     override val harvestTool: ItemStack = toolOverride
 
     fun defaultConfig(): JobConfig = JobConfig(
@@ -63,31 +65,6 @@ open class GatheringJob(
 
     init {
         JobConfigManager.registerDefault(category, name, defaultConfig())
-    }
-
-    override fun isEnabled(): Boolean = config.enabled
-
-    override fun isEligible(pokemonEntity: PokemonEntity): Boolean {
-        val moves = pokemonEntity.pokemon.moveSet.getMoves().map { it.name.lowercase() }.toSet()
-        val types = pokemonEntity.pokemon.types.map { it.name.uppercase() }.toSet()
-        val species = pokemonEntity.pokemon.species.translatedName.string.lowercase()
-
-        val effectiveMoves = config.qualifyingMoves.ifEmpty { qualifyingMoves }.map { it.lowercase() }.toSet()
-        val effectiveType = config.fallbackType.ifEmpty { fallbackType }.uppercase()
-        val effectiveSpecies = config.fallbackSpecies.ifEmpty { fallbackSpecies }
-
-        // Check standard qualifying moves
-        if (moves.any { it in effectiveMoves }) return true
-        // Check type-gated moves
-        for ((move, requiredType) in typeGatedMoves) {
-            if (move in moves && requiredType.uppercase() in types) return true
-        }
-        // Fallback: species
-        if (effectiveSpecies.any { it.equals(species, ignoreCase = true) }) return true
-        // Fallback: type
-        if (effectiveType.isNotEmpty() && effectiveType in types) return true
-
-        return false
     }
 
     override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean {

@@ -38,6 +38,9 @@ enum class BlockCategory {
     // Functional blocks
     FURNACE, BREWING_STAND, CAULDRON, COMPOSTER, SUSPICIOUS,
 
+    // Fire
+    FIRE,
+
     // Fluids / farmland
     WATER, LAVA, FARMLAND,
 

@@ -18,12 +18,14 @@ import accieo.cobbleworkers.utilities.CobbleworkersInventoryUtils
 import accieo.cobbleworkers.utilities.CobbleworkersNavigationUtils
 import accieo.cobbleworkers.utilities.WorkerVisualUtils
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
+import net.minecraft.entity.ItemEntity
 import net.minecraft.inventory.Inventory
 import net.minecraft.item.Item
 import net.minecraft.item.ItemStack
 import net.minecraft.item.Items
 import net.minecraft.particle.ParticleTypes
 import net.minecraft.util.math.BlockPos
+import net.minecraft.util.math.Box
 import net.minecraft.world.World
 import java.util.UUID
 
@@ -184,7 +186,73 @@ object LogisticsJobs {
         override fun cleanup(pokemonId: UUID) { targets.remove(pokemonId) }
     }
 
+    // ── H3: Ground Item Collector ────────────────────────────────────
+    // Picks up items from the ground and deposits in containers
+    object GroundItemCollector : Worker {
+        override val name = "ground_item_collector"
+        override val priority = WorkerPriority.TYPE
+        override val targetCategory: BlockCategory? = null
+
+        private val config get() = JobConfigManager.get(name)
+        private val qualifyingMoves = setOf("psychic", "telekinesis", "confusion")
+        private val heldItems = mutableMapOf<UUID, List<ItemStack>>()
+        private val failedDeposits = mutableMapOf<UUID, MutableSet<BlockPos>>()
+
+        init {
+            JobConfigManager.registerDefault("logistics", name, JobConfig(
+                enabled = true,
+                qualifyingMoves = qualifyingMoves.toList(),
+                fallbackType = "PSYCHIC",
+                radius = 8,
+            ))
+        }
+
+        override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean {
+            if (!config.enabled) return false
+            val eff = config.qualifyingMoves.ifEmpty { qualifyingMoves }.map { it.lowercase() }.toSet()
+            if (moves.any { it in eff }) return true
+            val ft = config.fallbackType.ifEmpty { "PSYCHIC" }.uppercase()
+            return ft in types
+        }
+
+        override fun tick(world: World, origin: BlockPos, pokemonEntity: PokemonEntity) {
+            val pid = pokemonEntity.pokemon.uuid
+            val held = heldItems[pid]
+            if (!held.isNullOrEmpty()) {
+                CobbleworkersInventoryUtils.handleDepositing(world, origin, pokemonEntity, held, failedDeposits, heldItems)
+                return
+            }
+            failedDeposits.remove(pid)
+            val r = config.radius?.takeIf { it > 0 } ?: 8
+            val searchArea = Box(origin).expand(r.toDouble(), r.toDouble(), r.toDouble())
+            val item = world.getEntitiesByClass(ItemEntity::class.java, searchArea) { true }
+                .firstOrNull { it.isOnGround } ?: return
+
+            val currentTarget = CobbleworkersNavigationUtils.getTarget(pid, world)
+            val itemPos = item.blockPos
+            if (currentTarget == null) {
+                if (!CobbleworkersNavigationUtils.isTargeted(itemPos, world)) {
+                    CobbleworkersNavigationUtils.claimTarget(pid, itemPos, world)
+                }
+                return
+            }
+            CobbleworkersNavigationUtils.navigateTo(pokemonEntity, currentTarget)
+            if (WorkerVisualUtils.handleArrival(pokemonEntity, currentTarget, world, ParticleTypes.ENCHANT)) {
+                val stack = item.stack.copy()
+                item.discard()
+                heldItems[pid] = listOf(stack)
+                CobbleworkersNavigationUtils.releaseTarget(pid, world)
+            }
+        }
+
+        override fun hasActiveState(pokemonId: UUID) = pokemonId in heldItems
+        override fun cleanup(pokemonId: UUID) {
+            heldItems.remove(pokemonId)
+            failedDeposits.remove(pokemonId)
+        }
+    }
+
     fun register() {
-        WorkerRegistry.registerAll(Magnetizer, TrashDisposal)
+        WorkerRegistry.registerAll(Magnetizer, TrashDisposal, GroundItemCollector)
     }
 }

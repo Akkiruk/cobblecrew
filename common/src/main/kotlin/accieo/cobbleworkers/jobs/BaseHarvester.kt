@@ -44,17 +44,10 @@ abstract class BaseHarvester : Worker {
     /** Tool used in loot context. Override for silk touch/fortune. */
     open val harvestTool: ItemStack = ItemStack.EMPTY
 
-    abstract fun isEnabled(): Boolean
-    abstract fun isEligible(pokemonEntity: PokemonEntity): Boolean
     abstract fun harvest(world: World, targetPos: BlockPos, pokemonEntity: PokemonEntity)
 
     /** Additional readiness check beyond blockValidator (e.g. crop maturity). */
     open fun isTargetReady(world: World, pos: BlockPos): Boolean = true
-
-    override fun shouldRun(pokemonEntity: PokemonEntity): Boolean {
-        if (!isEnabled()) return false
-        return isEligible(pokemonEntity)
-    }
 
     companion object {
         private const val OVERFLOW_TIMEOUT_TICKS = 600L // 30 seconds
@@ -110,13 +103,12 @@ abstract class BaseHarvester : Worker {
     }
 
     open fun findClosestTarget(world: World, origin: BlockPos): BlockPos? {
-        val possibleTargets = CobbleworkersCacheManager.getTargets(origin, jobType)
-        if (possibleTargets.isEmpty()) return null
-
-        return possibleTargets
+        val cat = targetCategory ?: return null
+        val targets = CobbleworkersCacheManager.getTargets(origin, cat)
+        if (targets.isEmpty()) return null
+        return targets
             .filter { pos ->
-                blockValidator?.invoke(world, pos) != false
-                    && isTargetReady(world, pos)
+                isTargetReady(world, pos)
                     && !CobbleworkersNavigationUtils.isRecentlyExpired(pos, world)
             }
             .minByOrNull { it.getSquaredDistance(origin) }

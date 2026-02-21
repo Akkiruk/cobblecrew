@@ -9,7 +9,6 @@
 package accieo.cobbleworkers.cache
 
 import accieo.cobbleworkers.enums.BlockCategory
-import accieo.cobbleworkers.enums.JobType
 import net.minecraft.registry.RegistryKeys
 import net.minecraft.registry.entry.RegistryEntry
 import net.minecraft.server.world.ServerWorld
@@ -27,8 +26,6 @@ object CobbleworkersCacheManager {
 
     private val structureLocationExpiry: MutableMap<Identifier, Long> = ConcurrentHashMap()
     private const val CACHE_TTL = 20L * 60L * 15L
-
-    // --- BlockCategory-based API (V2) ---
 
     fun addTarget(pastureOrigin: BlockPos, category: BlockCategory, pos: BlockPos) {
         val cache = pastureCaches.getOrPut(pastureOrigin) { PastureCache() }
@@ -54,37 +51,10 @@ object CobbleworkersCacheManager {
         pastureCaches[pastureOrigin]?.targetsByCategory?.values?.forEach { it.clear() }
     }
 
-    // --- Legacy JobType-based API (kept for migration period) ---
-
-    @Deprecated("Use BlockCategory overload")
-    fun addTarget(pastureOrigin: BlockPos, jobType: JobType, pos: BlockPos) {
-        val cache = pastureCaches.getOrPut(pastureOrigin) { PastureCache() }
-        @Suppress("DEPRECATION")
-        cache.targetsByJob[jobType]?.add(pos)
-    }
-
-    @Deprecated("Use BlockCategory overload")
-    fun removeTargets(pastureOrigin: BlockPos) {
-        @Suppress("DEPRECATION")
-        pastureCaches[pastureOrigin]?.targetsByJob?.values?.forEach { it.clear() }
-    }
-
-    @Deprecated("Use BlockCategory overload")
-    fun getTargets(pastureOrigin: BlockPos, jobType: JobType): Set<BlockPos> {
-        @Suppress("DEPRECATION")
-        return pastureCaches[pastureOrigin]?.targetsByJob?.get(jobType) ?: emptySet()
-    }
-
-    /**
-     * Clear a pasture block entity from the cache.
-     */
     fun removePasture(pastureOrigin: BlockPos) {
         pastureCaches.remove(pastureOrigin)
     }
 
-    /**
-     * Gets or builds the server world structures cache.
-     */
     fun getStructures(world: ServerWorld, useAll: Boolean, tags: List<String>): Set<Identifier> {
         structuresCache?.let { return it }
 
@@ -101,9 +71,6 @@ object CobbleworkersCacheManager {
         return structures
     }
 
-    /**
-     * Returns a cached structure location if available and not expired.
-     */
     fun getCachedStructure(id: Identifier, now: Long): com.mojang.datafixers.util.Pair<BlockPos, RegistryEntry<Structure>>? {
         val expiry = structureLocationExpiry[id] ?: return null
         if (now > expiry) {
@@ -114,9 +81,6 @@ object CobbleworkersCacheManager {
         return structureLocationCache[id]
     }
 
-    /**
-     * Store a structure location in cache with expiry.
-     */
     fun cacheStructure(id: Identifier, result: com.mojang.datafixers.util.Pair<BlockPos, RegistryEntry<Structure>>, now: Long) {
         structureLocationCache[id] = result
         structureLocationExpiry[id] = now + CACHE_TTL

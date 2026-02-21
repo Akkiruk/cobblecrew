@@ -9,7 +9,7 @@
 package accieo.cobbleworkers.utilities
 
 import accieo.cobbleworkers.cache.CobbleworkersCacheManager
-import accieo.cobbleworkers.enums.JobType
+import accieo.cobbleworkers.enums.BlockCategory
 import com.cobblemon.mod.common.CobblemonBlocks
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import net.minecraft.block.Block
@@ -57,7 +57,7 @@ object CobbleworkersInventoryUtils {
      * Finds closest inventory
      */
     fun findClosestInventory(world: World, origin: BlockPos, ignorePos: Set<BlockPos> = emptySet()): BlockPos? {
-        val possibleTargets = CobbleworkersCacheManager.getTargets(origin, JobType.Generic)
+        val possibleTargets = CobbleworkersCacheManager.getTargets(origin, BlockCategory.CONTAINER)
         if (possibleTargets.isEmpty()) return null
 
         return possibleTargets
