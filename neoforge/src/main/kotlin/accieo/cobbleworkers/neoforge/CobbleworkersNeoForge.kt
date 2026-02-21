@@ -16,6 +16,7 @@ import accieo.cobbleworkers.network.JobSyncPayload
 import accieo.cobbleworkers.network.JobSyncSerializer
 import accieo.cobbleworkers.neoforge.client.config.CobbleworkersModListScreen
 import accieo.cobbleworkers.neoforge.integration.NeoForgeIntegrationHelper
+import accieo.cobbleworkers.utilities.TmLoreEnricher
 import net.minecraft.client.MinecraftClient
 import net.minecraft.server.network.ServerPlayerEntity
 import net.neoforged.fml.common.EventBusSubscriber
@@ -24,6 +25,8 @@ import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent
 import net.neoforged.neoforge.common.NeoForge
 import net.neoforged.neoforge.event.RegisterCommandsEvent
 import net.neoforged.neoforge.event.entity.player.PlayerEvent
+import net.neoforged.neoforge.event.server.ServerStartedEvent
+import net.neoforged.neoforge.event.tick.ServerTickEvent
 import net.neoforged.neoforge.network.PacketDistributor
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent
 import thedarkcolour.kotlinforforge.neoforge.forge.MOD_BUS
@@ -48,6 +51,10 @@ object CobbleworkersNeoForge {
         }
 
         NeoForge.EVENT_BUS.addListener(::onPlayerJoin)
+
+        // Enrich TM items with job info lore
+        NeoForge.EVENT_BUS.addListener { _: ServerStartedEvent -> TmLoreEnricher.rebuildIndex() }
+        NeoForge.EVENT_BUS.addListener { event: ServerTickEvent.Post -> TmLoreEnricher.tick(event.server) }
 
         val obj = runForDist(
             clientTarget = {

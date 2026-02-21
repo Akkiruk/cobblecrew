@@ -1,3 +1,12 @@
+## 2.10.0
+- Added job descriptions to all 80+ jobs in CobbleworkersApi (fixes empty descriptions in CobbleDex)
+- Fixed field name mismatch: API now sends hardcodedSpecies/hardcodedSpeciesEnabled (matching CobbleDex wire format)
+- Fixed requiredAbility not being sent in job rules API
+- Added TM lore enrichment: TMs in player inventories now show which Cobbleworkers job(s) the move enables
+- TM lore is server-side only — no client mods needed, works with vanilla client
+- Combo jobs show required companion moves on TM tooltips
+- Added CobbleworkersApi.getMoveToJobsIndex() for reverse move→jobs lookup
+
 ## 2.9.0
 - Replaced all 22 legacy hardcoded jobs with the V2 DSL/Worker system
 - Legacy jobs are now split into more specific sub-jobs (e.g. HoneyCollector → honey_harvester + bee_pollinator)
