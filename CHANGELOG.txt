@@ -1,3 +1,6 @@
+## 2.12.2
+- Pasture Pokémon no longer trample farmland when walking over crops
+
 ## 2.12.1
 - Fixed berry harvester not detecting all berry types (now uses direct BerryBlock type check instead of relying solely on tag)
 - Berry harvester no longer double-resets block state after Cobblemon's harvest() already handles it
