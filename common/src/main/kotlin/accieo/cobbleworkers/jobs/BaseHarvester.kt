@@ -97,8 +97,8 @@ abstract class BaseHarvester : Worker {
             return
         }
 
-        // Validate target is still a real block
-        if (world.getBlockState(currentTarget).isAir) {
+        // Validate target is still a viable block (not air, still ready)
+        if (world.getBlockState(currentTarget).isAir || !isTargetReady(world, currentTarget)) {
             CobbleworkersNavigationUtils.releaseTarget(pokemonId, world)
             return
         }

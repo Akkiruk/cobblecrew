@@ -100,36 +100,7 @@ $fileContent = [System.IO.File]::ReadAllBytes($jarFile.FullName)
 Invoke-ExarotonApi -Method PUT -Uri "files/data/mods/$($jarFile.Name)/" -ConfigType "application/octet-stream" -Body $fileContent | Out-Null
 Write-Host "Upload complete." -ForegroundColor Green
 
-# 7. Delete old config to regenerate with new defaults (before restart)
-Write-Host "Deleting old job configs to regenerate with new move lists..." -ForegroundColor Cyan
-try {
-    # Try to delete individual job config files
-    $jobsInfo = Invoke-ExarotonApi -Method GET -Uri "files/info/config/cobbleworkers/jobs/"
-    if ($jobsInfo.success -eq $true -and $jobsInfo.data.children) {
-        foreach ($jobFile in $jobsInfo.data.children) {
-            Write-Host "  Deleting $($jobFile.name)..." -ForegroundColor Gray
-            Invoke-ExarotonApi -Method DELETE -Uri "files/data/config/cobbleworkers/jobs/$($jobFile.name)" | Out-Null
-        }
-        Write-Host "Old job configs deleted successfully." -ForegroundColor Green
-    } else {
-        Write-Host "No job configs found to delete." -ForegroundColor Gray
-    }
-} catch {
-    Write-Host "Warning: Could not delete job configs. Delete manually via Exaroton web UI if needed." -ForegroundColor Yellow
-}
-
-# 8. Start/Restart Server
-Write-Host "Starting server..." -ForegroundColor Cyan
-try {
-    # Try restart first (if server is running), fall back to start
-    try {
-        Invoke-ExarotonApi -Method GET -Uri "restart/" | Out-Null
-        Write-Host "Server restart triggered." -ForegroundColor Green
-    } catch {
-        Invoke-ExarotonApi -Method GET -Uri "start/" | Out-Null
-        Write-Host "Server start triggered." -ForegroundColor Green
-    }
-} catch {
-    Write-Host "Error: Could not start server." -ForegroundColor Red
-    throw $_
-}
+# 7. Restart Server
+Write-Host "Restarting server..." -ForegroundColor Cyan
+Invoke-ExarotonApi -Method GET -Uri "restart/" | Out-Null
+Write-Host "Server restart triggered." -ForegroundColor Green

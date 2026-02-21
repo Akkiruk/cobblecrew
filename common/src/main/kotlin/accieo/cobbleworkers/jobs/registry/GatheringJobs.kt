@@ -326,15 +326,17 @@ object GatheringJobs {
         particle = ParticleTypes.HAPPY_VILLAGER,
         readyCheck = { world, pos ->
             val state = world.getBlockState(pos)
-            state.isIn(CobbleworkersTags.Blocks.BERRIES) && state.get(BerryBlock.AGE) == BerryBlock.FRUIT_AGE
+            state.block is BerryBlock && state.get(BerryBlock.AGE) == BerryBlock.FRUIT_AGE
         },
         harvestOverride = { world, pos, pokemon ->
             val state = world.getBlockState(pos)
-            val be = world.getBlockEntity(pos) as? BerryBlockEntity
-            val drops = be?.harvest(world, state, pos, null) ?: emptyList()
-            world.setBlockState(pos, state.with(BerryBlock.AGE, BerryBlock.MATURE_AGE), Block.NOTIFY_ALL)
-            @Suppress("UNCHECKED_CAST")
-            drops as List<ItemStack>
+            if (state.block !is BerryBlock || state.get(BerryBlock.AGE) != BerryBlock.FRUIT_AGE) {
+                emptyList()
+            } else {
+                val be = world.getBlockEntity(pos) as? BerryBlockEntity
+                // harvest() internally resets age to MATURE_AGE and restarts growth timers
+                be?.harvest(world, state, pos, null)?.toList() ?: emptyList()
+            }
         },
     )
 

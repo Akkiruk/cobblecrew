@@ -1,3 +1,9 @@
+## 2.12.1
+- Fixed berry harvester not detecting all berry types (now uses direct BerryBlock type check instead of relying solely on tag)
+- Berry harvester no longer double-resets block state after Cobblemon's harvest() already handles it
+- Added pre-harvest validation so Pokémon skip berries that were already picked between targeting and arrival
+- All harvesters now release stale targets when the block is no longer harvestable (not just when broken)
+
 ## 2.12.0
 - ~70% of jobs now require exactly 1 specific move for clear specialization
 - ~30% of jobs keep 2 moves, only where both are a genuinely perfect thematic fit

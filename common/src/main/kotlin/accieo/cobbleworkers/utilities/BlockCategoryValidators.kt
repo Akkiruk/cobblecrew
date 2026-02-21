@@ -10,6 +10,7 @@ package accieo.cobbleworkers.utilities
 
 import accieo.cobbleworkers.enums.BlockCategory
 import com.cobblemon.mod.common.CobblemonBlocks
+import com.cobblemon.mod.common.block.BerryBlock
 import net.minecraft.block.*
 import net.minecraft.util.math.BlockPos
 import net.minecraft.world.World
@@ -42,7 +43,10 @@ object BlockCategoryValidators {
     val validators: Map<BlockCategory, (World, BlockPos) -> Boolean> = mapOf(
         // Cobblemon growables
         BlockCategory.APRICORN to { world, pos -> world.getBlockState(pos).isIn(CobbleworkersTags.Blocks.APRICORNS) },
-        BlockCategory.BERRY to { world, pos -> world.getBlockState(pos).isIn(CobbleworkersTags.Blocks.BERRIES) },
+        BlockCategory.BERRY to { world, pos ->
+            val state = world.getBlockState(pos)
+            state.block is BerryBlock || state.isIn(CobbleworkersTags.Blocks.BERRIES)
+        },
         BlockCategory.MINT to { world, pos -> world.getBlockState(pos).isIn(CobbleworkersTags.Blocks.MINTS) },
         BlockCategory.TUMBLESTONE to { world, pos -> world.getBlockState(pos).block in TUMBLESTONE_BLOCKS },
         BlockCategory.AMETHYST to { world, pos -> world.getBlockState(pos).block == Blocks.AMETHYST_CLUSTER },
