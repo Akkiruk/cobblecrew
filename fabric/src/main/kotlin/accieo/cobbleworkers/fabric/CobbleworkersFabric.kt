@@ -15,11 +15,9 @@ import accieo.cobbleworkers.fabric.integration.FabricIntegrationHelper
 import accieo.cobbleworkers.integration.CobbleworkersIntegrationHandler
 import accieo.cobbleworkers.network.JobSyncPayload
 import accieo.cobbleworkers.network.JobSyncSerializer
-import accieo.cobbleworkers.utilities.TmLoreEnricher
 import net.fabricmc.api.ModInitializer
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking
@@ -42,10 +40,6 @@ object CobbleworkersFabric : ModInitializer {
             val integrationHandler = CobbleworkersIntegrationHandler(FabricIntegrationHelper)
             integrationHandler.addIntegrations()
         }
-
-        // Enrich TM items with job info lore
-        ServerLifecycleEvents.SERVER_STARTED.register { _ -> TmLoreEnricher.rebuildIndex() }
-        ServerTickEvents.END_SERVER_TICK.register { server -> TmLoreEnricher.tick(server) }
 
         // Send job rules to every client that can receive them
         ServerPlayConnectionEvents.JOIN.register { handler, _, server ->

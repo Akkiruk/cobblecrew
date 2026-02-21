@@ -203,35 +203,6 @@ object CobbleworkersApi {
         }
     }
 
-    /**
-     * Returns a reverse mapping of move name → list of job display names.
-     * Used by TmLoreEnricher to annotate TM items with job info.
-     */
-    fun getMoveToJobsIndex(): Map<String, List<MoveJobEntry>> {
-        val map = mutableMapOf<String, MutableList<MoveJobEntry>>()
-        val seen = mutableSetOf<String>()
-        for (worker in WorkerRegistry.workers) {
-            if (!seen.add(worker.name)) continue
-            val config = JobConfigManager.get(worker.name)
-            if (!config.enabled) continue
-            val moves = config.qualifyingMoves.map { it.lowercase() }.toSet()
-            val isCombo = worker.priority == accieo.cobbleworkers.enums.WorkerPriority.COMBO
-            val displayName = formatName(worker.name)
-            for (move in moves) {
-                map.getOrPut(move) { mutableListOf() }.add(
-                    MoveJobEntry(displayName, isCombo, moves)
-                )
-            }
-        }
-        return map
-    }
-
-    data class MoveJobEntry(
-        val displayName: String,
-        val isCombo: Boolean,
-        val allRequiredMoves: Set<String>,
-    )
-
     private fun formatName(snakeCase: String): String =
         snakeCase.split("_").joinToString(" ") { it.replaceFirstChar { c -> c.uppercase() } }
 

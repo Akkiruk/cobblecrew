@@ -1,3 +1,7 @@
+## 2.10.1
+- Removed server-side TM lore enrichment (moved to CobbleDex client-side tooltip instead)
+- Removed getMoveToJobsIndex() and MoveJobEntry from CobbleworkersApi
+
 ## 2.10.0
 - Added job descriptions to all 80+ jobs in CobbleworkersApi (fixes empty descriptions in CobbleDex)
 - Fixed field name mismatch: API now sends hardcodedSpecies/hardcodedSpeciesEnabled (matching CobbleDex wire format)
