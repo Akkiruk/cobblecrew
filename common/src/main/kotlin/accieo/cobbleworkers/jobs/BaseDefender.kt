@@ -41,6 +41,11 @@ abstract class BaseDefender : Worker {
     /** Apply the defense effect to the target mob. */
     abstract fun applyEffect(world: World, pokemonEntity: PokemonEntity, target: HostileEntity)
 
+    override fun isAvailable(world: World, origin: BlockPos, pokemonId: UUID): Boolean {
+        val searchBox = Box(origin).expand(searchRadius.toDouble(), searchHeight.toDouble(), searchRadius.toDouble())
+        return world.getEntitiesByClass(HostileEntity::class.java, searchBox) { it.isAlive }.isNotEmpty()
+    }
+
     override fun tick(world: World, origin: BlockPos, pokemonEntity: PokemonEntity) {
         val pokemonId = pokemonEntity.pokemon.uuid
 

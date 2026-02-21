@@ -49,6 +49,10 @@ abstract class BaseHarvester : Worker {
     /** Additional readiness check beyond blockValidator (e.g. crop maturity). */
     open fun isTargetReady(world: World, pos: BlockPos): Boolean = true
 
+    override fun isAvailable(world: World, origin: BlockPos, pokemonId: UUID): Boolean {
+        return findClosestTarget(world, origin) != null
+    }
+
     companion object {
         private const val OVERFLOW_TIMEOUT_TICKS = 600L // 30 seconds
     }

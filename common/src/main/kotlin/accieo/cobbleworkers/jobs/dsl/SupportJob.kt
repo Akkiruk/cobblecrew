@@ -33,6 +33,7 @@ open class SupportJob(
     override val statusEffect: RegistryEntry<StatusEffect>,
     val defaultDurationSeconds: Int = 20,
     override val effectAmplifier: Int = 0,
+    override val requiresDamage: Boolean = false,
 ) : BaseSupport() {
 
     private val config get() = JobConfigManager.get(name)

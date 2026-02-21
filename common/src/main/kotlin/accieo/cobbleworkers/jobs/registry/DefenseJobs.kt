@@ -38,12 +38,9 @@ object DefenseJobs {
         qualifyingMoves = setOf("detect", "foresight", "odorsleuth", "meanlook"),
         fallbackSpecies = listOf("Persian", "Noctowl", "Watchog"),
         particle = ParticleTypes.ELECTRIC_SPARK,
-        effectFn = { world, _, target ->
-            (world as? ServerWorld)?.spawnParticles(
-                ParticleTypes.ELECTRIC_SPARK,
-                target.x, target.boundingBox.maxY, target.z,
-                15, 0.5, 0.5, 0.5, 0.1,
-            )
+        effectFn = { _, _, target ->
+            target.addStatusEffect(StatusEffectInstance(StatusEffects.GLOWING, 400, 0))
+            target.addStatusEffect(StatusEffectInstance(StatusEffects.WEAKNESS, 200, 0))
         },
     )
 

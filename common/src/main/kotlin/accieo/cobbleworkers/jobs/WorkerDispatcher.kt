@@ -51,7 +51,7 @@ object WorkerDispatcher {
     fun tickPokemon(world: World, pastureOrigin: BlockPos, pokemonEntity: PokemonEntity) {
         val pokemonId = pokemonEntity.pokemon.uuid
         val profile = getOrBuildProfile(pokemonEntity)
-        val eligible = profile.bestEligible()
+        val eligible = profile.allEligible()
 
         if (eligible.isEmpty()) {
             activeJobs.remove(pokemonId)
@@ -77,14 +77,20 @@ object WorkerDispatcher {
             }
         }
 
-        // Select new job — prefer jobs with available targets
-        val available = eligible.filter { it.isAvailable(world, pastureOrigin, pokemonId) }
-        val pool = available.ifEmpty { eligible }
-        val job = pool.random().also {
-            activeJobs[pokemonId] = it
-            jobAssignedTick[pokemonId] = now
+        // Shuffle and cycle: try each eligible job until one is actually available
+        val shuffled = eligible.shuffled()
+        val job = shuffled.firstOrNull { it.isAvailable(world, pastureOrigin, pokemonId) }
+
+        if (job == null) {
+            // Nothing available right now — idle at pasture
+            activeJobs.remove(pokemonId)
+            WorkerVisualUtils.setExcited(pokemonEntity, false)
+            returnToPasture(pokemonEntity, pastureOrigin)
+            return
         }
 
+        activeJobs[pokemonId] = job
+        jobAssignedTick[pokemonId] = now
         WorkerVisualUtils.setExcited(pokemonEntity, true)
         job.tick(world, pastureOrigin, pokemonEntity)
     }

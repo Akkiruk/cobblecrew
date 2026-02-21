@@ -58,6 +58,7 @@ object SupportJobs {
         statusEffect = StatusEffects.REGENERATION,
         defaultDurationSeconds = 30,
         effectAmplifier = 0,
+        requiresDamage = true,
     )
 
     val SPEED_BOOSTER = SupportJob(

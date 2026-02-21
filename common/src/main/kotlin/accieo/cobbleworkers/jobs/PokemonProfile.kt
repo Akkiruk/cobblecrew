@@ -28,9 +28,14 @@ data class PokemonProfile(
     val speciesEligible: List<Worker>,
     val typeEligible: List<Worker>,
 ) {
-    /** Returns the highest-priority non-empty eligibility tier. */
-    fun bestEligible(): List<Worker> =
-        comboEligible.ifEmpty { moveEligible.ifEmpty { speciesEligible.ifEmpty { typeEligible } } }
+    /**
+     * Returns all eligible jobs flattened, ordered by priority tier
+     * (COMBO first, then MOVE, SPECIES, TYPE). Pokémon can do any
+     * eligible job — higher tiers are just listed first so shuffled
+     * selection naturally favors them.
+     */
+    fun allEligible(): List<Worker> =
+        comboEligible + moveEligible + speciesEligible + typeEligible
 
     companion object {
         fun build(

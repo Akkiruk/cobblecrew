@@ -1,3 +1,12 @@
+## 2.10.5
+- Pokémon now shuffle through all eligible jobs and pick the first one with actual work available, instead of getting stuck on unavailable jobs
+- Removed priority tier lockout: Pokémon can now do ANY eligible job (combo/move/species/type) instead of being locked to only the highest tier
+- Support workers (Speed, Strength, Haste, etc.) now buff full-health players; only Healer requires damaged targets
+- Bonemeal Applicator now skips fully grown crops instead of wasting bone meal on them
+- Sentry now applies Glowing + Weakness to hostiles instead of just spawning particles
+- Added isAvailable checks to BaseHarvester, BaseDefender, BaseSupport, and all environmental jobs so the dispatcher can properly skip jobs with no targets
+- Pokémon return to pasture when no jobs have available work instead of wandering aimlessly
+
 ## 2.10.4
 - Fixed Paper Maker and Composter silently destroying items (extracted 1 item but recipes need 3 and 7)
 - Fixed Scout resetting its 10-minute cooldown before finding a map, blocking all subsequent attempts

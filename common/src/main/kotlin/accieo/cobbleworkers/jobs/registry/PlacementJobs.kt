@@ -127,8 +127,13 @@ object PlacementJobs {
         findTarget = { world, origin ->
             BlockPos.iterateOutwards(origin, SEARCH_RADIUS, SEARCH_RADIUS, SEARCH_RADIUS)
                 .firstOrNull { pos ->
-                    val block = world.getBlockState(pos).block
-                    block is CropBlock || block is SaplingBlock
+                    val state = world.getBlockState(pos)
+                    val block = state.block
+                    when {
+                        block is CropBlock -> block.getAge(state) < block.maxAge
+                        block is SaplingBlock -> true
+                        else -> false
+                    }
                 }?.toImmutable()
         },
         placeFn = { world, pos, stack ->

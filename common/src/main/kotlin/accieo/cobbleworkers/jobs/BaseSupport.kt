@@ -49,6 +49,18 @@ abstract class BaseSupport : Worker {
     /** Whether to skip players who already have this effect. */
     open val skipIfAlreadyActive: Boolean = true
 
+    /** Whether this support job only targets damaged players (e.g. Healer). */
+    open val requiresDamage: Boolean = false
+
+    override fun isAvailable(world: World, origin: BlockPos, pokemonId: java.util.UUID): Boolean {
+        val players = findNearbyPlayers(world, origin)
+        return players.any { player ->
+            val effectOk = if (skipIfAlreadyActive) !player.hasStatusEffect(statusEffect) else true
+            val healthOk = !requiresDamage || player.health < player.maxHealth
+            effectOk && healthOk
+        }
+    }
+
     override fun tick(world: World, origin: BlockPos, pokemonEntity: PokemonEntity) {
         val pokemonId = pokemonEntity.pokemon.uuid
         val nearbyPlayers = findNearbyPlayers(world, origin)
@@ -61,7 +73,7 @@ abstract class BaseSupport : Worker {
             .filter { player ->
                 if (skipIfAlreadyActive) !player.hasStatusEffect(statusEffect) else true
             }
-            .filter { it.health < it.maxHealth || !skipIfAlreadyActive }
+            .filter { !requiresDamage || it.health < it.maxHealth }
             .minByOrNull { it.squaredDistanceTo(pokemonEntity.pos) }
             ?: return
 

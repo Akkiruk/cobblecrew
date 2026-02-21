@@ -146,6 +146,10 @@ object EnvironmentalJobs {
             return ft in types
         }
 
+        override fun isAvailable(world: World, origin: BlockPos, pokemonId: UUID): Boolean {
+            return CobbleworkersCacheManager.getTargets(origin, BlockCategory.LAVA).isNotEmpty()
+        }
+
         override fun tick(world: World, origin: BlockPos, pokemonEntity: PokemonEntity) {
             val pid = pokemonEntity.pokemon.uuid
             val target = targets[pid]
@@ -213,6 +217,10 @@ object EnvironmentalJobs {
             if (moves.any { it in eff }) return true
             val ft = config.fallbackType.ifEmpty { "GRASS" }.uppercase()
             return ft in types
+        }
+
+        override fun isAvailable(world: World, origin: BlockPos, pokemonId: UUID): Boolean {
+            return CobbleworkersCacheManager.getTargets(origin, BlockCategory.GROWABLE).isNotEmpty()
         }
 
         override fun tick(world: World, origin: BlockPos, pokemonEntity: PokemonEntity) {
@@ -287,6 +295,10 @@ object EnvironmentalJobs {
             return ft in types
         }
 
+        override fun isAvailable(world: World, origin: BlockPos, pokemonId: UUID): Boolean {
+            return CobbleworkersCauldronUtils.findClosestCauldron(world, origin) != null
+        }
+
         override fun tick(world: World, origin: BlockPos, pokemonEntity: PokemonEntity) {
             val pid = pokemonEntity.pokemon.uuid
             val now = world.time
@@ -339,6 +351,10 @@ object EnvironmentalJobs {
             if (moves.any { it in eff }) return true
             val ft = config.fallbackType.ifEmpty { "WATER" }.uppercase()
             return ft in types
+        }
+
+        override fun isAvailable(world: World, origin: BlockPos, pokemonId: UUID): Boolean {
+            return CobbleworkersCauldronUtils.findClosestCauldron(world, origin) != null
         }
 
         override fun tick(world: World, origin: BlockPos, pokemonEntity: PokemonEntity) {
@@ -395,6 +411,10 @@ object EnvironmentalJobs {
             return ft in types
         }
 
+        override fun isAvailable(world: World, origin: BlockPos, pokemonId: UUID): Boolean {
+            return CobbleworkersCauldronUtils.findClosestCauldron(world, origin) != null
+        }
+
         override fun tick(world: World, origin: BlockPos, pokemonEntity: PokemonEntity) {
             val pid = pokemonEntity.pokemon.uuid
             val now = world.time
@@ -448,6 +468,10 @@ object EnvironmentalJobs {
             if (moves.any { it in eff }) return true
             val ft = config.fallbackType.ifEmpty { "FIRE" }.uppercase()
             return ft in types
+        }
+
+        override fun isAvailable(world: World, origin: BlockPos, pokemonId: UUID): Boolean {
+            return findReadyFurnace(world, origin) != null
         }
 
         override fun tick(world: World, origin: BlockPos, pokemonEntity: PokemonEntity) {
@@ -528,6 +552,10 @@ object EnvironmentalJobs {
             return ft in types
         }
 
+        override fun isAvailable(world: World, origin: BlockPos, pokemonId: UUID): Boolean {
+            return findReadyBrewingStand(world, origin) != null
+        }
+
         override fun tick(world: World, origin: BlockPos, pokemonEntity: PokemonEntity) {
             val pid = pokemonEntity.pokemon.uuid
             val now = world.time
@@ -604,6 +632,10 @@ object EnvironmentalJobs {
             return ft in types
         }
 
+        override fun isAvailable(world: World, origin: BlockPos, pokemonId: UUID): Boolean {
+            return CobbleworkersCacheManager.getTargets(origin, BlockCategory.FIRE).isNotEmpty()
+        }
+
         override fun tick(world: World, origin: BlockPos, pokemonEntity: PokemonEntity) {
             val pid = pokemonEntity.pokemon.uuid
             val target = targets[pid]
@@ -665,6 +697,10 @@ object EnvironmentalJobs {
             if (moves.any { it in eff }) return true
             val ft = config.fallbackType.ifEmpty { "WATER" }.uppercase()
             return ft in types
+        }
+
+        override fun isAvailable(world: World, origin: BlockPos, pokemonId: UUID): Boolean {
+            return findDryFarmland(world, origin) != null
         }
 
         override fun tick(world: World, origin: BlockPos, pokemonEntity: PokemonEntity) {
@@ -736,6 +772,10 @@ object EnvironmentalJobs {
             if (moves.any { it in eff }) return true
             val sp = config.fallbackSpecies.ifEmpty { fallbackSpecies }
             return sp.any { it.equals(species, ignoreCase = true) }
+        }
+
+        override fun isAvailable(world: World, origin: BlockPos, pokemonId: UUID): Boolean {
+            return findNonFullHive(world, origin) != null
         }
 
         override fun tick(world: World, origin: BlockPos, pokemonEntity: PokemonEntity) {
