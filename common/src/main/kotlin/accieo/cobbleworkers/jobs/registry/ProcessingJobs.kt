@@ -22,8 +22,7 @@ object ProcessingJobs {
 
     val ORE_SMELTER = ProcessingJob(
         name = "ore_smelter",
-        qualifyingMoves = setOf("flamethrower", "fireblast", "magmastorm"),
-        fallbackSpecies = listOf("Magcargo", "Coalossal", "Torkoal"),
+        qualifyingMoves = setOf("flamethrower", "magmastorm"),
         particle = ParticleTypes.FLAME,
         inputCheck = { stack ->
             stack.item in setOf(Items.RAW_IRON, Items.RAW_GOLD, Items.RAW_COPPER)
@@ -40,8 +39,7 @@ object ProcessingJobs {
 
     val FOOD_COOKER = ProcessingJob(
         name = "food_cooker",
-        qualifyingMoves = setOf("ember", "firepunch", "flamecharge"),
-        fallbackType = "FIRE",
+        qualifyingMoves = setOf("ember", "flamecharge"),
         particle = ParticleTypes.FLAME,
         inputCheck = { stack ->
             stack.item in setOf(
@@ -68,7 +66,7 @@ object ProcessingJobs {
 
     val GLASS_MAKER = ProcessingJob(
         name = "glass_maker",
-        qualifyingMoves = setOf("heatwave", "overheat", "mysticalfire"),
+        qualifyingMoves = setOf("heatwave", "mysticalfire"),
         particle = ParticleTypes.FLAME,
         inputCheck = { it.item == Items.SAND || it.item == Items.RED_SAND },
         transformFn = { input -> listOf(ItemStack(Items.GLASS, input.count)) },
@@ -77,7 +75,6 @@ object ProcessingJobs {
     val BRICK_BAKER = ProcessingJob(
         name = "brick_baker",
         qualifyingMoves = setOf("firespin", "lavaplume"),
-        fallbackSpecies = listOf("Numel", "Torkoal", "Slugma", "Rolycoly"),
         particle = ParticleTypes.FLAME,
         inputCheck = { it.item == Items.CLAY_BALL },
         transformFn = { input -> listOf(ItemStack(Items.BRICK, input.count)) },
@@ -86,7 +83,6 @@ object ProcessingJobs {
     val CHARCOAL_BURNER = ProcessingJob(
         name = "charcoal_burner",
         qualifyingMoves = setOf("blastburn", "burnup"),
-        fallbackType = "FIRE",
         particle = ParticleTypes.CAMPFIRE_COSY_SMOKE,
         inputCheck = { stack ->
             stack.item in setOf(
@@ -113,7 +109,6 @@ object ProcessingJobs {
     val BONE_GRINDER = ProcessingJob(
         name = "bone_grinder",
         qualifyingMoves = setOf("bonemerang", "boneclub"),
-        fallbackSpecies = listOf("Cubone", "Marowak"),
         particle = ParticleTypes.CRIT,
         inputCheck = { it.item == Items.BONE },
         transformFn = { input -> listOf(ItemStack(Items.BONE_MEAL, input.count * 3)) },
@@ -122,7 +117,6 @@ object ProcessingJobs {
     val FLINT_KNAPPER = ProcessingJob(
         name = "flint_knapper",
         qualifyingMoves = setOf("karatechop", "crosschop"),
-        fallbackSpecies = listOf("Golem", "Rhyperior"),
         particle = ParticleTypes.CRIT,
         inputCheck = { it.item == Items.GRAVEL },
         transformFn = { input -> listOf(ItemStack(Items.FLINT, input.count)) },
@@ -131,7 +125,6 @@ object ProcessingJobs {
     val PIGMENT_PRESSER = ProcessingJob(
         name = "pigment_presser",
         qualifyingMoves = setOf("hammerarm", "bodypress"),
-        fallbackSpecies = listOf("Pangoro", "Machamp"),
         particle = ParticleTypes.COMPOSTER,
         inputCheck = { stack ->
             stack.item in setOf(
@@ -172,7 +165,6 @@ object ProcessingJobs {
     val COMPOSTER = object : ProcessingJob(
         name = "composter",
         qualifyingMoves = setOf("stockpile", "acidspray"),
-        fallbackSpecies = listOf("Trubbish", "Garbodor", "Grimer", "Muk"),
         particle = ParticleTypes.COMPOSTER,
         inputCheck = { stack ->
             stack.item in setOf(

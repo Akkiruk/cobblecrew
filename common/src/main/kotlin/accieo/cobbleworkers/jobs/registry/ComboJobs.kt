@@ -17,6 +17,7 @@ import accieo.cobbleworkers.jobs.dsl.GatheringJob
 import accieo.cobbleworkers.jobs.dsl.ProductionJob
 import accieo.cobbleworkers.jobs.dsl.ProcessingJob
 import accieo.cobbleworkers.jobs.dsl.SupportJob
+import accieo.cobbleworkers.utilities.CobbleworkersTags
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import net.minecraft.block.Block
 import net.minecraft.entity.effect.StatusEffects
@@ -310,9 +311,7 @@ object ComboJobs {
         qualifyingMoves = setOf("overheat", "ironhead"),
         particle = ParticleTypes.LAVA,
         priority = WorkerPriority.COMBO,
-        inputCheck = { stack ->
-            stack.item in setOf(Items.RAW_IRON, Items.RAW_GOLD, Items.RAW_COPPER)
-        },
+        inputCheck = { stack -> stack.isIn(CobbleworkersTags.Items.RAW_MATERIALS) },
         transformFn = { input ->
             val ingot = when (input.item) {
                 Items.RAW_IRON -> Items.IRON_INGOT

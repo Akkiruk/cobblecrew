@@ -23,8 +23,7 @@ object DefenseJobs {
 
     val GUARD = DefenseJob(
         name = "guard",
-        qualifyingMoves = setOf("bite", "crunch", "closecombat"),
-        fallbackSpecies = listOf("Growlithe", "Arcanine", "Lucario", "Lycanroc"),
+        qualifyingMoves = setOf("bite", "crunch"),
         particle = ParticleTypes.CRIT,
         effectFn = { world, pokemon, target ->
             (world as? ServerWorld)?.let { sw ->
@@ -35,8 +34,7 @@ object DefenseJobs {
 
     val SENTRY = DefenseJob(
         name = "sentry",
-        qualifyingMoves = setOf("detect", "foresight", "odorsleuth", "meanlook"),
-        fallbackSpecies = listOf("Persian", "Noctowl", "Watchog"),
+        qualifyingMoves = setOf("detect", "foresight"),
         particle = ParticleTypes.ELECTRIC_SPARK,
         effectFn = { _, _, target ->
             target.addStatusEffect(StatusEffectInstance(StatusEffects.GLOWING, 400, 0))
@@ -46,8 +44,7 @@ object DefenseJobs {
 
     val REPELLER = DefenseJob(
         name = "repeller",
-        qualifyingMoves = setOf("roar", "whirlwind", "dragontail", "circlethrow"),
-        fallbackSpecies = listOf("Gyarados", "Salamence"),
+        qualifyingMoves = setOf("roar", "whirlwind"),
         particle = ParticleTypes.POOF,
         effectFn = { _, pokemon, target ->
             val dx = target.x - pokemon.x
@@ -61,8 +58,7 @@ object DefenseJobs {
 
     val FEARMONGER = DefenseJob(
         name = "fearmonger",
-        qualifyingMoves = setOf("scaryface", "glare", "snarl", "screech"),
-        fallbackSpecies = listOf("Gyarados", "Arcanine"),
+        qualifyingMoves = setOf("scaryface", "glare"),
         particle = ParticleTypes.WITCH,
         effectFn = { _, pokemon, target ->
             val dx = target.x - pokemon.x
@@ -76,8 +72,7 @@ object DefenseJobs {
 
     val FIRE_TRAP = DefenseJob(
         name = "fire_trap",
-        qualifyingMoves = setOf("flamewheel", "searingshot", "firelash"),
-        fallbackType = "FIRE",
+        qualifyingMoves = setOf("flamewheel", "firelash"),
         particle = ParticleTypes.FLAME,
         effectFn = { _, _, target ->
             target.setOnFireFor(5f)
@@ -86,8 +81,7 @@ object DefenseJobs {
 
     val POISON_TRAP = DefenseJob(
         name = "poison_trap",
-        qualifyingMoves = setOf("toxicspikes", "sludgewave", "venoshock"),
-        fallbackType = "POISON",
+        qualifyingMoves = setOf("toxicspikes", "sludgewave"),
         particle = ParticleTypes.ITEM_SLIME,
         effectFn = { _, _, target ->
             target.addStatusEffect(StatusEffectInstance(StatusEffects.POISON, 200, 1))
@@ -96,8 +90,7 @@ object DefenseJobs {
 
     val ICE_TRAP = DefenseJob(
         name = "ice_trap",
-        qualifyingMoves = setOf("blizzard", "freezedry", "glaciate"),
-        fallbackType = "ICE",
+        qualifyingMoves = setOf("freezedry", "glaciate"),
         particle = ParticleTypes.SNOWFLAKE,
         effectFn = { _, _, target ->
             target.addStatusEffect(StatusEffectInstance(StatusEffects.SLOWNESS, 300, 3))

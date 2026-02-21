@@ -69,19 +69,8 @@ open class GatheringJob(
 
     override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean {
         if (!config.enabled) return false
-
         val effectiveMoves = config.qualifyingMoves.ifEmpty { qualifyingMoves }.map { it.lowercase() }.toSet()
-        val effectiveType = config.fallbackType.ifEmpty { fallbackType }.uppercase()
-        val effectiveSpecies = config.fallbackSpecies.ifEmpty { fallbackSpecies }
-
-        if (moves.any { it in effectiveMoves }) return true
-        for ((move, requiredType) in typeGatedMoves) {
-            if (move in moves && requiredType.uppercase() in types) return true
-        }
-        if (effectiveSpecies.any { it.equals(species, ignoreCase = true) }) return true
-        if (effectiveType.isNotEmpty() && effectiveType in types) return true
-
-        return false
+        return moves.any { it in effectiveMoves }
     }
 
     override fun isTargetReady(world: World, pos: BlockPos): Boolean {

@@ -43,7 +43,7 @@ object EnvironmentalJobs {
         override val targetCategory = BlockCategory.WATER
 
         private val config get() = JobConfigManager.get(name)
-        private val qualifyingMoves = setOf("icebeam", "sheercold", "auroraveil")
+        private val qualifyingMoves = setOf("icebeam", "auroraveil")
         private val targets = mutableMapOf<UUID, BlockPos>()
 
         private val CHAIN = mapOf(
@@ -56,16 +56,13 @@ object EnvironmentalJobs {
             JobConfigManager.registerDefault("environmental", name, JobConfig(
                 enabled = true,
                 qualifyingMoves = qualifyingMoves.toList(),
-                fallbackType = "ICE",
             ))
         }
 
         override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean {
             if (!config.enabled) return false
             val eff = config.qualifyingMoves.ifEmpty { qualifyingMoves }.map { it.lowercase() }.toSet()
-            if (moves.any { it in eff }) return true
-            val ft = config.fallbackType.ifEmpty { "ICE" }.uppercase()
-            return ft in types
+            return moves.any { it in eff }
         }
 
         override fun isAvailable(world: World, origin: BlockPos, pokemonId: UUID): Boolean {
@@ -127,23 +124,20 @@ object EnvironmentalJobs {
         override val targetCategory = BlockCategory.LAVA
 
         private val config get() = JobConfigManager.get(name)
-        private val qualifyingMoves = setOf("hydropump", "scald", "aquatail", "brine")
+        private val qualifyingMoves = setOf("hydropump", "scald")
         private val targets = mutableMapOf<UUID, BlockPos>()
 
         init {
             JobConfigManager.registerDefault("environmental", name, JobConfig(
                 enabled = true,
                 qualifyingMoves = qualifyingMoves.toList(),
-                fallbackType = "WATER",
             ))
         }
 
         override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean {
             if (!config.enabled) return false
             val eff = config.qualifyingMoves.ifEmpty { qualifyingMoves }.map { it.lowercase() }.toSet()
-            if (moves.any { it in eff }) return true
-            val ft = config.fallbackType.ifEmpty { "WATER" }.uppercase()
-            return ft in types
+            return moves.any { it in eff }
         }
 
         override fun isAvailable(world: World, origin: BlockPos, pokemonId: UUID): Boolean {
@@ -200,23 +194,20 @@ object EnvironmentalJobs {
         override val targetCategory = BlockCategory.GROWABLE
 
         private val config get() = JobConfigManager.get(name)
-        private val qualifyingMoves = setOf("growth", "sunnyday", "grassyterrain")
+        private val qualifyingMoves = setOf("growth", "sunnyday")
         private val targets = mutableMapOf<UUID, BlockPos>()
 
         init {
             JobConfigManager.registerDefault("environmental", name, JobConfig(
                 enabled = true,
                 qualifyingMoves = qualifyingMoves.toList(),
-                fallbackType = "GRASS",
             ))
         }
 
         override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean {
             if (!config.enabled) return false
             val eff = config.qualifyingMoves.ifEmpty { qualifyingMoves }.map { it.lowercase() }.toSet()
-            if (moves.any { it in eff }) return true
-            val ft = config.fallbackType.ifEmpty { "GRASS" }.uppercase()
-            return ft in types
+            return moves.any { it in eff }
         }
 
         override fun isAvailable(world: World, origin: BlockPos, pokemonId: UUID): Boolean {
@@ -275,7 +266,7 @@ object EnvironmentalJobs {
         override val targetCategory = BlockCategory.CAULDRON
 
         private val config get() = JobConfigManager.get(name)
-        private val qualifyingMoves = setOf("lavaplume", "heatwave", "eruption")
+        private val qualifyingMoves = setOf("lavaplume", "eruption")
         private val lastGenTime = mutableMapOf<UUID, Long>()
 
         init {
@@ -283,16 +274,13 @@ object EnvironmentalJobs {
                 enabled = true,
                 cooldownSeconds = 90,
                 qualifyingMoves = qualifyingMoves.toList(),
-                fallbackType = "FIRE",
             ))
         }
 
         override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean {
             if (!config.enabled) return false
             val eff = config.qualifyingMoves.ifEmpty { qualifyingMoves }.map { it.lowercase() }.toSet()
-            if (moves.any { it in eff }) return true
-            val ft = config.fallbackType.ifEmpty { "FIRE" }.uppercase()
-            return ft in types
+            return moves.any { it in eff }
         }
 
         override fun isAvailable(world: World, origin: BlockPos, pokemonId: UUID): Boolean {
@@ -333,7 +321,7 @@ object EnvironmentalJobs {
         override val targetCategory = BlockCategory.CAULDRON
 
         private val config get() = JobConfigManager.get(name)
-        private val qualifyingMoves = setOf("surf", "watergun", "hydropump")
+        private val qualifyingMoves = setOf("surf", "watergun")
         private val lastGenTime = mutableMapOf<UUID, Long>()
 
         init {
@@ -341,16 +329,13 @@ object EnvironmentalJobs {
                 enabled = true,
                 cooldownSeconds = 90,
                 qualifyingMoves = qualifyingMoves.toList(),
-                fallbackType = "WATER",
             ))
         }
 
         override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean {
             if (!config.enabled) return false
             val eff = config.qualifyingMoves.ifEmpty { qualifyingMoves }.map { it.lowercase() }.toSet()
-            if (moves.any { it in eff }) return true
-            val ft = config.fallbackType.ifEmpty { "WATER" }.uppercase()
-            return ft in types
+            return moves.any { it in eff }
         }
 
         override fun isAvailable(world: World, origin: BlockPos, pokemonId: UUID): Boolean {
@@ -391,7 +376,7 @@ object EnvironmentalJobs {
         override val targetCategory = BlockCategory.CAULDRON
 
         private val config get() = JobConfigManager.get(name)
-        private val qualifyingMoves = setOf("blizzard", "iciclecrash", "powdersnow")
+        private val qualifyingMoves = setOf("blizzard", "powdersnow")
         private val lastGenTime = mutableMapOf<UUID, Long>()
 
         init {
@@ -399,16 +384,13 @@ object EnvironmentalJobs {
                 enabled = true,
                 cooldownSeconds = 90,
                 qualifyingMoves = qualifyingMoves.toList(),
-                fallbackType = "ICE",
             ))
         }
 
         override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean {
             if (!config.enabled) return false
             val eff = config.qualifyingMoves.ifEmpty { qualifyingMoves }.map { it.lowercase() }.toSet()
-            if (moves.any { it in eff }) return true
-            val ft = config.fallbackType.ifEmpty { "ICE" }.uppercase()
-            return ft in types
+            return moves.any { it in eff }
         }
 
         override fun isAvailable(world: World, origin: BlockPos, pokemonId: UUID): Boolean {
@@ -449,7 +431,7 @@ object EnvironmentalJobs {
         override val targetCategory = BlockCategory.FURNACE
 
         private val config get() = JobConfigManager.get(name)
-        private val qualifyingMoves = setOf("flamethrower", "fireblast", "firespin")
+        private val qualifyingMoves = setOf("flamethrower", "fireblast")
         private val lastGenTime = mutableMapOf<UUID, Long>()
 
         init {
@@ -457,7 +439,6 @@ object EnvironmentalJobs {
                 enabled = true,
                 cooldownSeconds = 80,
                 qualifyingMoves = qualifyingMoves.toList(),
-                fallbackType = "FIRE",
                 burnTimeSeconds = 200,
             ))
         }
@@ -465,9 +446,7 @@ object EnvironmentalJobs {
         override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean {
             if (!config.enabled) return false
             val eff = config.qualifyingMoves.ifEmpty { qualifyingMoves }.map { it.lowercase() }.toSet()
-            if (moves.any { it in eff }) return true
-            val ft = config.fallbackType.ifEmpty { "FIRE" }.uppercase()
-            return ft in types
+            return moves.any { it in eff }
         }
 
         override fun isAvailable(world: World, origin: BlockPos, pokemonId: UUID): Boolean {
@@ -531,7 +510,7 @@ object EnvironmentalJobs {
         override val targetCategory = BlockCategory.BREWING_STAND
 
         private val config get() = JobConfigManager.get(name)
-        private val qualifyingMoves = setOf("dragonbreath", "dracometeor", "dragonpulse")
+        private val qualifyingMoves = setOf("dragonbreath", "dragonpulse")
         private val lastGenTime = mutableMapOf<UUID, Long>()
 
         init {
@@ -539,7 +518,6 @@ object EnvironmentalJobs {
                 enabled = true,
                 cooldownSeconds = 80,
                 qualifyingMoves = qualifyingMoves.toList(),
-                fallbackType = "DRAGON",
                 addedFuel = 10,
             ))
         }
@@ -547,9 +525,7 @@ object EnvironmentalJobs {
         override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean {
             if (!config.enabled) return false
             val eff = config.qualifyingMoves.ifEmpty { qualifyingMoves }.map { it.lowercase() }.toSet()
-            if (moves.any { it in eff }) return true
-            val ft = config.fallbackType.ifEmpty { "DRAGON" }.uppercase()
-            return ft in types
+            return moves.any { it in eff }
         }
 
         override fun isAvailable(world: World, origin: BlockPos, pokemonId: UUID): Boolean {
@@ -612,14 +588,13 @@ object EnvironmentalJobs {
         override val targetCategory = BlockCategory.FIRE
 
         private val config get() = JobConfigManager.get(name)
-        private val qualifyingMoves = setOf("waterpulse", "raindance", "muddywater")
+        private val qualifyingMoves = setOf("waterpulse", "raindance")
         private val targets = mutableMapOf<UUID, BlockPos>()
 
         init {
             JobConfigManager.registerDefault("environmental", name, JobConfig(
                 enabled = true,
                 qualifyingMoves = qualifyingMoves.toList(),
-                fallbackType = "WATER",
                 radius = 2,
             ))
         }
@@ -627,9 +602,7 @@ object EnvironmentalJobs {
         override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean {
             if (!config.enabled) return false
             val eff = config.qualifyingMoves.ifEmpty { qualifyingMoves }.map { it.lowercase() }.toSet()
-            if (moves.any { it in eff }) return true
-            val ft = config.fallbackType.ifEmpty { "WATER" }.uppercase()
-            return ft in types
+            return moves.any { it in eff }
         }
 
         override fun isAvailable(world: World, origin: BlockPos, pokemonId: UUID): Boolean {
@@ -679,14 +652,13 @@ object EnvironmentalJobs {
         override val targetCategory = BlockCategory.FARMLAND
 
         private val config get() = JobConfigManager.get(name)
-        private val qualifyingMoves = setOf("aquaring", "lifedew", "waterpledge")
+        private val qualifyingMoves = setOf("aquaring", "lifedew")
         private val targets = mutableMapOf<UUID, BlockPos>()
 
         init {
             JobConfigManager.registerDefault("environmental", name, JobConfig(
                 enabled = true,
                 qualifyingMoves = qualifyingMoves.toList(),
-                fallbackType = "WATER",
                 radius = 2,
             ))
         }
@@ -694,9 +666,7 @@ object EnvironmentalJobs {
         override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean {
             if (!config.enabled) return false
             val eff = config.qualifyingMoves.ifEmpty { qualifyingMoves }.map { it.lowercase() }.toSet()
-            if (moves.any { it in eff }) return true
-            val ft = config.fallbackType.ifEmpty { "WATER" }.uppercase()
-            return ft in types
+            return moves.any { it in eff }
         }
 
         override fun isAvailable(world: World, origin: BlockPos, pokemonId: UUID): Boolean {
@@ -753,7 +723,6 @@ object EnvironmentalJobs {
 
         private val config get() = JobConfigManager.get(name)
         private val qualifyingMoves = setOf("pollenpuff", "healorder")
-        private val fallbackSpecies = listOf("Combee", "Vespiquen")
         private val lastGenTime = mutableMapOf<UUID, Long>()
         private val targets = mutableMapOf<UUID, BlockPos>()
 
@@ -762,16 +731,13 @@ object EnvironmentalJobs {
                 enabled = true,
                 cooldownSeconds = 120,
                 qualifyingMoves = qualifyingMoves.toList(),
-                fallbackSpecies = fallbackSpecies,
             ))
         }
 
         override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean {
             if (!config.enabled) return false
             val eff = config.qualifyingMoves.ifEmpty { qualifyingMoves }.map { it.lowercase() }.toSet()
-            if (moves.any { it in eff }) return true
-            val sp = config.fallbackSpecies.ifEmpty { fallbackSpecies }
-            return sp.any { it.equals(species, ignoreCase = true) }
+            return moves.any { it in eff }
         }
 
         override fun isAvailable(world: World, origin: BlockPos, pokemonId: UUID): Boolean {

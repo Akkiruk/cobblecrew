@@ -1,3 +1,9 @@
+## 2.11.0
+- Job eligibility is now purely move-based: Pokémon must know 1-2 specific moves to qualify for each job
+- Removed type and species fallbacks that made every Pokémon of a given type eligible for dozens of jobs
+- Trimmed qualifying moves per job to 1-2 (down from 3-4) for clearer specialization
+- Server owners can still override qualifying moves per job via JSON config
+
 ## 2.10.7
 - Removed trash_disposal job (item deletion risk)
 

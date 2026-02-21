@@ -42,8 +42,7 @@ object LogisticsJobs {
         override val targetCategory: BlockCategory? = null
 
         private val config get() = JobConfigManager.get(name)
-        private val qualifyingMoves = setOf("magnetrise", "flashcannon", "steelbeam", "magneticflux")
-        private val fallbackSpecies = listOf("Magnemite", "Magneton", "Magnezone")
+        private val qualifyingMoves = setOf("magnetrise", "flashcannon")
         private val targets = mutableMapOf<UUID, BlockPos>()
 
         private val NUGGET_TO_INGOT = mapOf(
@@ -55,16 +54,13 @@ object LogisticsJobs {
             JobConfigManager.registerDefault("logistics", name, JobConfig(
                 enabled = true,
                 qualifyingMoves = qualifyingMoves.toList(),
-                fallbackSpecies = fallbackSpecies,
             ))
         }
 
         override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean {
             if (!config.enabled) return false
             val eff = config.qualifyingMoves.ifEmpty { qualifyingMoves }.map { it.lowercase() }.toSet()
-            if (moves.any { it in eff }) return true
-            val sp = config.fallbackSpecies.ifEmpty { fallbackSpecies }
-            return sp.any { it.equals(species, ignoreCase = true) }
+            return moves.any { it in eff }
         }
 
         override fun tick(world: World, origin: BlockPos, pokemonEntity: PokemonEntity) {
@@ -129,7 +125,7 @@ object LogisticsJobs {
         override val targetCategory: BlockCategory? = null
 
         private val config get() = JobConfigManager.get(name)
-        private val qualifyingMoves = setOf("psychic", "telekinesis", "confusion")
+        private val qualifyingMoves = setOf("psychic", "telekinesis")
         private val heldItems = mutableMapOf<UUID, List<ItemStack>>()
         private val failedDeposits = mutableMapOf<UUID, MutableSet<BlockPos>>()
 
@@ -137,7 +133,6 @@ object LogisticsJobs {
             JobConfigManager.registerDefault("logistics", name, JobConfig(
                 enabled = true,
                 qualifyingMoves = qualifyingMoves.toList(),
-                fallbackType = "PSYCHIC",
                 radius = 8,
             ))
         }
@@ -145,9 +140,7 @@ object LogisticsJobs {
         override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean {
             if (!config.enabled) return false
             val eff = config.qualifyingMoves.ifEmpty { qualifyingMoves }.map { it.lowercase() }.toSet()
-            if (moves.any { it in eff }) return true
-            val ft = config.fallbackType.ifEmpty { "PSYCHIC" }.uppercase()
-            return ft in types
+            return moves.any { it in eff }
         }
 
         override fun tick(world: World, origin: BlockPos, pokemonEntity: PokemonEntity) {

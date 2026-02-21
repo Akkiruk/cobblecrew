@@ -11,10 +11,6 @@ package accieo.cobbleworkers.utilities
 import accieo.cobbleworkers.enums.BlockCategory
 import com.cobblemon.mod.common.CobblemonBlocks
 import net.minecraft.block.*
-import net.minecraft.registry.RegistryKeys
-import net.minecraft.registry.tag.BlockTags
-import net.minecraft.registry.tag.TagKey
-import net.minecraft.util.Identifier
 import net.minecraft.util.math.BlockPos
 import net.minecraft.world.World
 
@@ -24,10 +20,6 @@ import net.minecraft.world.World
  * New categories are added here as jobs are implemented in later phases.
  */
 object BlockCategoryValidators {
-    private val APRICORNS_TAG = TagKey.of(RegistryKeys.BLOCK, Identifier.of("cobblemon", "apricorns"))
-    private val BERRIES_TAG = TagKey.of(RegistryKeys.BLOCK, Identifier.of("cobblemon", "berries"))
-    private val MINTS_TAG = TagKey.of(RegistryKeys.BLOCK, Identifier.of("cobblemon", "mints"))
-
     private val TUMBLESTONE_BLOCKS = setOf(
         CobblemonBlocks.TUMBLESTONE_CLUSTER,
         CobblemonBlocks.BLACK_TUMBLESTONE_CLUSTER,
@@ -41,15 +33,7 @@ object BlockCategoryValidators {
     private val IGNEOUS_BLOCKS = setOf(Blocks.GRANITE, Blocks.ANDESITE, Blocks.DIORITE)
     private val DEEPSLATE_BLOCKS = setOf(Blocks.DEEPSLATE, Blocks.COBBLED_DEEPSLATE, Blocks.TUFF, Blocks.CALCITE)
     private val DIRT_BLOCKS = setOf(Blocks.DIRT, Blocks.COARSE_DIRT, Blocks.GRAVEL, Blocks.ROOTED_DIRT)
-    private val SAND_BLOCKS = setOf(Blocks.SAND, Blocks.RED_SAND)
     private val MUSHROOM_BLOCKS = setOf(Blocks.BROWN_MUSHROOM, Blocks.RED_MUSHROOM)
-    private val FLOWER_BLOCKS = setOf(
-        Blocks.DANDELION, Blocks.POPPY, Blocks.BLUE_ORCHID, Blocks.ALLIUM,
-        Blocks.AZURE_BLUET, Blocks.RED_TULIP, Blocks.ORANGE_TULIP, Blocks.WHITE_TULIP,
-        Blocks.PINK_TULIP, Blocks.OXEYE_DAISY, Blocks.CORNFLOWER, Blocks.LILY_OF_THE_VALLEY,
-        Blocks.TORCHFLOWER, Blocks.SUNFLOWER, Blocks.LILAC, Blocks.ROSE_BUSH, Blocks.PEONY,
-        Blocks.PITCHER_PLANT, Blocks.WITHER_ROSE,
-    )
     private val VEGETATION_BLOCKS = setOf(
         Blocks.SHORT_GRASS, Blocks.TALL_GRASS, Blocks.FERN, Blocks.LARGE_FERN,
         Blocks.DEAD_BUSH,
@@ -57,9 +41,9 @@ object BlockCategoryValidators {
 
     val validators: Map<BlockCategory, (World, BlockPos) -> Boolean> = mapOf(
         // Cobblemon growables
-        BlockCategory.APRICORN to { world, pos -> world.getBlockState(pos).isIn(APRICORNS_TAG) },
-        BlockCategory.BERRY to { world, pos -> world.getBlockState(pos).isIn(BERRIES_TAG) },
-        BlockCategory.MINT to { world, pos -> world.getBlockState(pos).isIn(MINTS_TAG) },
+        BlockCategory.APRICORN to { world, pos -> world.getBlockState(pos).isIn(CobbleworkersTags.Blocks.APRICORNS) },
+        BlockCategory.BERRY to { world, pos -> world.getBlockState(pos).isIn(CobbleworkersTags.Blocks.BERRIES) },
+        BlockCategory.MINT to { world, pos -> world.getBlockState(pos).isIn(CobbleworkersTags.Blocks.MINTS) },
         BlockCategory.TUMBLESTONE to { world, pos -> world.getBlockState(pos).block in TUMBLESTONE_BLOCKS },
         BlockCategory.AMETHYST to { world, pos -> world.getBlockState(pos).block == Blocks.AMETHYST_CLUSTER },
 
@@ -95,7 +79,7 @@ object BlockCategoryValidators {
         BlockCategory.IGNEOUS to { world, pos -> world.getBlockState(pos).block in IGNEOUS_BLOCKS },
         BlockCategory.DEEPSLATE to { world, pos -> world.getBlockState(pos).block in DEEPSLATE_BLOCKS },
         BlockCategory.DIRT to { world, pos -> world.getBlockState(pos).block in DIRT_BLOCKS },
-        BlockCategory.SAND to { world, pos -> world.getBlockState(pos).block in SAND_BLOCKS },
+        BlockCategory.SAND to { world, pos -> world.getBlockState(pos).isIn(CobbleworkersTags.Blocks.SAND) },
         BlockCategory.CLAY to { world, pos -> world.getBlockState(pos).block == Blocks.CLAY },
 
         // Minerals & special
@@ -108,22 +92,22 @@ object BlockCategoryValidators {
 
         // Nature
         BlockCategory.MUSHROOM to { world, pos -> world.getBlockState(pos).block in MUSHROOM_BLOCKS },
-        BlockCategory.FLOWER to { world, pos -> world.getBlockState(pos).block in FLOWER_BLOCKS },
+        BlockCategory.FLOWER to { world, pos ->
+            val state = world.getBlockState(pos)
+            state.isIn(CobbleworkersTags.Blocks.SMALL_FLOWERS) || state.isIn(CobbleworkersTags.Blocks.TALL_FLOWERS)
+        },
         BlockCategory.MOSS to { world, pos ->
             val block = world.getBlockState(pos).block
             block == Blocks.MOSS_BLOCK || block == Blocks.MOSS_CARPET || block == Blocks.AZALEA || block == Blocks.FLOWERING_AZALEA
         },
-        BlockCategory.LEAVES to { world, pos -> world.getBlockState(pos).isIn(BlockTags.LEAVES) },
+        BlockCategory.LEAVES to { world, pos -> world.getBlockState(pos).isIn(CobbleworkersTags.Blocks.LEAVES) },
         BlockCategory.VEGETATION to { world, pos -> world.getBlockState(pos).block in VEGETATION_BLOCKS },
 
         // Honey
         BlockCategory.HONEY to { world, pos -> world.getBlockState(pos).block is BeehiveBlock },
 
         // Fire
-        BlockCategory.FIRE to { world, pos ->
-            val block = world.getBlockState(pos).block
-            block == Blocks.FIRE || block == Blocks.SOUL_FIRE
-        },
+        BlockCategory.FIRE to { world, pos -> world.getBlockState(pos).isIn(CobbleworkersTags.Blocks.FIRE) },
 
         // Fluids (source blocks only — flowing would be too noisy)
         BlockCategory.WATER to { world, pos ->

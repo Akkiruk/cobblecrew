@@ -52,8 +52,7 @@ object SupportJobs {
 
     val HEALER = SupportJob(
         name = "healer",
-        qualifyingMoves = setOf("wish", "recover", "moonlight", "healpulse", "lifedew"),
-        fallbackSpecies = listOf("Happiny", "Chansey", "Blissey"),
+        qualifyingMoves = setOf("healpulse", "lifedew"),
         particle = ParticleTypes.HEART,
         statusEffect = StatusEffects.REGENERATION,
         defaultDurationSeconds = 30,
@@ -63,7 +62,7 @@ object SupportJobs {
 
     val SPEED_BOOSTER = SupportJob(
         name = "speed_booster",
-        qualifyingMoves = setOf("tailwind", "agility", "extremespeed"),
+        qualifyingMoves = setOf("tailwind", "agility"),
         particle = ParticleTypes.CLOUD,
         statusEffect = StatusEffects.SPEED,
         defaultDurationSeconds = 30,
@@ -72,8 +71,7 @@ object SupportJobs {
 
     val STRENGTH_BOOSTER = SupportJob(
         name = "strength_booster",
-        qualifyingMoves = setOf("howl", "swordsdance", "coaching"),
-        typeGatedMoves = mapOf("helpinghand" to "FIGHTING"),
+        qualifyingMoves = setOf("howl", "swordsdance"),
         particle = ParticleTypes.CRIT,
         statusEffect = StatusEffects.STRENGTH,
         defaultDurationSeconds = 30,
@@ -82,7 +80,7 @@ object SupportJobs {
 
     val RESISTANCE_PROVIDER = SupportJob(
         name = "resistance_provider",
-        qualifyingMoves = setOf("irondefense", "barrier", "shelter"),
+        qualifyingMoves = setOf("irondefense", "barrier"),
         particle = ParticleTypes.ENCHANT,
         statusEffect = StatusEffects.RESISTANCE,
         defaultDurationSeconds = 30,
@@ -91,7 +89,7 @@ object SupportJobs {
 
     val HASTE_PROVIDER = SupportJob(
         name = "haste_provider",
-        qualifyingMoves = setOf("nastyplot", "calmmind", "focusenergy", "workup"),
+        qualifyingMoves = setOf("nastyplot", "focusenergy"),
         particle = ParticleTypes.ENCHANT,
         statusEffect = StatusEffects.HASTE,
         defaultDurationSeconds = 30,
@@ -100,7 +98,7 @@ object SupportJobs {
 
     val JUMP_BOOSTER = SupportJob(
         name = "jump_booster",
-        qualifyingMoves = setOf("bounce", "highjumpkick", "jumpkick"),
+        qualifyingMoves = setOf("bounce", "highjumpkick"),
         particle = ParticleTypes.CLOUD,
         statusEffect = StatusEffects.JUMP_BOOST,
         defaultDurationSeconds = 30,
@@ -110,7 +108,6 @@ object SupportJobs {
     val NIGHT_VISION_PROVIDER = SupportJob(
         name = "night_vision_provider",
         qualifyingMoves = setOf("miracleeye", "mindreader"),
-        fallbackSpecies = listOf("Noctowl", "Umbreon", "Luxray"),
         particle = ParticleTypes.END_ROD,
         statusEffect = StatusEffects.NIGHT_VISION,
         defaultDurationSeconds = 60,
@@ -129,7 +126,6 @@ object SupportJobs {
     val HUNGER_RESTORER = SupportJob(
         name = "hunger_restorer",
         qualifyingMoves = setOf("swallow", "slackoff"),
-        fallbackSpecies = listOf("Snorlax", "Munchlax", "Miltank"),
         particle = ParticleTypes.HAPPY_VILLAGER,
         statusEffect = StatusEffects.SATURATION,
         defaultDurationSeconds = 5,
@@ -144,7 +140,7 @@ object SupportJobs {
         override val targetCategory: BlockCategory? = null
 
         private val config get() = JobConfigManager.get(name)
-        private val qualifyingMoves = setOf("fly", "aerialace", "bravebird")
+        private val qualifyingMoves = setOf("fly", "aerialace")
         private val heldItems = mutableMapOf<UUID, List<ItemStack>>()
         private val failedDeposits = mutableMapOf<UUID, MutableSet<BlockPos>>()
         private val lastGenTime = mutableMapOf<UUID, Long>()
@@ -155,7 +151,6 @@ object SupportJobs {
                 enabled = true,
                 cooldownSeconds = 600,
                 qualifyingMoves = qualifyingMoves.toList(),
-                fallbackType = "FLYING",
                 structureTags = listOf("minecraft:village", "minecraft:shipwreck"),
                 useAllStructures = false,
                 mapNameIsHidden = false,
@@ -165,9 +160,7 @@ object SupportJobs {
         override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean {
             if (!config.enabled) return false
             val eff = config.qualifyingMoves.ifEmpty { qualifyingMoves }.map { it.lowercase() }.toSet()
-            if (moves.any { it in eff }) return true
-            val ft = config.fallbackType.ifEmpty { "FLYING" }.uppercase()
-            return ft in types
+            return moves.any { it in eff }
         }
 
         override fun tick(world: World, origin: BlockPos, pokemonEntity: PokemonEntity) {

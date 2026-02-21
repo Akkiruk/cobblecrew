@@ -44,7 +44,6 @@ object ProductionJobs {
     val WOOL_PRODUCER = ProductionJob(
         name = "wool_producer",
         qualifyingMoves = setOf("cottonspore", "cottonguard"),
-        fallbackSpecies = listOf("Wooloo", "Dubwool", "Mareep", "Flaaffy"),
         defaultCooldownSeconds = 120,
         particle = ParticleTypes.CLOUD,
         output = { _, _ -> listOf(ItemStack(Items.WHITE_WOOL)) },
@@ -52,8 +51,7 @@ object ProductionJobs {
 
     val SILK_SPINNER = ProductionJob(
         name = "silk_spinner",
-        qualifyingMoves = setOf("stringshot", "spiderweb", "electroweb", "stickyweb"),
-        fallbackSpecies = listOf("Spinarak", "Ariados", "Joltik", "Galvantula", "Snom"),
+        qualifyingMoves = setOf("stringshot", "stickyweb"),
         defaultCooldownSeconds = 90,
         particle = ParticleTypes.CLOUD,
         output = { _, _ -> listOf(ItemStack(Items.STRING, 2)) },
@@ -62,7 +60,6 @@ object ProductionJobs {
     val SLIME_SECRETOR = ProductionJob(
         name = "slime_secretor",
         qualifyingMoves = setOf("acidarmor", "minimize"),
-        fallbackSpecies = listOf("Goomy", "Sliggoo", "Goodra", "Gulpin", "Swalot", "Ditto"),
         defaultCooldownSeconds = 120,
         particle = ParticleTypes.ITEM_SLIME,
         output = { _, _ -> listOf(ItemStack(Items.SLIME_BALL, 2)) },
@@ -71,7 +68,6 @@ object ProductionJobs {
     val INK_SQUIRTER = ProductionJob(
         name = "ink_squirter",
         qualifyingMoves = setOf("octazooka", "waterspout"),
-        fallbackSpecies = listOf("Octillery", "Inkay", "Malamar"),
         defaultCooldownSeconds = 90,
         particle = ParticleTypes.SQUID_INK,
         output = { _, pokemon ->
@@ -84,7 +80,6 @@ object ProductionJobs {
     val BONE_SHEDDER = ProductionJob(
         name = "bone_shedder",
         qualifyingMoves = setOf("bonerush", "shadowbone"),
-        fallbackSpecies = listOf("Cubone", "Marowak", "Mandibuzz"),
         defaultCooldownSeconds = 90,
         particle = ParticleTypes.CRIT,
         output = { _, _ -> listOf(ItemStack(Items.BONE), ItemStack(Items.BONE_MEAL, 2)) },
@@ -93,7 +88,6 @@ object ProductionJobs {
     val PEARL_CREATOR = ProductionJob(
         name = "pearl_creator",
         qualifyingMoves = setOf("shellsmash", "withdraw"),
-        fallbackSpecies = listOf("Clamperl", "Shellder", "Cloyster"),
         defaultCooldownSeconds = 180,
         particle = ParticleTypes.BUBBLE,
         output = { _, _ -> listOf(ItemStack(Items.PRISMARINE_SHARD, 2)) },
@@ -101,7 +95,7 @@ object ProductionJobs {
 
     val FEATHER_MOLTER = ProductionJob(
         name = "feather_molter",
-        qualifyingMoves = setOf("roost", "bravebird", "wingattack", "fly"),
+        qualifyingMoves = setOf("roost", "bravebird"),
         defaultCooldownSeconds = 60,
         particle = ParticleTypes.CLOUD,
         output = { _, _ -> listOf(ItemStack(Items.FEATHER, 2)) },
@@ -110,7 +104,6 @@ object ProductionJobs {
     val SCALE_SHEDDER = ProductionJob(
         name = "scale_shedder",
         qualifyingMoves = setOf("shedtail", "coil"),
-        fallbackSpecies = listOf("Dragonair", "Dragonite", "Gyarados", "Milotic", "Arbok"),
         defaultCooldownSeconds = 180,
         particle = ParticleTypes.CRIT,
         output = { _, _ -> listOf(ItemStack(Items.TURTLE_SCUTE), ItemStack(Items.PRISMARINE_SHARD)) },
@@ -119,7 +112,6 @@ object ProductionJobs {
     val FRUIT_BEARER = ProductionJob(
         name = "fruit_bearer",
         qualifyingMoves = setOf("gravapple", "appleacid"),
-        fallbackSpecies = listOf("Tropius", "Applin", "Flapple", "Appletun"),
         defaultCooldownSeconds = 120,
         particle = ParticleTypes.COMPOSTER,
         output = { _, _ -> listOf(ItemStack(Items.APPLE, 2)) },
@@ -128,7 +120,6 @@ object ProductionJobs {
     val COIN_MINTER = ProductionJob(
         name = "coin_minter",
         qualifyingMoves = setOf("payday"),
-        fallbackSpecies = listOf("Meowth", "Persian", "Perrserker"),
         defaultCooldownSeconds = 180,
         particle = ParticleTypes.WAX_ON,
         output = { _, _ -> listOf(ItemStack(Items.GOLD_NUGGET, 3)) },
@@ -137,7 +128,6 @@ object ProductionJobs {
     val GEM_CRAFTER = ProductionJob(
         name = "gem_crafter",
         qualifyingMoves = setOf("diamondstorm", "meteorbeam"),
-        fallbackSpecies = listOf("Sableye", "Carbink", "Diancie"),
         defaultCooldownSeconds = 180,
         particle = ParticleTypes.WAX_ON,
         output = { _, _ -> listOf(ItemStack(Items.AMETHYST_SHARD, 2), ItemStack(Items.EMERALD)) },
@@ -145,8 +135,7 @@ object ProductionJobs {
 
     val SPORE_RELEASER = ProductionJob(
         name = "spore_releaser",
-        qualifyingMoves = setOf("spore", "ragepowder", "sleeppowder"),
-        fallbackSpecies = listOf("Paras", "Parasect", "Foongus", "Amoonguss"),
+        qualifyingMoves = setOf("spore", "ragepowder"),
         defaultCooldownSeconds = 90,
         particle = ParticleTypes.SPORE_BLOSSOM_AIR,
         output = { _, _ ->
@@ -158,7 +147,6 @@ object ProductionJobs {
     val POLLEN_PACKER = ProductionJob(
         name = "pollen_packer",
         qualifyingMoves = setOf("pollenpuff", "floralhealing"),
-        fallbackSpecies = listOf("Ribombee", "Cutiefly", "Comfey"),
         defaultCooldownSeconds = 120,
         particle = ParticleTypes.WAX_ON,
         output = { _, _ -> listOf(ItemStack(Items.HONEY_BOTTLE)) },
@@ -166,8 +154,7 @@ object ProductionJobs {
 
     val GIFT_GIVER = ProductionJob(
         name = "gift_giver",
-        qualifyingMoves = setOf("present", "bestow", "fling"),
-        fallbackSpecies = listOf("Delibird"),
+        qualifyingMoves = setOf("present", "bestow"),
         defaultCooldownSeconds = 300,
         particle = ParticleTypes.HAPPY_VILLAGER,
         output = { _, _ ->
@@ -183,7 +170,6 @@ object ProductionJobs {
     val EGG_LAYER = ProductionJob(
         name = "egg_layer",
         qualifyingMoves = setOf("softboiled"),
-        fallbackSpecies = listOf("Chansey", "Blissey", "Happiny", "Exeggcute"),
         defaultCooldownSeconds = 120,
         particle = ParticleTypes.HAPPY_VILLAGER,
         output = { _, _ -> listOf(ItemStack(Items.EGG)) },
@@ -192,7 +178,6 @@ object ProductionJobs {
     val MILK_PRODUCER = ProductionJob(
         name = "milk_producer",
         qualifyingMoves = setOf("milkdrink"),
-        fallbackSpecies = listOf("Miltank", "Gogoat"),
         defaultCooldownSeconds = 120,
         particle = ParticleTypes.SPLASH,
         output = { _, _ -> listOf(ItemStack(Items.MILK_BUCKET)) },
@@ -200,8 +185,7 @@ object ProductionJobs {
 
     val ELECTRIC_CHARGER = ProductionJob(
         name = "electric_charger",
-        qualifyingMoves = setOf("charge", "chargebeam", "thunderbolt"),
-        fallbackSpecies = listOf("Jolteon", "Electrode", "Magneton", "Rotom"),
+        qualifyingMoves = setOf("charge", "chargebeam"),
         defaultCooldownSeconds = 120,
         particle = ParticleTypes.ELECTRIC_SPARK,
         output = { _, _ -> listOf(ItemStack(Items.GLOWSTONE_DUST, 2)) },
@@ -210,7 +194,6 @@ object ProductionJobs {
     val WAX_PRODUCER = ProductionJob(
         name = "wax_producer",
         qualifyingMoves = setOf("defendorder", "healorder"),
-        fallbackSpecies = listOf("Vespiquen"),
         defaultCooldownSeconds = 120,
         particle = ParticleTypes.WAX_ON,
         output = { _, _ -> listOf(ItemStack(Items.HONEYCOMB, 2)) },
@@ -218,8 +201,7 @@ object ProductionJobs {
 
     val POWDER_MAKER = ProductionJob(
         name = "powder_maker",
-        qualifyingMoves = setOf("selfdestruct", "explosion", "mindblown"),
-        fallbackSpecies = listOf("Voltorb", "Electrode", "Koffing", "Weezing"),
+        qualifyingMoves = setOf("selfdestruct", "explosion"),
         defaultCooldownSeconds = 120,
         particle = ParticleTypes.SMOKE,
         output = { _, _ -> listOf(ItemStack(Items.GUNPOWDER, 2)) },
@@ -228,7 +210,6 @@ object ProductionJobs {
     val ASH_COLLECTOR = ProductionJob(
         name = "ash_collector",
         qualifyingMoves = setOf("incinerate"),
-        fallbackSpecies = listOf("Torkoal", "Coalossal", "Rolycoly", "Carkol"),
         defaultCooldownSeconds = 120,
         particle = ParticleTypes.CAMPFIRE_COSY_SMOKE,
         output = { _, _ -> listOf(ItemStack(Items.CHARCOAL)) },
@@ -236,8 +217,7 @@ object ProductionJobs {
 
     val STATIC_GENERATOR = ProductionJob(
         name = "static_generator",
-        qualifyingMoves = setOf("thunderwave", "discharge", "electrify"),
-        fallbackType = "ELECTRIC",
+        qualifyingMoves = setOf("thunderwave", "discharge"),
         defaultCooldownSeconds = 120,
         particle = ParticleTypes.ELECTRIC_SPARK,
         output = { _, _ -> listOf(ItemStack(Items.REDSTONE, 2)) },
@@ -245,8 +225,7 @@ object ProductionJobs {
 
     val SAP_TAPPER = ProductionJob(
         name = "sap_tapper",
-        qualifyingMoves = setOf("leechlife", "hornleech", "drainpunch"),
-        fallbackSpecies = listOf("Heracross", "Pinsir"),
+        qualifyingMoves = setOf("leechlife", "hornleech"),
         defaultCooldownSeconds = 120,
         particle = ParticleTypes.DRIPPING_HONEY,
         output = { _, _ ->
@@ -258,8 +237,6 @@ object ProductionJobs {
     val TOXIN_DISTILLER = ProductionJob(
         name = "toxin_distiller",
         qualifyingMoves = setOf("poisonjab", "poisonfang"),
-        typeGatedMoves = mapOf("toxic" to "POISON"),
-        fallbackSpecies = listOf("Arbok", "Toxicroak", "Salazzle"),
         defaultCooldownSeconds = 120,
         particle = ParticleTypes.WITCH,
         output = { _, _ -> listOf(ItemStack(Items.FERMENTED_SPIDER_EYE)) },
@@ -268,7 +245,6 @@ object ProductionJobs {
     val CRYSTAL_GROWER = ProductionJob(
         name = "crystal_grower",
         qualifyingMoves = setOf("ancientpower", "rockpolish"),
-        fallbackSpecies = listOf("Carbink", "Boldore", "Gigalith"),
         defaultCooldownSeconds = 180,
         particle = ParticleTypes.WAX_ON,
         output = { _, _ -> listOf(ItemStack(Items.QUARTZ, 2)) },
@@ -276,8 +252,7 @@ object ProductionJobs {
 
     val TEAR_COLLECTOR = ProductionJob(
         name = "tear_collector",
-        qualifyingMoves = setOf("fakeout", "faketears", "tearfullook"),
-        fallbackSpecies = listOf("Duskull", "Banette", "Misdreavus"),
+        qualifyingMoves = setOf("fakeout", "faketears"),
         defaultCooldownSeconds = 180,
         particle = ParticleTypes.FALLING_WATER,
         output = { _, _ -> listOf(ItemStack(Items.GHAST_TEAR)) },
@@ -291,7 +266,7 @@ object ProductionJobs {
         override val targetCategory: BlockCategory? = null
 
         private val config get() = JobConfigManager.get(name)
-        private val qualifyingMoves = setOf("dive", "surf", "whirlpool")
+        private val qualifyingMoves = setOf("dive", "surf")
         private val lastGenTime = mutableMapOf<UUID, Long>()
         private val heldItems = mutableMapOf<UUID, List<ItemStack>>()
         private val failedDeposits = mutableMapOf<UUID, MutableSet<BlockPos>>()
@@ -301,7 +276,6 @@ object ProductionJobs {
                 enabled = true,
                 cooldownSeconds = 120,
                 qualifyingMoves = qualifyingMoves.toList(),
-                fallbackType = "WATER",
                 treasureChance = 10,
                 requiresWater = true,
             ))
@@ -310,9 +284,7 @@ object ProductionJobs {
         override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean {
             if (!config.enabled) return false
             val eff = config.qualifyingMoves.ifEmpty { qualifyingMoves }.map { it.lowercase() }.toSet()
-            if (moves.any { it in eff }) return true
-            val ft = config.fallbackType.ifEmpty { "WATER" }.uppercase()
-            return ft in types
+            return moves.any { it in eff }
         }
 
         override fun tick(world: World, origin: BlockPos, pokemonEntity: PokemonEntity) {
@@ -508,7 +480,7 @@ object ProductionJobs {
         override val targetCategory = BlockCategory.SUSPICIOUS
 
         private val config get() = JobConfigManager.get(name)
-        private val qualifyingMoves = setOf("dig", "sandtomb", "scorchingsands")
+        private val qualifyingMoves = setOf("dig", "sandtomb")
         private val lastGenTime = mutableMapOf<UUID, Long>()
         private val heldItems = mutableMapOf<UUID, List<ItemStack>>()
         private val failedDeposits = mutableMapOf<UUID, MutableSet<BlockPos>>()
@@ -519,7 +491,6 @@ object ProductionJobs {
                 enabled = true,
                 cooldownSeconds = 120,
                 qualifyingMoves = qualifyingMoves.toList(),
-                fallbackType = "GROUND",
                 lootTables = listOf("cobblemon:gameplay/pickup"),
             ))
         }
@@ -527,9 +498,7 @@ object ProductionJobs {
         override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean {
             if (!config.enabled) return false
             val eff = config.qualifyingMoves.ifEmpty { qualifyingMoves }.map { it.lowercase() }.toSet()
-            if (moves.any { it in eff }) return true
-            val ft = config.fallbackType.ifEmpty { "GROUND" }.uppercase()
-            return ft in types
+            return moves.any { it in eff }
         }
 
         override fun tick(world: World, origin: BlockPos, pokemonEntity: PokemonEntity) {
