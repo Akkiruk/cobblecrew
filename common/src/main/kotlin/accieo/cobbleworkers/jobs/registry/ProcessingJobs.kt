@@ -97,7 +97,7 @@ object ProcessingJobs {
         transformFn = { input -> listOf(ItemStack(Items.CHARCOAL, input.count)) },
     )
 
-    val PAPER_MAKER = ProcessingJob(
+    val PAPER_MAKER = object : ProcessingJob(
         name = "paper_maker",
         qualifyingMoves = setOf("slash", "guillotine"),
         particle = ParticleTypes.CLOUD,
@@ -106,7 +106,9 @@ object ProcessingJobs {
             val batches = input.count / 3
             if (batches > 0) listOf(ItemStack(Items.PAPER, batches * 3)) else emptyList()
         },
-    )
+    ) {
+        override val minExtractAmount: Int = 3
+    }
 
     val BONE_GRINDER = ProcessingJob(
         name = "bone_grinder",
@@ -167,7 +169,7 @@ object ProcessingJobs {
         },
     )
 
-    val COMPOSTER = ProcessingJob(
+    val COMPOSTER = object : ProcessingJob(
         name = "composter",
         qualifyingMoves = setOf("stockpile", "acidspray"),
         fallbackSpecies = listOf("Trubbish", "Garbodor", "Grimer", "Muk"),
@@ -183,7 +185,9 @@ object ProcessingJobs {
             val batchCount = input.count / 7
             if (batchCount > 0) listOf(ItemStack(Items.BONE_MEAL, batchCount)) else emptyList()
         },
-    )
+    ) {
+        override val minExtractAmount: Int = 7
+    }
 
     fun register() {
         WorkerRegistry.registerAll(

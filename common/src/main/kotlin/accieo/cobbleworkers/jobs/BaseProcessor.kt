@@ -42,6 +42,9 @@ abstract class BaseProcessor : Worker {
     /** Transform extracted items into output items. */
     abstract fun transform(input: ItemStack): List<ItemStack>
 
+    /** Minimum number of items to extract per batch. Override for recipes needing >1. */
+    open val minExtractAmount: Int = 1
+
     override fun isAvailable(world: World, origin: BlockPos, pokemonId: UUID): Boolean {
         return CobbleworkersInventoryUtils.findInputContainer(
             world, origin, ::inputPredicate
@@ -66,7 +69,7 @@ abstract class BaseProcessor : Worker {
                 CobbleworkersNavigationUtils.navigateTo(pokemonEntity, target)
                 if (CobbleworkersNavigationUtils.isPokemonAtPosition(pokemonEntity, target, 2.0)) {
                     val taken = CobbleworkersInventoryUtils.extractFromContainer(
-                        world, target, ::inputPredicate
+                        world, target, ::inputPredicate, maxAmount = minExtractAmount
                     )
                     if (taken.isEmpty) {
                         phases[pokemonId] = Phase.IDLE

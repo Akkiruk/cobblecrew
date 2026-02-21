@@ -172,11 +172,6 @@ object SupportJobs {
         override fun tick(world: World, origin: BlockPos, pokemonEntity: PokemonEntity) {
             val pid = pokemonEntity.pokemon.uuid
             val ownerId = pokemonEntity.ownerUuid ?: return
-            val now = world.time
-            val last = lastGenTime[ownerId] ?: 0L
-            val cd = (config.cooldownSeconds.takeIf { it > 0 } ?: 600) * 20L
-            if (now - last < cd) return
-            lastGenTime[ownerId] = now
 
             val held = heldItems[pid]
             if (!held.isNullOrEmpty()) {
@@ -184,6 +179,12 @@ object SupportJobs {
                 return
             }
             failedDeposits.remove(pid)
+
+            val now = world.time
+            val last = lastGenTime[ownerId] ?: 0L
+            val cd = (config.cooldownSeconds.takeIf { it > 0 } ?: 600) * 20L
+            if (now - last < cd) return
+
             handleMapPickup(world, origin, pokemonEntity)
         }
 
@@ -212,6 +213,7 @@ object SupportJobs {
                     if (mapItem.stack.isEmpty) mapItem.discard()
                     val map = createStructureMap(world as ServerWorld, origin)
                     heldItems[pid] = listOf(map ?: singleItem)
+                    lastGenTime[pokemonEntity.ownerUuid!!] = world.time
                 }
                 CobbleworkersNavigationUtils.releaseTarget(pid, world)
             }

@@ -22,6 +22,7 @@ import net.minecraft.registry.entry.RegistryEntry
 import net.minecraft.util.math.BlockPos
 import net.minecraft.util.math.Box
 import net.minecraft.world.World
+import java.util.UUID
 
 /**
  * Base class for support-style workers that find nearby players and apply
@@ -52,7 +53,7 @@ abstract class BaseSupport : Worker {
         val pokemonId = pokemonEntity.pokemon.uuid
         val nearbyPlayers = findNearbyPlayers(world, origin)
         if (nearbyPlayers.isEmpty()) {
-            CobbleworkersNavigationUtils.releaseTarget(pokemonId, world)
+            CobbleworkersNavigationUtils.releasePlayerTarget(pokemonId)
             return
         }
 
@@ -91,5 +92,9 @@ abstract class BaseSupport : Worker {
     private fun findNearbyPlayers(world: World, origin: BlockPos): List<PlayerEntity> {
         val searchBox = Box(origin).expand(searchRadius.toDouble(), searchHeight.toDouble(), searchRadius.toDouble())
         return world.getEntitiesByClass(PlayerEntity::class.java, searchBox) { true }
+    }
+
+    override fun cleanup(pokemonId: UUID) {
+        CobbleworkersNavigationUtils.releasePlayerTarget(pokemonId)
     }
 }

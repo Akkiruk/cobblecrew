@@ -1,3 +1,9 @@
+## 2.10.4
+- Fixed Paper Maker and Composter silently destroying items (extracted 1 item but recipes need 3 and 7)
+- Fixed Scout resetting its 10-minute cooldown before finding a map, blocking all subsequent attempts
+- Fixed Healer/support workers calling wrong release function when no players nearby (leaked player claims)
+- Added cleanup override to BaseSupport so player target claims are released when Pokémon leave pasture
+
 ## 2.10.3
 - Workers now navigate immediately when claiming a target (eliminates 1-tick hesitation)
 - Pathfinding recalculation interval reduced from 20 to 5 ticks for smoother movement
