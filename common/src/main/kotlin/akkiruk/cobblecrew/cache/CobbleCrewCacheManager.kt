@@ -51,6 +51,15 @@ object CobbleCrewCacheManager {
         pastureCaches[pastureOrigin]?.targetsByCategory?.values?.forEach { it.clear() }
     }
 
+    /** Atomically replace all category targets for a pasture with new scan results. */
+    fun replaceAllCategoryTargets(pastureOrigin: BlockPos, newTargets: Map<BlockCategory, Set<BlockPos>>) {
+        val cache = pastureCaches.getOrPut(pastureOrigin) { PastureCache() }
+        for ((category, set) in cache.targetsByCategory) {
+            set.clear()
+            newTargets[category]?.let { set.addAll(it) }
+        }
+    }
+
     fun removePasture(pastureOrigin: BlockPos) {
         pastureCaches.remove(pastureOrigin)
     }

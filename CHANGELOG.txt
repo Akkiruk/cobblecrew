@@ -1,3 +1,8 @@
+## 3.0.6
+- Fixed workers unable to find containers during scan rebuilds (cache was wiped before scan started, leaving 0 containers for entire scan duration)
+- Scanner now uses double-buffering: scans into staging area, swaps atomically on completion — old cache stays available throughout
+- Rate-limited deposit failure warnings to once per 10 seconds per Pokémon (was spamming every tick)
+
 ## 3.0.5
 - Added diagnostic logging when workers can't find containers to deposit items
 - Logs: cached container count, tried/failed count, scan status, and which items couldn't be deposited

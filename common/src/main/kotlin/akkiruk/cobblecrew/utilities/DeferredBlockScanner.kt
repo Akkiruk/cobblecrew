@@ -27,7 +27,8 @@ object DeferredBlockScanner {
 
     private data class ScanJob(
         val iterator: Iterator<BlockPos>,
-        var lastTickProcessed: Long
+        var lastTickProcessed: Long,
+        val staged: MutableMap<BlockCategory, MutableSet<BlockPos>> = mutableMapOf()
     )
 
     private val activeScans = mutableMapOf<BlockPos, ScanJob>()
@@ -64,8 +65,6 @@ object DeferredBlockScanner {
         }
 
         val scanJob = activeScans.getOrPut(pastureOrigin) {
-            CobbleCrewCacheManager.removeAllCategoryTargets(pastureOrigin)
-
             val radius = searchRadius.toDouble()
             val height = searchHeight.toDouble()
             val searchArea = Box(pastureOrigin).expand(radius, height, radius)
@@ -80,10 +79,11 @@ object DeferredBlockScanner {
 
         repeat(BLOCKS_PER_TICK) {
             if (!scanJob.iterator.hasNext()) {
+                // Atomically swap staged results into the main cache
+                CobbleCrewCacheManager.replaceAllCategoryTargets(pastureOrigin, scanJob.staged)
                 activeScans.remove(pastureOrigin)
                 lastScanCompletion[pastureOrigin] = currentTick
 
-                // Log scan completion with target counts per category
                 val counts = needed.associateWith { cat ->
                     CobbleCrewCacheManager.getTargets(pastureOrigin, cat).size
                 }
@@ -104,7 +104,7 @@ object DeferredBlockScanner {
             for ((category, validator) in categoryValidators) {
                 if (category !in needed) continue
                 if (validator(world, pos)) {
-                    CobbleCrewCacheManager.addTarget(pastureOrigin, category, immutablePos)
+                    scanJob.staged.getOrPut(category) { mutableSetOf() }.add(immutablePos)
                 }
             }
         }

@@ -54,6 +54,9 @@ object CobbleCrewInventoryUtils {
     private val depositRetryTimers = mutableMapOf<UUID, Long>()
     private const val DEPOSIT_RETRY_COOLDOWN = 200L // 10 seconds before retrying all containers
 
+    // Rate-limit deposit failure warnings to avoid log spam
+    private val lastDepositWarning = mutableMapOf<UUID, Long>()
+
     /**
      * Ticks pending chest close animations. Call once per server tick.
      */
@@ -278,16 +281,21 @@ object CobbleCrewInventoryUtils {
         val inventoryPos = findClosestInventory(world, origin, triedPositions, itemsToDeposit)
 
         if (inventoryPos == null) {
-            val items = itemsToDeposit.joinToString { "${it.count}x ${it.item}" }
-            CobbleCrew.LOGGER.warn(
-                "[CobbleCrew] {} ({}) can't deposit [{}]: {} cached containers, {} tried/failed, scanActive={}",
-                pokemonEntity.pokemon.species.name,
-                pokemonId.toString().take(8),
-                items,
-                allContainers.size,
-                triedPositions.size,
-                DeferredBlockScanner.isScanActive(origin)
-            )
+            val now = world.time
+            val lastWarn = lastDepositWarning[pokemonId] ?: 0L
+            if (now - lastWarn >= 200L) { // log at most once per 10 seconds per Pokémon
+                val items = itemsToDeposit.joinToString { "${it.count}x ${it.item}" }
+                CobbleCrew.LOGGER.warn(
+                    "[CobbleCrew] {} ({}) can't deposit [{}]: {} cached containers, {} tried/failed, scanActive={}",
+                    pokemonEntity.pokemon.species.name,
+                    pokemonId.toString().take(8),
+                    items,
+                    allContainers.size,
+                    triedPositions.size,
+                    DeferredBlockScanner.isScanActive(origin)
+                )
+                lastDepositWarning[pokemonId] = now
+            }
             // Don't drop items yet if scan is running as inventory might be found within the next ticks.
             if (DeferredBlockScanner.isScanActive(origin)) {
                 heldItemsByPokemon[pokemonId] = itemsToDeposit
@@ -370,6 +378,7 @@ object CobbleCrewInventoryUtils {
                 heldItemsByPokemon.remove(pokemonId)
                 failedDepositLocations.remove(pokemonId)
                 depositRetryTimers.remove(pokemonId)
+                lastDepositWarning.remove(pokemonId)
                 pokemonEntity.navigation.stop()
             }
         } else {
