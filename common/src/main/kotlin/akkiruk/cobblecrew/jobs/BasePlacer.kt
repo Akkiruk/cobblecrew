@@ -10,6 +10,7 @@ package akkiruk.cobblecrew.jobs
 
 import akkiruk.cobblecrew.config.CobbleCrewConfigHolder
 import akkiruk.cobblecrew.interfaces.Worker
+import akkiruk.cobblecrew.utilities.CobbleCrewDebugLogger
 import akkiruk.cobblecrew.utilities.CobbleCrewInventoryUtils
 import akkiruk.cobblecrew.utilities.CobbleCrewNavigationUtils
 import akkiruk.cobblecrew.utilities.WorkerVisualUtils
@@ -50,12 +51,16 @@ abstract class BasePlacer : Worker {
     /** Place the held item at the target position. */
     abstract fun placeBlock(world: World, pos: BlockPos, item: ItemStack)
 
-    override fun isAvailable(world: World, origin: BlockPos, pokemonId: UUID): Boolean {
+    override fun isAvailable(context: JobContext, pokemonId: UUID): Boolean {
+        val world = context.world
+        val origin = context.origin
         return findPlacementTarget(world, origin) != null
             && CobbleCrewInventoryUtils.findInputContainer(world, origin, ::itemPredicate) != null
     }
 
-    override fun tick(world: World, origin: BlockPos, pokemonEntity: PokemonEntity) {
+    override fun tick(context: JobContext, pokemonEntity: PokemonEntity) {
+        val world = context.world
+        val origin = context.origin
         val pokemonId = pokemonEntity.pokemon.uuid
         when (phases.getOrDefault(pokemonId, Phase.IDLE)) {
             Phase.IDLE -> {
@@ -80,6 +85,7 @@ abstract class BasePlacer : Worker {
                     heldItems[pokemonId] = taken
                     val target = findPlacementTarget(world, origin)
                     if (target == null) {
+                        CobbleCrewDebugLogger.placementNoTarget(pokemonEntity, name)
                         // No placement spot — drop item back
                         CobbleCrewInventoryUtils.insertStack(
                             world.getBlockEntity(source) as? net.minecraft.inventory.Inventory ?: run {
@@ -91,6 +97,7 @@ abstract class BasePlacer : Worker {
                         return
                     }
                     placementTargets[pokemonId] = target
+                    CobbleCrewDebugLogger.placementTargetFound(pokemonEntity, name, target)
                     phases[pokemonId] = Phase.NAVIGATING_PLACEMENT
                 }
             }
@@ -104,6 +111,7 @@ abstract class BasePlacer : Worker {
                         phases[pokemonId] = Phase.IDLE; return
                     }
                     placeBlock(world, target, item)
+                    CobbleCrewDebugLogger.placementExecuted(pokemonEntity, name, target, item)
                     phases[pokemonId] = Phase.IDLE
                 }
             }
@@ -118,5 +126,10 @@ abstract class BasePlacer : Worker {
         sourceTargets.remove(pokemonId)
         placementTargets.remove(pokemonId)
         heldItems.remove(pokemonId)
+    }
+
+    override fun getHeldItems(pokemonId: UUID): List<ItemStack>? {
+        val item = heldItems[pokemonId] ?: return null
+        return listOf(item)
     }
 }

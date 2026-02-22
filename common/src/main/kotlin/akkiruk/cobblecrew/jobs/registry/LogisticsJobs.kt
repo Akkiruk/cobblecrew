@@ -13,6 +13,7 @@ import akkiruk.cobblecrew.config.JobConfigManager
 import akkiruk.cobblecrew.enums.BlockCategory
 import akkiruk.cobblecrew.enums.WorkerPriority
 import akkiruk.cobblecrew.interfaces.Worker
+import akkiruk.cobblecrew.jobs.JobContext
 import akkiruk.cobblecrew.jobs.WorkerRegistry
 import akkiruk.cobblecrew.utilities.CobbleCrewInventoryUtils
 import akkiruk.cobblecrew.utilities.CobbleCrewNavigationUtils
@@ -67,7 +68,9 @@ object LogisticsJobs {
             return sp.any { it.equals(species, ignoreCase = true) }
         }
 
-        override fun tick(world: World, origin: BlockPos, pokemonEntity: PokemonEntity) {
+        override fun tick(context: JobContext, pokemonEntity: PokemonEntity) {
+            val world = context.world
+            val origin = context.origin
             val pid = pokemonEntity.pokemon.uuid
             val target = targets[pid]
             if (target == null) {
@@ -147,10 +150,18 @@ object LogisticsJobs {
             return moves.any { it in eff }
         }
 
-        override fun tick(world: World, origin: BlockPos, pokemonEntity: PokemonEntity) {
+        override fun tick(context: JobContext, pokemonEntity: PokemonEntity) {
+            val world = context.world
+            val origin = context.origin
             val pid = pokemonEntity.pokemon.uuid
             val held = heldItems[pid]
             if (!held.isNullOrEmpty()) {
+                if (context is JobContext.Party) {
+                    CobbleCrewInventoryUtils.deliverToPlayer(context.player, held, pokemonEntity)
+                    heldItems.remove(pid)
+                    failedDeposits.remove(pid)
+                    return
+                }
                 CobbleCrewInventoryUtils.handleDepositing(world, origin, pokemonEntity, held, failedDeposits, heldItems)
                 return
             }

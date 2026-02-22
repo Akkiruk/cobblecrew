@@ -10,9 +10,9 @@ package akkiruk.cobblecrew.interfaces
 
 import akkiruk.cobblecrew.enums.BlockCategory
 import akkiruk.cobblecrew.enums.WorkerPriority
+import akkiruk.cobblecrew.jobs.JobContext
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
-import net.minecraft.util.math.BlockPos
-import net.minecraft.world.World
+import net.minecraft.item.ItemStack
 
 interface Worker {
     /** Human-readable job name (e.g. "apricorn_shaker"). Used as config key. */
@@ -39,14 +39,17 @@ interface Worker {
      * Dynamic availability check — are there targets right now?
      * Called during job selection, not every tick.
      */
-    fun isAvailable(world: World, origin: BlockPos, pokemonId: java.util.UUID): Boolean = true
+    fun isAvailable(context: JobContext, pokemonId: java.util.UUID): Boolean = true
 
     /** Main logic loop, executed each tick. */
-    fun tick(world: World, origin: BlockPos, pokemonEntity: PokemonEntity)
+    fun tick(context: JobContext, pokemonEntity: PokemonEntity)
 
     /** True if this worker has active per-Pokémon state that requires continued ticking. */
     fun hasActiveState(pokemonId: java.util.UUID): Boolean = false
 
     /** Cleans up per-Pokémon state when a Pokémon leaves a pasture. */
     fun cleanup(pokemonId: java.util.UUID) {}
+
+    /** Returns held items for a Pokémon, if any. Used for item recovery on recall. */
+    fun getHeldItems(pokemonId: java.util.UUID): List<ItemStack>? = null
 }

@@ -13,11 +13,13 @@ import akkiruk.cobblecrew.api.CobbleCrewApi
 import akkiruk.cobblecrew.commands.CobbleCrewCommand
 import akkiruk.cobblecrew.fabric.integration.FabricIntegrationHelper
 import akkiruk.cobblecrew.integration.CobbleCrewIntegrationHandler
+import akkiruk.cobblecrew.jobs.PartyWorkerManager
 import akkiruk.cobblecrew.network.JobSyncPayload
 import akkiruk.cobblecrew.network.JobSyncSerializer
 import net.fabricmc.api.ModInitializer
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking
@@ -56,6 +58,16 @@ object CobbleCrewFabric : ModInitializer {
                     CobbleCrew.LOGGER.debug("Failed to send job rules to ${player.name.string}: ${e.message}")
                 }
             }
+        }
+
+        // Tick party workers every server tick
+        ServerTickEvents.END_SERVER_TICK.register { server ->
+            PartyWorkerManager.tick(server)
+        }
+
+        // Cleanup party workers on disconnect
+        ServerPlayConnectionEvents.DISCONNECT.register { handler, _ ->
+            PartyWorkerManager.cleanupPlayer(handler.player.uuid)
         }
     }
 }

@@ -34,6 +34,16 @@ object CobbleCrewNavigationUtils {
     private const val EXPIRED_TARGET_TIMEOUT_TICKS = 300L
     private const val PATHFIND_INTERVAL_TICKS = 5L
 
+    // Escalating blacklist: tracks how many times a Pokémon failed to reach a block
+    private val targetFailCounts = mutableMapOf<Pair<UUID, BlockPos>, Int>()
+    private const val BLACKLIST_SHORT = EXPIRED_TARGET_TIMEOUT_TICKS  // 15s
+    private const val BLACKLIST_MEDIUM = 60 * 20L                    // 60s
+    private const val BLACKLIST_LONG = 5 * 60 * 20L                  // 5 min
+
+    // Pathfind validation cache: remembers unreachable targets temporarily
+    private val unreachableCache = mutableMapOf<Pair<UUID, BlockPos>, Long>()  // key → expiry tick
+    private const val UNREACHABLE_CACHE_TTL = 200L  // 10 seconds
+
     /**
      * Checks if the Pokémon's bounding box intersects with the target block area.
      */
@@ -100,6 +110,7 @@ object CobbleCrewNavigationUtils {
         val immutableTarget = target.toImmutable()
         pokemonToTarget[pokemonId] = immutableTarget
         targetedBlocks[immutableTarget] = Claim(pokemonId, world.time)
+        CobbleCrewDebugLogger.targetClaimed(null, pokemonId, immutableTarget)
     }
 
     /**
@@ -111,6 +122,7 @@ object CobbleCrewNavigationUtils {
 
         pokemonToPlayerTarget[pokemonId] = player.uuid
         targetedPlayers[player.uuid] = Claim(pokemonId, world.time)
+        CobbleCrewDebugLogger.playerTargetClaimed(null, pokemonId, player.uuid)
     }
 
     /**
@@ -123,6 +135,7 @@ object CobbleCrewNavigationUtils {
             val expired = ExpiredTarget(releasedTarget, world.time)
             recentlyExpiredTargets[releasedTarget] = expired
             expiredQueue.add(expired)
+            CobbleCrewDebugLogger.targetReleased(null, pokemonId, releasedTarget)
         }
     }
 
@@ -133,6 +146,7 @@ object CobbleCrewNavigationUtils {
         val playerId = pokemonToPlayerTarget.remove(pokemonId)
         if (playerId != null) {
             targetedPlayers.remove(playerId)
+            CobbleCrewDebugLogger.playerTargetReleased(pokemonId)
         }
     }
 
@@ -178,15 +192,26 @@ object CobbleCrewNavigationUtils {
         lastCleanUpTick = now
 
         val expiredPokemon = mutableListOf<UUID>()
+        val expiredPositions = mutableListOf<Pair<UUID, BlockPos>>()
 
         // Check block claims
-        targetedBlocks.values.forEach { claim ->
-            if (now - claim.claimTick > CLAIM_TIMEOUT_TICKS) expiredPokemon.add(claim.pokemonId)
+        targetedBlocks.entries.forEach { (pos, claim) ->
+            if (now - claim.claimTick > CLAIM_TIMEOUT_TICKS) {
+                expiredPokemon.add(claim.pokemonId)
+                expiredPositions.add(claim.pokemonId to pos)
+                CobbleCrewDebugLogger.targetExpired(claim.pokemonId, pos)
+            }
         }
 
         // Check player claims
         targetedPlayers.values.forEach { claim ->
             if (now - claim.claimTick > CLAIM_TIMEOUT_TICKS) expiredPokemon.add(claim.pokemonId)
+        }
+
+        // Record failures for escalating blacklist
+        for ((pokemonId, pos) in expiredPositions) {
+            val key = pokemonId to pos
+            targetFailCounts[key] = (targetFailCounts[key] ?: 0) + 1
         }
 
         expiredPokemon.forEach {
@@ -201,10 +226,49 @@ object CobbleCrewNavigationUtils {
 
     /**
      * Checks if a block is in the recently expired targets.
+     * Uses escalating blacklist: repeated failures for the same block extend the blackout.
      */
     fun isRecentlyExpired(pos: BlockPos, world: World): Boolean {
         releaseExpiredClaims(world)
-        return recentlyExpiredTargets.containsKey(pos)
+        val expired = recentlyExpiredTargets[pos] ?: return false
+        val now = world.time
+        // Find the worst fail count for ANY Pokémon on this position
+        val maxFails = targetFailCounts.entries
+            .filter { it.key.second == pos }
+            .maxOfOrNull { it.value } ?: 0
+        val blacklistDuration = when {
+            maxFails <= 1 -> BLACKLIST_SHORT
+            maxFails == 2 -> BLACKLIST_MEDIUM
+            else -> BLACKLIST_LONG
+        }
+        return now - expired.expiryTick < blacklistDuration
+    }
+
+    /**
+     * Checks if a target was recently found unreachable by pathfinding validation.
+     */
+    fun isUnreachable(pokemonId: UUID, pos: BlockPos, currentTick: Long): Boolean {
+        val expiry = unreachableCache[pokemonId to pos] ?: return false
+        if (currentTick >= expiry) {
+            unreachableCache.remove(pokemonId to pos)
+            return false
+        }
+        return true
+    }
+
+    /**
+     * Marks a block as unreachable for a specific Pokémon for [UNREACHABLE_CACHE_TTL] ticks.
+     */
+    fun markUnreachable(pokemonId: UUID, pos: BlockPos, currentTick: Long) {
+        unreachableCache[pokemonId to pos] = currentTick + UNREACHABLE_CACHE_TTL
+    }
+
+    /**
+     * Validates pathfinding to a target. Returns true if a path exists and can reach the target.
+     */
+    fun canPathfindTo(pokemonEntity: PokemonEntity, targetPos: BlockPos): Boolean {
+        val path = pokemonEntity.navigation.findPathTo(targetPos, 1)
+        return path != null && path.reachesTarget()
     }
 
     /**
@@ -215,6 +279,9 @@ object CobbleCrewNavigationUtils {
         releasePlayerTarget(pokemonId)
         releaseMobTarget(pokemonId)
         lastPathfindTick.remove(pokemonId)
+        // Clear escalating blacklist and unreachable cache for this Pokémon
+        targetFailCounts.keys.removeAll { it.first == pokemonId }
+        unreachableCache.keys.removeAll { it.first == pokemonId }
     }
 
     // --- V2: Mob targeting (for defense/combat jobs) ---
@@ -226,11 +293,15 @@ object CobbleCrewNavigationUtils {
         releaseMobTarget(pokemonId)
         pokemonToMobTarget[pokemonId] = entityId
         targetedMobs[entityId] = pokemonId
+        CobbleCrewDebugLogger.mobTargetClaimed(null, pokemonId, entityId)
     }
 
     fun releaseMobTarget(pokemonId: UUID) {
         val mobId = pokemonToMobTarget.remove(pokemonId)
-        if (mobId != null) targetedMobs.remove(mobId)
+        if (mobId != null) {
+            targetedMobs.remove(mobId)
+            CobbleCrewDebugLogger.mobTargetReleased(pokemonId)
+        }
     }
 
     fun getMobTarget(pokemonId: UUID): Int? = pokemonToMobTarget[pokemonId]

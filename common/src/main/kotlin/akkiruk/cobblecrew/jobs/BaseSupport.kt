@@ -10,6 +10,7 @@ package akkiruk.cobblecrew.jobs
 
 import akkiruk.cobblecrew.config.CobbleCrewConfigHolder
 import akkiruk.cobblecrew.interfaces.Worker
+import akkiruk.cobblecrew.utilities.CobbleCrewDebugLogger
 import akkiruk.cobblecrew.utilities.CobbleCrewNavigationUtils
 import akkiruk.cobblecrew.utilities.WorkerVisualUtils
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
@@ -52,8 +53,8 @@ abstract class BaseSupport : Worker {
     /** Whether this support job only targets damaged players (e.g. Healer). */
     open val requiresDamage: Boolean = false
 
-    override fun isAvailable(world: World, origin: BlockPos, pokemonId: java.util.UUID): Boolean {
-        val players = findNearbyPlayers(world, origin)
+    override fun isAvailable(context: JobContext, pokemonId: java.util.UUID): Boolean {
+        val players = findNearbyPlayers(context.world, context.origin)
         return players.any { player ->
             val effectOk = if (skipIfAlreadyActive) !player.hasStatusEffect(statusEffect) else true
             val healthOk = !requiresDamage || player.health < player.maxHealth
@@ -61,7 +62,9 @@ abstract class BaseSupport : Worker {
         }
     }
 
-    override fun tick(world: World, origin: BlockPos, pokemonEntity: PokemonEntity) {
+    override fun tick(context: JobContext, pokemonEntity: PokemonEntity) {
+        val world = context.world
+        val origin = context.origin
         val pokemonId = pokemonEntity.pokemon.uuid
         val nearbyPlayers = findNearbyPlayers(world, origin)
         if (nearbyPlayers.isEmpty()) {
@@ -81,6 +84,7 @@ abstract class BaseSupport : Worker {
 
         if (currentTarget == null) {
             if (!CobbleCrewNavigationUtils.isPlayerTargeted(target, world)) {
+                CobbleCrewDebugLogger.supportTargetFound(pokemonEntity, name, target.name.string)
                 CobbleCrewNavigationUtils.claimTarget(pokemonId, target, world)
                 CobbleCrewNavigationUtils.navigateToPlayer(pokemonEntity, target)
             }
@@ -91,6 +95,7 @@ abstract class BaseSupport : Worker {
 
         if (WorkerVisualUtils.handlePlayerArrival(pokemonEntity, target, world, arrivalParticle)) {
             applyEffect(target)
+            CobbleCrewDebugLogger.supportEffectApplied(pokemonEntity, name, target.name.string)
             CobbleCrewNavigationUtils.releasePlayerTarget(pokemonId)
         }
     }

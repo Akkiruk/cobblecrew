@@ -18,7 +18,7 @@ import net.minecraft.world.gen.structure.Structure
 import java.util.concurrent.ConcurrentHashMap
 
 object CobbleCrewCacheManager {
-    private val pastureCaches: MutableMap<BlockPos, PastureCache> = ConcurrentHashMap()
+    private val caches: MutableMap<CacheKey, PastureCache> = ConcurrentHashMap()
     private var structuresCache: Set<Identifier>? = null
 
     private val structureLocationCache: MutableMap<Identifier, com.mojang.datafixers.util.Pair<BlockPos, RegistryEntry<Structure>>> =
@@ -27,41 +27,58 @@ object CobbleCrewCacheManager {
     private val structureLocationExpiry: MutableMap<Identifier, Long> = ConcurrentHashMap()
     private const val CACHE_TTL = 20L * 60L * 15L
 
-    fun addTarget(pastureOrigin: BlockPos, category: BlockCategory, pos: BlockPos) {
-        val cache = pastureCaches.getOrPut(pastureOrigin) { PastureCache() }
+    fun addTarget(key: CacheKey, category: BlockCategory, pos: BlockPos) {
+        val cache = caches.getOrPut(key) { PastureCache() }
         cache.targetsByCategory[category]?.add(pos)
     }
 
-    fun getTargets(pastureOrigin: BlockPos, category: BlockCategory): Set<BlockPos> {
-        return pastureCaches[pastureOrigin]?.targetsByCategory?.get(category) ?: emptySet()
+    /** Convenience: wrap BlockPos to PastureKey. */
+    fun addTarget(origin: BlockPos, category: BlockCategory, pos: BlockPos) =
+        addTarget(CacheKey.PastureKey(origin), category, pos)
+
+    fun getTargets(key: CacheKey, category: BlockCategory): Set<BlockPos> {
+        return caches[key]?.targetsByCategory?.get(category) ?: emptySet()
     }
 
-    fun removeTarget(pastureOrigin: BlockPos, category: BlockCategory, pos: BlockPos) {
-        pastureCaches[pastureOrigin]?.targetsByCategory?.get(category)?.remove(pos)
+    /** Convenience: wrap BlockPos to PastureKey. */
+    fun getTargets(origin: BlockPos, category: BlockCategory): Set<BlockPos> =
+        getTargets(CacheKey.PastureKey(origin), category)
+
+    fun removeTarget(key: CacheKey, category: BlockCategory, pos: BlockPos) {
+        caches[key]?.targetsByCategory?.get(category)?.remove(pos)
     }
 
-    /** Remove a position from ALL pasture caches (for overlapping pasture ranges). */
+    /** Convenience: wrap BlockPos to PastureKey. */
+    fun removeTarget(origin: BlockPos, category: BlockCategory, pos: BlockPos) =
+        removeTarget(CacheKey.PastureKey(origin), category, pos)
+
+    /** Remove a position from ALL caches (for overlapping ranges). */
     fun removeTargetGlobal(category: BlockCategory, pos: BlockPos) {
-        pastureCaches.values.forEach { cache ->
+        caches.values.forEach { cache ->
             cache.targetsByCategory[category]?.remove(pos)
         }
     }
 
-    fun removeAllCategoryTargets(pastureOrigin: BlockPos) {
-        pastureCaches[pastureOrigin]?.targetsByCategory?.values?.forEach { it.clear() }
+    fun removeAllCategoryTargets(key: CacheKey) {
+        caches[key]?.targetsByCategory?.values?.forEach { it.clear() }
     }
 
-    /** Atomically replace all category targets for a pasture with new scan results. */
-    fun replaceAllCategoryTargets(pastureOrigin: BlockPos, newTargets: Map<BlockCategory, Set<BlockPos>>) {
-        val cache = pastureCaches.getOrPut(pastureOrigin) { PastureCache() }
+    /** Atomically replace all category targets with new scan results. */
+    fun replaceAllCategoryTargets(key: CacheKey, newTargets: Map<BlockCategory, Set<BlockPos>>) {
+        val cache = caches.getOrPut(key) { PastureCache() }
         for ((category, set) in cache.targetsByCategory) {
             set.clear()
             newTargets[category]?.let { set.addAll(it) }
         }
     }
 
+    fun removeCache(key: CacheKey) {
+        caches.remove(key)
+    }
+
+    /** Backward-compat: remove by BlockPos (wraps to PastureKey). */
     fun removePasture(pastureOrigin: BlockPos) {
-        pastureCaches.remove(pastureOrigin)
+        caches.remove(CacheKey.PastureKey(pastureOrigin))
     }
 
     fun getStructures(world: ServerWorld, useAll: Boolean, tags: List<String>): Set<Identifier> {
@@ -93,5 +110,42 @@ object CobbleCrewCacheManager {
     fun cacheStructure(id: Identifier, result: com.mojang.datafixers.util.Pair<BlockPos, RegistryEntry<Structure>>, now: Long) {
         structureLocationCache[id] = result
         structureLocationExpiry[id] = now + CACHE_TTL
+    }
+
+    /** Snapshot of all tracked caches and their target counts per category. */
+    fun getCacheStatus(): Map<CacheKey, Map<String, Int>> {
+        return caches.mapValues { (_, cache) ->
+            cache.targetsByCategory
+                .filter { it.value.isNotEmpty() }
+                .mapKeys { it.key.name }
+                .mapValues { it.value.size }
+        }
+    }
+
+    /** Backward-compat alias. */
+    fun getPastureStatus(): Map<BlockPos, Map<String, Int>> {
+        return caches.entries
+            .filter { it.key is CacheKey.PastureKey }
+            .associate { (it.key as CacheKey.PastureKey).pos to it.value }
+            .mapValues { (_, cache) ->
+                cache.targetsByCategory
+                    .filter { it.value.isNotEmpty() }
+                    .mapKeys { it.key.name }
+                    .mapValues { it.value.size }
+            }
+    }
+
+    /** Total tracked cache count. */
+    fun getCacheCount(): Int = caches.size
+
+    /** Backward-compat alias. */
+    fun getPastureCount(): Int = caches.count { it.key is CacheKey.PastureKey }
+
+    /** Clear all caches. */
+    fun clearAll() {
+        caches.clear()
+        structuresCache = null
+        structureLocationCache.clear()
+        structureLocationExpiry.clear()
     }
 }

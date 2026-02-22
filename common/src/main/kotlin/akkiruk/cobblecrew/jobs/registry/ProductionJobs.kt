@@ -14,6 +14,7 @@ import akkiruk.cobblecrew.config.JobConfigManager
 import akkiruk.cobblecrew.enums.BlockCategory
 import akkiruk.cobblecrew.enums.WorkerPriority
 import akkiruk.cobblecrew.interfaces.Worker
+import akkiruk.cobblecrew.jobs.JobContext
 import akkiruk.cobblecrew.jobs.WorkerRegistry
 import akkiruk.cobblecrew.jobs.dsl.ProductionJob
 import akkiruk.cobblecrew.utilities.CobbleCrewInventoryUtils
@@ -302,7 +303,9 @@ object ProductionJobs {
             return moves.any { it in eff }
         }
 
-        override fun tick(world: World, origin: BlockPos, pokemonEntity: PokemonEntity) {
+        override fun tick(context: JobContext, pokemonEntity: PokemonEntity) {
+            val world = context.world
+            val origin = context.origin
             val pid = pokemonEntity.pokemon.uuid
             if (config.requiresWater == true && !pokemonEntity.isTouchingWater) return
             val held = heldItems[pid]
@@ -310,6 +313,12 @@ object ProductionJobs {
                 failedDeposits.remove(pid)
                 produce(world, origin, pokemonEntity)
             } else {
+                if (context is JobContext.Party) {
+                    CobbleCrewInventoryUtils.deliverToPlayer(context.player, held, pokemonEntity)
+                    heldItems.remove(pid)
+                    failedDeposits.remove(pid)
+                    return
+                }
                 CobbleCrewInventoryUtils.handleDepositing(world, origin, pokemonEntity, held, failedDeposits, heldItems)
             }
         }
@@ -375,13 +384,21 @@ object ProductionJobs {
             return ability.lowercase() == req
         }
 
-        override fun tick(world: World, origin: BlockPos, pokemonEntity: PokemonEntity) {
+        override fun tick(context: JobContext, pokemonEntity: PokemonEntity) {
+            val world = context.world
+            val origin = context.origin
             val pid = pokemonEntity.pokemon.uuid
             val held = heldItems[pid]
             if (held.isNullOrEmpty()) {
                 failedDeposits.remove(pid)
                 produce(world, origin, pokemonEntity)
             } else {
+                if (context is JobContext.Party) {
+                    CobbleCrewInventoryUtils.deliverToPlayer(context.player, held, pokemonEntity)
+                    heldItems.remove(pid)
+                    failedDeposits.remove(pid)
+                    return
+                }
                 CobbleCrewInventoryUtils.handleDepositing(world, origin, pokemonEntity, held, failedDeposits, heldItems)
             }
         }
@@ -445,7 +462,9 @@ object ProductionJobs {
             return moves.any { it in eff }
         }
 
-        override fun tick(world: World, origin: BlockPos, pokemonEntity: PokemonEntity) {
+        override fun tick(context: JobContext, pokemonEntity: PokemonEntity) {
+            val world = context.world
+            val origin = context.origin
             val pid = pokemonEntity.pokemon.uuid
             if (config.requiresWater == true && !pokemonEntity.isTouchingWater) return
             val held = heldItems[pid]
@@ -453,6 +472,12 @@ object ProductionJobs {
                 failedDeposits.remove(pid)
                 produce(world, origin, pokemonEntity)
             } else {
+                if (context is JobContext.Party) {
+                    CobbleCrewInventoryUtils.deliverToPlayer(context.player, held, pokemonEntity)
+                    heldItems.remove(pid)
+                    failedDeposits.remove(pid)
+                    return
+                }
                 CobbleCrewInventoryUtils.handleDepositing(world, origin, pokemonEntity, held, failedDeposits, heldItems)
             }
         }
@@ -516,10 +541,18 @@ object ProductionJobs {
             return moves.any { it in eff }
         }
 
-        override fun tick(world: World, origin: BlockPos, pokemonEntity: PokemonEntity) {
+        override fun tick(context: JobContext, pokemonEntity: PokemonEntity) {
+            val world = context.world
+            val origin = context.origin
             val pid = pokemonEntity.pokemon.uuid
             val held = heldItems[pid]
             if (!held.isNullOrEmpty()) {
+                if (context is JobContext.Party) {
+                    CobbleCrewInventoryUtils.deliverToPlayer(context.player, held, pokemonEntity)
+                    heldItems.remove(pid)
+                    failedDeposits.remove(pid)
+                    return
+                }
                 CobbleCrewInventoryUtils.handleDepositing(world, origin, pokemonEntity, held, failedDeposits, heldItems)
                 return
             }

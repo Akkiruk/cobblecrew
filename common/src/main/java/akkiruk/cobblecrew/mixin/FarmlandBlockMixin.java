@@ -23,8 +23,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public class FarmlandBlockMixin {
     @Inject(method = "onLandedUpon", at = @At("HEAD"), cancellable = true)
     private void preventPokemonTrampling(World world, BlockState state, BlockPos pos, Entity entity, float fallDistance, CallbackInfo ci) {
-        if (entity instanceof PokemonEntity pokemon && pokemon.getTethering() != null) {
-            ci.cancel();
+        if (entity instanceof PokemonEntity pokemon) {
+            // Protect farmland from both pastured Pokémon (tethered) and party workers (owned)
+            if (pokemon.getTethering() != null || pokemon.getOwnerUuid() != null) {
+                ci.cancel();
+            }
         }
     }
 }

@@ -10,6 +10,7 @@ package akkiruk.cobblecrew.jobs
 
 import akkiruk.cobblecrew.config.CobbleCrewConfigHolder
 import akkiruk.cobblecrew.interfaces.Worker
+import akkiruk.cobblecrew.utilities.CobbleCrewDebugLogger
 import akkiruk.cobblecrew.utilities.CobbleCrewNavigationUtils
 import akkiruk.cobblecrew.utilities.WorkerVisualUtils
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
@@ -41,24 +42,30 @@ abstract class BaseDefender : Worker {
     /** Apply the defense effect to the target mob. */
     abstract fun applyEffect(world: World, pokemonEntity: PokemonEntity, target: HostileEntity)
 
-    override fun isAvailable(world: World, origin: BlockPos, pokemonId: UUID): Boolean {
+    override fun isAvailable(context: JobContext, pokemonId: UUID): Boolean {
+        val origin = context.origin
+        val world = context.world
         val searchBox = Box(origin).expand(searchRadius.toDouble(), searchHeight.toDouble(), searchRadius.toDouble())
         return world.getEntitiesByClass(HostileEntity::class.java, searchBox) { it.isAlive }.isNotEmpty()
     }
 
-    override fun tick(world: World, origin: BlockPos, pokemonEntity: PokemonEntity) {
+    override fun tick(context: JobContext, pokemonEntity: PokemonEntity) {
+        val world = context.world
+        val origin = context.origin
         val pokemonId = pokemonEntity.pokemon.uuid
 
         val currentMobTarget = CobbleCrewNavigationUtils.getMobTarget(pokemonId)
         if (currentMobTarget != null) {
             val targetMob = world.getEntityById(currentMobTarget) as? HostileEntity
             if (targetMob == null || !targetMob.isAlive) {
+                CobbleCrewDebugLogger.defenseTargetDead(pokemonEntity, name, currentMobTarget)
                 CobbleCrewNavigationUtils.releaseMobTarget(pokemonId)
                 return
             }
             CobbleCrewNavigationUtils.navigateTo(pokemonEntity, targetMob.blockPos)
             if (WorkerVisualUtils.handleArrival(pokemonEntity, targetMob.blockPos, world, attackParticle, 2.0)) {
                 applyEffect(world, pokemonEntity, targetMob)
+                CobbleCrewDebugLogger.defenseEffectApplied(pokemonEntity, name, currentMobTarget)
                 CobbleCrewNavigationUtils.releaseMobTarget(pokemonId)
             }
             return
@@ -80,6 +87,7 @@ abstract class BaseDefender : Worker {
             ?: return
 
         CobbleCrewNavigationUtils.claimMobTarget(pokemonId, target.id)
+        CobbleCrewDebugLogger.defenseTargetFound(pokemonEntity, name, target.id)
     }
 
     private fun findNearbyHostiles(world: World, origin: BlockPos): List<HostileEntity> {

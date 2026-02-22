@@ -1,3 +1,7 @@
+## 3.0.7
+- Fixed stale job eligibility when Pokémon moves change (teaching/forgetting moves while in pasture now immediately updates eligible jobs)
+- Previously, cached profiles weren't invalidated when moves changed — Pokémon could keep doing jobs they no longer qualified for
+
 ## 3.0.6
 - Fixed workers unable to find containers during scan rebuilds (cache was wiped before scan started, leaving 0 containers for entire scan duration)
 - Scanner now uses double-buffering: scans into staging area, swaps atomically on completion — old cache stays available throughout

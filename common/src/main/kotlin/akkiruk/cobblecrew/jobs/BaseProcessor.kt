@@ -9,6 +9,7 @@
 package akkiruk.cobblecrew.jobs
 
 import akkiruk.cobblecrew.interfaces.Worker
+import akkiruk.cobblecrew.utilities.CobbleCrewDebugLogger
 import akkiruk.cobblecrew.utilities.CobbleCrewInventoryUtils
 import akkiruk.cobblecrew.utilities.CobbleCrewNavigationUtils
 import akkiruk.cobblecrew.utilities.WorkerVisualUtils
@@ -45,20 +46,27 @@ abstract class BaseProcessor : Worker {
     /** Minimum number of items to extract per batch. Override for recipes needing >1. */
     open val minExtractAmount: Int = 1
 
-    override fun isAvailable(world: World, origin: BlockPos, pokemonId: UUID): Boolean {
+    override fun isAvailable(context: JobContext, pokemonId: UUID): Boolean {
         return CobbleCrewInventoryUtils.findInputContainer(
-            world, origin, ::inputPredicate
+            context.world, context.origin, ::inputPredicate
         ) != null
     }
 
-    override fun tick(world: World, origin: BlockPos, pokemonEntity: PokemonEntity) {
+    override fun tick(context: JobContext, pokemonEntity: PokemonEntity) {
+        val world = context.world
+        val origin = context.origin
         val pokemonId = pokemonEntity.pokemon.uuid
         when (phases.getOrDefault(pokemonId, Phase.IDLE)) {
             Phase.IDLE -> {
                 val barrel = CobbleCrewInventoryUtils.findInputContainer(
                     world, origin, ::inputPredicate
-                ) ?: return
+                )
+                if (barrel == null) {
+                    CobbleCrewDebugLogger.processingNoInput(pokemonEntity, name)
+                    return
+                }
                 inputTargets[pokemonId] = barrel
+                CobbleCrewDebugLogger.processingPhaseChange(pokemonEntity, name, "IDLE", "NAVIGATING_INPUT")
                 phases[pokemonId] = Phase.NAVIGATING_INPUT
             }
             Phase.NAVIGATING_INPUT -> {
@@ -72,11 +80,15 @@ abstract class BaseProcessor : Worker {
                         world, target, ::inputPredicate, maxAmount = minExtractAmount
                     )
                     if (taken.isEmpty) {
+                        CobbleCrewDebugLogger.processingPhaseChange(pokemonEntity, name, "NAVIGATING_INPUT", "IDLE (empty)")
                         phases[pokemonId] = Phase.IDLE
                         return
                     }
                     WorkerVisualUtils.spawnParticles(world, pokemonEntity.blockPos, processParticle, 5)
-                    heldItemsByPokemon[pokemonId] = transform(taken)
+                    val output = transform(taken)
+                    CobbleCrewDebugLogger.processingExtracted(pokemonEntity, name, taken, output)
+                    heldItemsByPokemon[pokemonId] = output
+                    CobbleCrewDebugLogger.processingPhaseChange(pokemonEntity, name, "NAVIGATING_INPUT", "DEPOSITING")
                     phases[pokemonId] = Phase.DEPOSITING
                 }
             }
@@ -88,8 +100,15 @@ abstract class BaseProcessor : Worker {
                     phases[pokemonId] = Phase.IDLE
                     return
                 }
+                if (context is JobContext.Party) {
+                    CobbleCrewInventoryUtils.deliverToPlayer(context.player, heldItems, pokemonEntity)
+                    heldItemsByPokemon.remove(pokemonId)
+                    failedDepositLocations.remove(pokemonId)
+                    phases[pokemonId] = Phase.IDLE
+                    return
+                }
                 CobbleCrewInventoryUtils.handleDepositing(
-                    world, origin, pokemonEntity, heldItems,
+                    context.world, context.origin, pokemonEntity, heldItems,
                     failedDepositLocations, heldItemsByPokemon
                 )
                 if (pokemonId !in heldItemsByPokemon) {
@@ -108,4 +127,6 @@ abstract class BaseProcessor : Worker {
         heldItemsByPokemon.remove(pokemonId)
         failedDepositLocations.remove(pokemonId)
     }
+
+    override fun getHeldItems(pokemonId: UUID): List<ItemStack>? = heldItemsByPokemon[pokemonId]
 }

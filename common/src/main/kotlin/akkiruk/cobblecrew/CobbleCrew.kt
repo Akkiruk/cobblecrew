@@ -10,6 +10,7 @@ package akkiruk.cobblecrew
 
 import akkiruk.cobblecrew.config.CobbleCrewConfigInitializer
 import akkiruk.cobblecrew.config.JobConfigManager
+import akkiruk.cobblecrew.jobs.PartyWorkerManager
 import akkiruk.cobblecrew.jobs.WorkerRegistry
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
@@ -26,5 +27,6 @@ object CobbleCrew {
         CobbleCrewConfigInitializer.init()
         WorkerRegistry.init()      // must run before load() — DSL jobs register defaults here
         JobConfigManager.load()
+        PartyWorkerManager.init()  // subscribe to Cobblemon events
     }
 }

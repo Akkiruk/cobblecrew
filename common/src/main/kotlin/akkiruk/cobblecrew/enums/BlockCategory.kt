@@ -12,8 +12,10 @@ package akkiruk.cobblecrew.enums
  * Block-centric categories for the deferred scanner.
  * Multiple jobs can share a category (e.g. Overworld Logger and Tree Feller both use LOG_OVERWORLD).
  * One validator per category in BlockCategoryValidators.
+ *
+ * @param requiresExposedFace If true, the scanner excludes fully buried blocks (all 6 faces opaque).
  */
-enum class BlockCategory {
+enum class BlockCategory(val requiresExposedFace: Boolean = false) {
     CONTAINER,
 
     // Cobblemon growables
@@ -28,8 +30,13 @@ enum class BlockCategory {
     LOG_OVERWORLD, LOG_TROPICAL, LOG_NETHER, BAMBOO, SUGAR_CANE, CACTUS,
     VINE, HONEY,
 
-    // Stone / earth
-    STONE, IGNEOUS, DEEPSLATE, DIRT, SAND, CLAY,
+    // Stone / earth — these can be underground, require an exposed face to be reachable
+    STONE(requiresExposedFace = true),
+    IGNEOUS(requiresExposedFace = true),
+    DEEPSLATE(requiresExposedFace = true),
+    DIRT(requiresExposedFace = true),
+    SAND(requiresExposedFace = true),
+    CLAY(requiresExposedFace = true),
 
     // Specialty
     ICE, SNOW_BLOCK, SCULK, CORAL, MOSS,

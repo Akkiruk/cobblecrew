@@ -10,6 +10,7 @@ package akkiruk.cobblecrew.mixin;
 
 import akkiruk.cobblecrew.CobbleCrew;
 import akkiruk.cobblecrew.cache.CobbleCrewCacheManager;
+import akkiruk.cobblecrew.jobs.JobContext;
 import akkiruk.cobblecrew.jobs.WorkerDispatcher;
 import akkiruk.cobblecrew.utilities.CobbleCrewInventoryUtils;
 import com.cobblemon.mod.common.block.entity.PokemonPastureBlockEntity;
@@ -32,11 +33,14 @@ public class PokemonPastureBlockEntityMixin {
 	private static void init(World world, BlockPos blockPos, BlockState blockState, PokemonPastureBlockEntity pastureBlock, CallbackInfo ci) {
 		if (world.isClient) return;
 
+		JobContext.Pasture context;
 		try {
-			WorkerDispatcher.INSTANCE.tickAreaScan(world, blockPos);
+			context = new JobContext.Pasture(blockPos, world);
+			WorkerDispatcher.INSTANCE.tickAreaScan(context);
 			CobbleCrewInventoryUtils.INSTANCE.tickAnimations(world);
 		} catch (Exception e) {
 			CobbleCrew.LOGGER.error("[CobbleCrew] - Error processing WorkerDispatcher tickAreaScan", e);
+			return;
 		}
 
 		List<PokemonPastureBlockEntity.Tethering> tetheredPokemon = pastureBlock.getTetheredPokemon();
@@ -60,7 +64,7 @@ public class PokemonPastureBlockEntityMixin {
             if (poseType == PoseType.SLEEP) continue;
 
             try {
-                WorkerDispatcher.INSTANCE.tickPokemon(world, blockPos, pokemonEntity);
+                WorkerDispatcher.INSTANCE.tickPokemon(context, pokemonEntity);
             } catch (Exception e) {
                 CobbleCrew.LOGGER.error("[CobbleCrew] - Error processing WorkerDispatcher.tickPokemon {}", e.getMessage());
             }

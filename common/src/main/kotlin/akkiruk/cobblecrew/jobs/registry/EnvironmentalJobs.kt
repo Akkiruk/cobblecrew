@@ -14,6 +14,7 @@ import akkiruk.cobblecrew.config.JobConfigManager
 import akkiruk.cobblecrew.enums.BlockCategory
 import akkiruk.cobblecrew.enums.WorkerPriority
 import akkiruk.cobblecrew.interfaces.Worker
+import akkiruk.cobblecrew.jobs.JobContext
 import akkiruk.cobblecrew.jobs.WorkerRegistry
 import akkiruk.cobblecrew.mixin.AbstractFurnaceBlockEntityAccessor
 import akkiruk.cobblecrew.mixin.BrewingStandBlockEntityAccessor
@@ -65,13 +66,16 @@ object EnvironmentalJobs {
             return moves.any { it in eff }
         }
 
-        override fun isAvailable(world: World, origin: BlockPos, pokemonId: UUID): Boolean {
+        override fun isAvailable(context: JobContext, pokemonId: UUID): Boolean {
+            val origin = context.origin
             val water = CobbleCrewCacheManager.getTargets(origin, BlockCategory.WATER)
             val ice = CobbleCrewCacheManager.getTargets(origin, BlockCategory.ICE)
             return water.isNotEmpty() || ice.isNotEmpty()
         }
 
-        override fun tick(world: World, origin: BlockPos, pokemonEntity: PokemonEntity) {
+        override fun tick(context: JobContext, pokemonEntity: PokemonEntity) {
+            val world = context.world
+            val origin = context.origin
             val pid = pokemonEntity.pokemon.uuid
             val target = targets[pid]
             if (target == null) {
@@ -140,11 +144,14 @@ object EnvironmentalJobs {
             return moves.any { it in eff }
         }
 
-        override fun isAvailable(world: World, origin: BlockPos, pokemonId: UUID): Boolean {
+        override fun isAvailable(context: JobContext, pokemonId: UUID): Boolean {
+            val origin = context.origin
             return CobbleCrewCacheManager.getTargets(origin, BlockCategory.LAVA).isNotEmpty()
         }
 
-        override fun tick(world: World, origin: BlockPos, pokemonEntity: PokemonEntity) {
+        override fun tick(context: JobContext, pokemonEntity: PokemonEntity) {
+            val world = context.world
+            val origin = context.origin
             val pid = pokemonEntity.pokemon.uuid
             val target = targets[pid]
             if (target == null) {
@@ -210,11 +217,14 @@ object EnvironmentalJobs {
             return moves.any { it in eff }
         }
 
-        override fun isAvailable(world: World, origin: BlockPos, pokemonId: UUID): Boolean {
+        override fun isAvailable(context: JobContext, pokemonId: UUID): Boolean {
+            val origin = context.origin
             return CobbleCrewCacheManager.getTargets(origin, BlockCategory.GROWABLE).isNotEmpty()
         }
 
-        override fun tick(world: World, origin: BlockPos, pokemonEntity: PokemonEntity) {
+        override fun tick(context: JobContext, pokemonEntity: PokemonEntity) {
+            val world = context.world
+            val origin = context.origin
             val pid = pokemonEntity.pokemon.uuid
             val target = targets[pid]
             if (target == null) {
@@ -283,11 +293,15 @@ object EnvironmentalJobs {
             return moves.any { it in eff }
         }
 
-        override fun isAvailable(world: World, origin: BlockPos, pokemonId: UUID): Boolean {
+        override fun isAvailable(context: JobContext, pokemonId: UUID): Boolean {
+            val world = context.world
+            val origin = context.origin
             return CobbleCrewCauldronUtils.findClosestCauldron(world, origin) != null
         }
 
-        override fun tick(world: World, origin: BlockPos, pokemonEntity: PokemonEntity) {
+        override fun tick(context: JobContext, pokemonEntity: PokemonEntity) {
+            val world = context.world
+            val origin = context.origin
             val pid = pokemonEntity.pokemon.uuid
             val now = world.time
             val last = lastGenTime[pid] ?: 0L
@@ -338,11 +352,15 @@ object EnvironmentalJobs {
             return moves.any { it in eff }
         }
 
-        override fun isAvailable(world: World, origin: BlockPos, pokemonId: UUID): Boolean {
+        override fun isAvailable(context: JobContext, pokemonId: UUID): Boolean {
+            val world = context.world
+            val origin = context.origin
             return CobbleCrewCauldronUtils.findClosestCauldron(world, origin) != null
         }
 
-        override fun tick(world: World, origin: BlockPos, pokemonEntity: PokemonEntity) {
+        override fun tick(context: JobContext, pokemonEntity: PokemonEntity) {
+            val world = context.world
+            val origin = context.origin
             val pid = pokemonEntity.pokemon.uuid
             val now = world.time
             val last = lastGenTime[pid] ?: 0L
@@ -393,11 +411,15 @@ object EnvironmentalJobs {
             return moves.any { it in eff }
         }
 
-        override fun isAvailable(world: World, origin: BlockPos, pokemonId: UUID): Boolean {
+        override fun isAvailable(context: JobContext, pokemonId: UUID): Boolean {
+            val world = context.world
+            val origin = context.origin
             return CobbleCrewCauldronUtils.findClosestCauldron(world, origin) != null
         }
 
-        override fun tick(world: World, origin: BlockPos, pokemonEntity: PokemonEntity) {
+        override fun tick(context: JobContext, pokemonEntity: PokemonEntity) {
+            val world = context.world
+            val origin = context.origin
             val pid = pokemonEntity.pokemon.uuid
             val now = world.time
             val last = lastGenTime[pid] ?: 0L
@@ -449,11 +471,15 @@ object EnvironmentalJobs {
             return moves.any { it in eff }
         }
 
-        override fun isAvailable(world: World, origin: BlockPos, pokemonId: UUID): Boolean {
+        override fun isAvailable(context: JobContext, pokemonId: UUID): Boolean {
+            val world = context.world
+            val origin = context.origin
             return findReadyFurnace(world, origin) != null
         }
 
-        override fun tick(world: World, origin: BlockPos, pokemonEntity: PokemonEntity) {
+        override fun tick(context: JobContext, pokemonEntity: PokemonEntity) {
+            val world = context.world
+            val origin = context.origin
             val pid = pokemonEntity.pokemon.uuid
             val now = world.time
             val last = lastGenTime[pid] ?: 0L
@@ -528,11 +554,15 @@ object EnvironmentalJobs {
             return moves.any { it in eff }
         }
 
-        override fun isAvailable(world: World, origin: BlockPos, pokemonId: UUID): Boolean {
+        override fun isAvailable(context: JobContext, pokemonId: UUID): Boolean {
+            val world = context.world
+            val origin = context.origin
             return findReadyBrewingStand(world, origin) != null
         }
 
-        override fun tick(world: World, origin: BlockPos, pokemonEntity: PokemonEntity) {
+        override fun tick(context: JobContext, pokemonEntity: PokemonEntity) {
+            val world = context.world
+            val origin = context.origin
             val pid = pokemonEntity.pokemon.uuid
             val now = world.time
             val last = lastGenTime[pid] ?: 0L
@@ -605,11 +635,14 @@ object EnvironmentalJobs {
             return moves.any { it in eff }
         }
 
-        override fun isAvailable(world: World, origin: BlockPos, pokemonId: UUID): Boolean {
+        override fun isAvailable(context: JobContext, pokemonId: UUID): Boolean {
+            val origin = context.origin
             return CobbleCrewCacheManager.getTargets(origin, BlockCategory.FIRE).isNotEmpty()
         }
 
-        override fun tick(world: World, origin: BlockPos, pokemonEntity: PokemonEntity) {
+        override fun tick(context: JobContext, pokemonEntity: PokemonEntity) {
+            val world = context.world
+            val origin = context.origin
             val pid = pokemonEntity.pokemon.uuid
             val target = targets[pid]
             if (target == null) {
@@ -669,11 +702,15 @@ object EnvironmentalJobs {
             return moves.any { it in eff }
         }
 
-        override fun isAvailable(world: World, origin: BlockPos, pokemonId: UUID): Boolean {
+        override fun isAvailable(context: JobContext, pokemonId: UUID): Boolean {
+            val world = context.world
+            val origin = context.origin
             return findDryFarmland(world, origin) != null
         }
 
-        override fun tick(world: World, origin: BlockPos, pokemonEntity: PokemonEntity) {
+        override fun tick(context: JobContext, pokemonEntity: PokemonEntity) {
+            val world = context.world
+            val origin = context.origin
             val pid = pokemonEntity.pokemon.uuid
             val target = targets[pid]
             if (target == null) {
@@ -744,11 +781,15 @@ object EnvironmentalJobs {
             return sp.any { it.equals(species, ignoreCase = true) }
         }
 
-        override fun isAvailable(world: World, origin: BlockPos, pokemonId: UUID): Boolean {
+        override fun isAvailable(context: JobContext, pokemonId: UUID): Boolean {
+            val world = context.world
+            val origin = context.origin
             return findNonFullHive(world, origin) != null
         }
 
-        override fun tick(world: World, origin: BlockPos, pokemonEntity: PokemonEntity) {
+        override fun tick(context: JobContext, pokemonEntity: PokemonEntity) {
+            val world = context.world
+            val origin = context.origin
             val pid = pokemonEntity.pokemon.uuid
             val now = world.time
             val last = lastGenTime[pid] ?: 0L

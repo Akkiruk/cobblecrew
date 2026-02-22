@@ -9,6 +9,7 @@
 package akkiruk.cobblecrew.jobs
 
 import akkiruk.cobblecrew.interfaces.Worker
+import akkiruk.cobblecrew.utilities.CobbleCrewDebugLogger
 import akkiruk.cobblecrew.utilities.CobbleCrewInventoryUtils
 import akkiruk.cobblecrew.utilities.WorkerVisualUtils
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
@@ -41,32 +42,44 @@ abstract class BaseProducer : Worker {
     /** Produce items for this Pokémon. Return empty list if nothing produced. */
     abstract fun produce(world: World, origin: BlockPos, pokemonEntity: PokemonEntity): List<ItemStack>
 
-    override fun tick(world: World, origin: BlockPos, pokemonEntity: PokemonEntity) {
+    override fun tick(context: JobContext, pokemonEntity: PokemonEntity) {
+        val world = context.world
         val pokemonId = pokemonEntity.pokemon.uuid
         val heldItems = heldItemsByPokemon[pokemonId]
 
         if (heldItems.isNullOrEmpty()) {
             failedDepositLocations.remove(pokemonId)
-            handleProduction(world, origin, pokemonEntity)
+            handleProduction(context, pokemonEntity)
         } else {
+            if (context is JobContext.Party) {
+                CobbleCrewInventoryUtils.deliverToPlayer(context.player, heldItems, pokemonEntity)
+                heldItemsByPokemon.remove(pokemonId)
+                failedDepositLocations.remove(pokemonId)
+                return
+            }
             CobbleCrewInventoryUtils.handleDepositing(
-                world, origin, pokemonEntity, heldItems,
+                context.world, context.origin, pokemonEntity, heldItems,
                 failedDepositLocations, heldItemsByPokemon
             )
         }
     }
 
-    protected open fun handleProduction(world: World, origin: BlockPos, pokemonEntity: PokemonEntity) {
+    protected open fun handleProduction(context: JobContext, pokemonEntity: PokemonEntity) {
+        val world = context.world
         val pokemonId = pokemonEntity.pokemon.uuid
         val now = world.time
         val lastTime = lastProductionTime[pokemonId] ?: 0L
 
-        if (now - lastTime < cooldownTicks) return
+        if (now - lastTime < cooldownTicks) {
+            CobbleCrewDebugLogger.productionOnCooldown(pokemonEntity, name, cooldownTicks - (now - lastTime))
+            return
+        }
 
-        val items = produce(world, origin, pokemonEntity)
+        val items = produce(world, context.origin, pokemonEntity)
         if (items.isNotEmpty()) {
             lastProductionTime[pokemonId] = now
             heldItemsByPokemon[pokemonId] = items
+            CobbleCrewDebugLogger.productionProduced(pokemonEntity, name, items)
 
             // Visual feedback
             WorkerVisualUtils.spawnParticles(world, pokemonEntity.blockPos, productionParticle, 5)
@@ -80,4 +93,6 @@ abstract class BaseProducer : Worker {
         heldItemsByPokemon.remove(pokemonId)
         failedDepositLocations.remove(pokemonId)
     }
+
+    override fun getHeldItems(pokemonId: UUID): List<ItemStack>? = heldItemsByPokemon[pokemonId]
 }

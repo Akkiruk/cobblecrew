@@ -78,6 +78,7 @@ object WorkerVisualUtils {
 
         // Work delay complete
         arrivalTick.remove(pokemonId)
+        CobbleCrewDebugLogger.arrivedAtTarget(pokemonEntity, targetPos)
         pokemonEntity.swingHand(Hand.MAIN_HAND)
         if (particleType != null) spawnParticles(world, targetPos, particleType)
         if (pokemonEntity.random.nextInt(5) == 0) pokemonEntity.cry()

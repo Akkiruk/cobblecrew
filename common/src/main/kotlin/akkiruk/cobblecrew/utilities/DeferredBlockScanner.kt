@@ -8,10 +8,11 @@
 
 package akkiruk.cobblecrew.utilities
 
-import akkiruk.cobblecrew.CobbleCrew
+import akkiruk.cobblecrew.cache.CacheKey
 import akkiruk.cobblecrew.cache.CobbleCrewCacheManager
 import akkiruk.cobblecrew.config.CobbleCrewConfigHolder
 import akkiruk.cobblecrew.enums.BlockCategory
+import akkiruk.cobblecrew.jobs.JobContext
 import akkiruk.cobblecrew.jobs.WorkerRegistry
 import net.minecraft.util.math.BlockPos
 import net.minecraft.util.math.Box
@@ -31,8 +32,8 @@ object DeferredBlockScanner {
         val staged: MutableMap<BlockCategory, MutableSet<BlockPos>> = mutableMapOf()
     )
 
-    private val activeScans = mutableMapOf<BlockPos, ScanJob>()
-    private val lastScanCompletion = mutableMapOf<BlockPos, Long>()
+    private val activeScans = mutableMapOf<CacheKey, ScanJob>()
+    private val lastScanCompletion = mutableMapOf<CacheKey, Long>()
 
     /** Categories actually needed by registered workers — computed once after init. */
     private var neededCategories: Set<BlockCategory>? = null
@@ -40,7 +41,6 @@ object DeferredBlockScanner {
     private fun getNeededCategories(): Set<BlockCategory> {
         neededCategories?.let { return it }
         val cats = WorkerRegistry.workers.mapNotNull { it.targetCategory }.toMutableSet()
-        // CONTAINER is always needed (deposit targets)
         cats.add(BlockCategory.CONTAINER)
         return cats.also { neededCategories = it }
     }
@@ -49,25 +49,28 @@ object DeferredBlockScanner {
     fun invalidate() { neededCategories = null }
 
     /**
-     * Initiates or continues a deferred area scan for a pasture for one tick.
+     * Initiates or continues a deferred area scan for one tick.
      * Populates BlockCategory caches for all registered validators.
+     *
+     * For Party contexts, sets [JobContext.Party.pinnedOrigin] when the scan completes.
      */
-    fun tickPastureAreaScan(
-        world: World,
-        pastureOrigin: BlockPos,
-    ) {
+    fun tickAreaScan(context: JobContext) {
+        val world = context.world
+        val key = context.cacheKey
+        val scanCenter = context.origin
         val currentTick = world.time
 
         clearExpiredCompletions(currentTick)
 
-        lastScanCompletion[pastureOrigin]?.let { lastTick ->
+        lastScanCompletion[key]?.let { lastTick ->
             if (currentTick - lastTick < SCAN_COOLDOWN_TICKS) return
         }
 
-        val scanJob = activeScans.getOrPut(pastureOrigin) {
+        val scanJob = activeScans.getOrPut(key) {
             val radius = searchRadius.toDouble()
             val height = searchHeight.toDouble()
-            val searchArea = Box(pastureOrigin).expand(radius, height, radius)
+            val searchArea = Box(scanCenter).expand(radius, height, radius)
+            CobbleCrewDebugLogger.scanStarted(scanCenter, searchRadius, searchHeight)
             ScanJob(BlockPos.stream(searchArea).iterator(), currentTick - 1)
         }
 
@@ -79,17 +82,21 @@ object DeferredBlockScanner {
 
         repeat(BLOCKS_PER_TICK) {
             if (!scanJob.iterator.hasNext()) {
-                // Atomically swap staged results into the main cache
-                CobbleCrewCacheManager.replaceAllCategoryTargets(pastureOrigin, scanJob.staged)
-                activeScans.remove(pastureOrigin)
-                lastScanCompletion[pastureOrigin] = currentTick
+                CobbleCrewCacheManager.replaceAllCategoryTargets(key, scanJob.staged)
+                activeScans.remove(key)
+                lastScanCompletion[key] = currentTick
+
+                // Pin origin for party contexts when scan completes
+                if (context is JobContext.Party && context.pinnedOrigin == null) {
+                    context.pinnedOrigin = scanCenter
+                }
 
                 val counts = needed.associateWith { cat ->
-                    CobbleCrewCacheManager.getTargets(pastureOrigin, cat).size
+                    CobbleCrewCacheManager.getTargets(key, cat).size
                 }
-                CobbleCrew.LOGGER.info(
-                    "[CobbleCrew] Scan complete for pasture at {}: {}",
-                    pastureOrigin, counts
+                CobbleCrewDebugLogger.scanComplete(
+                    scanCenter,
+                    counts.map { (k, v) -> k.name to v }.toMap()
                 )
                 return
             }
@@ -104,14 +111,38 @@ object DeferredBlockScanner {
             for ((category, validator) in categoryValidators) {
                 if (category !in needed) continue
                 if (validator(world, pos)) {
+                    // Exposed-face filter for underground blocks
+                    if (category.requiresExposedFace && !hasExposedFace(world, pos)) continue
+
                     scanJob.staged.getOrPut(category) { mutableSetOf() }.add(immutablePos)
                 }
             }
         }
     }
 
-    /** Checks whether a scan job is running for the given pasture origin. */
-    fun isScanActive(pastureOrigin: BlockPos): Boolean = activeScans.containsKey(pastureOrigin)
+    /** Backward-compat wrapper: delegates to tickAreaScan. */
+    fun tickPastureAreaScan(world: World, pastureOrigin: BlockPos) {
+        tickAreaScan(JobContext.Pasture(pastureOrigin, world))
+    }
+
+    /** Checks whether a scan job is running for the given cache key. */
+    fun isScanActive(key: CacheKey): Boolean = activeScans.containsKey(key)
+
+    /** Backward-compat: check by BlockPos (wraps to PastureKey). */
+    fun isScanActive(pastureOrigin: BlockPos): Boolean = isScanActive(CacheKey.PastureKey(pastureOrigin))
+
+    /** Abort any in-progress scan and clear cooldown for the given key. */
+    fun clearScan(key: CacheKey) {
+        activeScans.remove(key)
+        lastScanCompletion.remove(key)
+    }
+
+    private fun hasExposedFace(world: World, pos: BlockPos): Boolean {
+        return net.minecraft.util.math.Direction.entries.any { dir ->
+            val adjacent = pos.offset(dir)
+            !world.getBlockState(adjacent).isOpaqueFullCube(world, adjacent)
+        }
+    }
 
     private fun clearExpiredCompletions(currentTick: Long) {
         val iterator = lastScanCompletion.entries.iterator()

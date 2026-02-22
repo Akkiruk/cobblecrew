@@ -14,6 +14,7 @@ import akkiruk.cobblecrew.config.JobConfigManager
 import akkiruk.cobblecrew.enums.BlockCategory
 import akkiruk.cobblecrew.enums.WorkerPriority
 import akkiruk.cobblecrew.interfaces.Worker
+import akkiruk.cobblecrew.jobs.JobContext
 import akkiruk.cobblecrew.jobs.WorkerRegistry
 import akkiruk.cobblecrew.jobs.dsl.SupportJob
 import akkiruk.cobblecrew.utilities.CobbleCrewInventoryUtils
@@ -164,19 +165,27 @@ object SupportJobs {
             return moves.any { it in eff }
         }
 
-        override fun tick(world: World, origin: BlockPos, pokemonEntity: PokemonEntity) {
+        override fun tick(context: JobContext, pokemonEntity: PokemonEntity) {
+            val world = context.world
+            val origin = context.origin
             val pid = pokemonEntity.pokemon.uuid
             val ownerId = pokemonEntity.ownerUuid ?: return
 
             val held = heldItems[pid]
             if (!held.isNullOrEmpty()) {
+                if (context is JobContext.Party) {
+                    CobbleCrewInventoryUtils.deliverToPlayer(context.player, held, pokemonEntity)
+                    heldItems.remove(pid)
+                    failedDeposits.remove(pid)
+                    return
+                }
                 CobbleCrewInventoryUtils.handleDepositing(world, origin, pokemonEntity, held, failedDeposits, heldItems)
                 return
             }
             failedDeposits.remove(pid)
 
             val now = world.time
-            val last = lastGenTime[ownerId] ?: 0L
+            val last = lastGenTime[pid] ?: 0L
             val cd = (config.cooldownSeconds.takeIf { it > 0 } ?: 600) * 20L
             if (now - last < cd) return
 
@@ -208,7 +217,7 @@ object SupportJobs {
                     if (mapItem.stack.isEmpty) mapItem.discard()
                     val map = createStructureMap(world as ServerWorld, origin)
                     heldItems[pid] = listOf(map ?: singleItem)
-                    lastGenTime[pokemonEntity.ownerUuid!!] = world.time
+                    lastGenTime[pid] = world.time
                 }
                 CobbleCrewNavigationUtils.releaseTarget(pid, world)
             }

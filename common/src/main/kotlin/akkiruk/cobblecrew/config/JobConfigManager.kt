@@ -97,4 +97,44 @@ object JobConfigManager {
 
     /** All loaded job names. */
     fun allJobNames(): Set<String> = configs.keys.toSet()
+
+    /** Set enabled state for a job and persist to disk. */
+    fun setEnabled(jobName: String, enabled: Boolean): Boolean {
+        val current = configs[jobName] ?: return false
+        configs[jobName] = current.copy(enabled = enabled)
+        saveCategoryContaining(jobName)
+        return true
+    }
+
+    /** Reload all job configs from disk. */
+    fun reload() {
+        configs.clear()
+        load()
+    }
+
+    /** All job names grouped by category. */
+    fun allJobsByCategory(): Map<String, List<String>> {
+        val result = mutableMapOf<String, MutableList<String>>()
+        for ((category, categoryDefaults) in defaults) {
+            result[category] = categoryDefaults.keys.toMutableList()
+        }
+        return result
+    }
+
+    private fun saveCategoryContaining(jobName: String) {
+        for ((category, categoryDefaults) in defaults) {
+            if (jobName in categoryDefaults) {
+                saveCategory(category)
+                return
+            }
+        }
+    }
+
+    private fun saveCategory(category: String) {
+        val dir = configDir.toFile()
+        val file = java.io.File(dir, "$category.json")
+        val categoryJobs = defaults[category]?.keys ?: return
+        val toSave = categoryJobs.associateWith { configs[it] ?: JobConfig() }
+        file.writeText(gson.toJson(toSave))
+    }
 }
