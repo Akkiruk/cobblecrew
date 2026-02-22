@@ -1,3 +1,7 @@
+## 3.0.2
+- Added diagnostic logging for job assignment and block scan results
+- Fixed species name resolution (use species.name instead of translatedName for reliable matching)
+
 ## 3.0.1
 - Fixed Sand Miner job never finding sand blocks (used nonexistent minecraft:sand block tag; now uses direct block check like other earth categories)
 

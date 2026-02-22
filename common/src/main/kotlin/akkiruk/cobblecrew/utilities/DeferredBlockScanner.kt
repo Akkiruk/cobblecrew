@@ -8,6 +8,7 @@
 
 package akkiruk.cobblecrew.utilities
 
+import akkiruk.cobblecrew.CobbleCrew
 import akkiruk.cobblecrew.cache.CobbleCrewCacheManager
 import akkiruk.cobblecrew.config.CobbleCrewConfigHolder
 import akkiruk.cobblecrew.enums.BlockCategory
@@ -81,6 +82,15 @@ object DeferredBlockScanner {
             if (!scanJob.iterator.hasNext()) {
                 activeScans.remove(pastureOrigin)
                 lastScanCompletion[pastureOrigin] = currentTick
+
+                // Log scan completion with target counts per category
+                val counts = needed.associateWith { cat ->
+                    CobbleCrewCacheManager.getTargets(pastureOrigin, cat).size
+                }
+                CobbleCrew.LOGGER.info(
+                    "[CobbleCrew] Scan complete for pasture at {}: {}",
+                    pastureOrigin, counts
+                )
                 return
             }
 

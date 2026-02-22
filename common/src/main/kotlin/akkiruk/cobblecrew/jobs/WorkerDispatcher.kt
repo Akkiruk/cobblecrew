@@ -8,6 +8,7 @@
 
 package akkiruk.cobblecrew.jobs
 
+import akkiruk.cobblecrew.CobbleCrew
 import akkiruk.cobblecrew.interfaces.Worker
 import akkiruk.cobblecrew.utilities.CobbleCrewNavigationUtils
 import akkiruk.cobblecrew.utilities.DeferredBlockScanner
@@ -23,7 +24,9 @@ object WorkerDispatcher {
     private val activeJobs = mutableMapOf<UUID, Worker>()
     private val profiles = mutableMapOf<UUID, PokemonProfile>()
     private val jobAssignedTick = mutableMapOf<UUID, Long>()
+    private val idleLogTick = mutableMapOf<UUID, Long>()
     private const val JOB_STICKINESS_TICKS = 100L // 5 seconds
+    private const val IDLE_LOG_INTERVAL = 600L // log idle reason every 30s
 
     fun tickAreaScan(world: World, pastureOrigin: BlockPos) {
         DeferredBlockScanner.tickPastureAreaScan(world, pastureOrigin)
@@ -41,11 +44,19 @@ object WorkerDispatcher {
 
         val moves = pokemon.moveSet.getMoves().map { it.name.lowercase() }.toSet()
         val types = pokemon.types.map { it.name.uppercase() }.toSet()
-        val species = pokemon.species.translatedName.string.lowercase()
+        val species = pokemon.species.name.lowercase()
         val ability = pokemon.ability.name.lowercase()
 
         return PokemonProfile.build(pokemonId, moves, types, species, ability, workers)
-            .also { profiles[pokemonId] = it }
+            .also {
+                profiles[pokemonId] = it
+                val eligible = it.allEligible()
+                CobbleCrew.LOGGER.info(
+                    "[CobbleCrew] Profile built for {} ({}): moves={}, types={}, eligible={}",
+                    species, pokemonId.toString().take(8),
+                    moves, types, eligible.map { w -> w.name }
+                )
+            }
     }
 
     fun tickPokemon(world: World, pastureOrigin: BlockPos, pokemonEntity: PokemonEntity) {
@@ -86,6 +97,21 @@ object WorkerDispatcher {
             activeJobs.remove(pokemonId)
             WorkerVisualUtils.setExcited(pokemonEntity, false)
             returnToPasture(pokemonEntity, pastureOrigin)
+
+            val lastLog = idleLogTick[pokemonId] ?: 0L
+            if (now - lastLog >= IDLE_LOG_INTERVAL) {
+                idleLogTick[pokemonId] = now
+                val availInfo = eligible.map { w ->
+                    val avail = w.isAvailable(world, pastureOrigin, pokemonId)
+                    "${w.name}=$avail"
+                }
+                CobbleCrew.LOGGER.info(
+                    "[CobbleCrew] {} ({}) idle: {} eligible jobs, none available. {}",
+                    pokemonEntity.pokemon.species.name,
+                    pokemonId.toString().take(8),
+                    eligible.size, availInfo
+                )
+            }
             return
         }
 
