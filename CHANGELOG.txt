@@ -1,3 +1,10 @@
+## 3.0.0
+- Full rebrand: Cobbleworkers → CobbleCrew
+- New mod ID: cobblecrew (was cobbleworkers)
+- New package: akkiruk.cobblecrew (was accieo.cobbleworkers)
+- Config migration: existing cobbleworkers configs are auto-copied to cobblecrew on first launch
+- Command changed from /cobbleworkers to /cobblecrew
+
 ## 2.12.2
 - Pasture Pokémon no longer trample farmland when walking over crops
 

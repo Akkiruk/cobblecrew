@@ -1,26 +1,26 @@
 modLoader = "kotlinforforge"
 loaderVersion = "[5.3,)"
-issueTrackerURL = "https://github.com/Accieo/cobbleworkers/issues"
+issueTrackerURL = "https://github.com/Akkiruk/cobblecrew/issues"
 license = "MPL-2.0"
 
 [[mods]]
-modId = "cobbleworkers"
+modId = "cobblecrew"
 version = "${version}"
-displayName = "Cobbleworkers"
-authors = "Accieo"
+displayName = "CobbleCrew"
+authors = "Akkiruk, Accieo"
 description = '''
-Pasture block can now be used as a utility block that gives Pokémon jobs!
+Put your Pokémon to work — in the pasture AND by your side. 92+ jobs across 9 categories, with party Pokémon support.
 '''
-logoFile = "assets/cobbleworkers/icon.png"
+logoFile = "assets/cobblecrew/icon.png"
 
-[[dependencies.cobbleworkers]]
+[[dependencies.cobblecrew]]
 modId = "neoforge"
 type = "required"
 versionRange = "[21.1,)"
 ordering = "NONE"
 side = "BOTH"
 
-[[dependencies.cobbleworkers]]
+[[dependencies.cobblecrew]]
 modId = "minecraft"
 type = "required"
 versionRange = "[1.21.1,)"
@@ -28,4 +28,4 @@ ordering = "NONE"
 side = "BOTH"
 
 [[mixins]]
-config = "cobbleworkers.mixins.json"
+config = "cobblecrew.mixins.json"

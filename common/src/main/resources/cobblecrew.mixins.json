@@ -1,0 +1,17 @@
+{
+  "required": true,
+  "package": "akkiruk.cobblecrew.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "minVersion": "0.8",
+  "client": [
+  ],
+  "mixins": [
+    "PokemonPastureBlockEntityMixin",
+    "FarmlandBlockMixin",
+    "AbstractFurnaceBlockEntityAccessor",
+    "BrewingStandBlockEntityAccessor"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

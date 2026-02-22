@@ -1,4 +1,4 @@
-# Deploy Cobbleworkers to Exaroton
+# Deploy CobbleCrew to Exaroton
 # Usage: .\deploy-exaroton.ps1
 
 $ErrorActionPreference = "Stop"
@@ -19,7 +19,7 @@ if (-not $EXAROTON_API_TOKEN -or -not $EXAROTON_SERVER_ID) {
 }
 
 # 2. Build the mod
-Write-Host "Building Cobbleworkers..." -ForegroundColor Cyan
+Write-Host "Building CobbleCrew..." -ForegroundColor Cyan
 # Run the build command from context: clean :fabric:build :neoforge:build
 # Assuming we want to deploy the Fabric version to the server as per most Cobblemon servers, but let's check what's produced.
 # If the server is NeoForge, the user should adjust. We'll default to uploading both or asking? 
@@ -35,7 +35,7 @@ if ($gradleProcess.ExitCode -ne 0) {
 
 # 3. Find the built jar
 $buildDir = Join-Path $PSScriptRoot "fabric\build\libs"
-$jarFile = Get-ChildItem -Path $buildDir -Filter "cobbleworkers-fabric-*.jar" | 
+$jarFile = Get-ChildItem -Path $buildDir -Filter "cobblecrew-fabric-*.jar" | 
     Where-Object { $_.Name -notmatch "-dev" -and $_.Name -notmatch "-sources" } | 
     Sort-Object LastWriteTime -Descending | Select-Object -First 1
 
@@ -86,7 +86,7 @@ Write-Host "Checking remote mods folder..." -ForegroundColor Cyan
 $modsInfo = Invoke-ExarotonApi -Method GET -Uri "files/info/mods/"
 
 if ($modsInfo.success -eq $true) {
-    $existingMod = $modsInfo.data.children | Where-Object { $_.name -match "^cobbleworkers-fabric" }
+    $existingMod = $modsInfo.data.children | Where-Object { $_.name -match "^cobblecrew-fabric" }
     
     if ($existingMod) {
         Write-Host "Found old version: $($existingMod.name). Deleting..." -ForegroundColor Yellow
