@@ -1,3 +1,6 @@
+## 3.0.1
+- Fixed Sand Miner job never finding sand blocks (used nonexistent minecraft:sand block tag; now uses direct block check like other earth categories)
+
 ## 3.0.0
 - Full rebrand: Cobbleworkers → CobbleCrew
 - New mod ID: cobblecrew (was cobbleworkers)

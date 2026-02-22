@@ -34,6 +34,7 @@ object BlockCategoryValidators {
     private val IGNEOUS_BLOCKS = setOf(Blocks.GRANITE, Blocks.ANDESITE, Blocks.DIORITE)
     private val DEEPSLATE_BLOCKS = setOf(Blocks.DEEPSLATE, Blocks.COBBLED_DEEPSLATE, Blocks.TUFF, Blocks.CALCITE)
     private val DIRT_BLOCKS = setOf(Blocks.DIRT, Blocks.COARSE_DIRT, Blocks.GRAVEL, Blocks.ROOTED_DIRT)
+    private val SAND_BLOCKS = setOf(Blocks.SAND, Blocks.RED_SAND)
     private val MUSHROOM_BLOCKS = setOf(Blocks.BROWN_MUSHROOM, Blocks.RED_MUSHROOM)
     private val VEGETATION_BLOCKS = setOf(
         Blocks.SHORT_GRASS, Blocks.TALL_GRASS, Blocks.FERN, Blocks.LARGE_FERN,
@@ -83,7 +84,7 @@ object BlockCategoryValidators {
         BlockCategory.IGNEOUS to { world, pos -> world.getBlockState(pos).block in IGNEOUS_BLOCKS },
         BlockCategory.DEEPSLATE to { world, pos -> world.getBlockState(pos).block in DEEPSLATE_BLOCKS },
         BlockCategory.DIRT to { world, pos -> world.getBlockState(pos).block in DIRT_BLOCKS },
-        BlockCategory.SAND to { world, pos -> world.getBlockState(pos).isIn(CobbleCrewTags.Blocks.SAND) },
+        BlockCategory.SAND to { world, pos -> world.getBlockState(pos).block in SAND_BLOCKS },
         BlockCategory.CLAY to { world, pos -> world.getBlockState(pos).block == Blocks.CLAY },
 
         // Minerals & special

@@ -27,7 +27,6 @@ object CobbleCrewTags {
         val MINTS = cobblemon("mints")
 
         // Vanilla
-        val SAND = vanilla("sand")
         val DIRT = vanilla("dirt")
         val SMALL_FLOWERS = vanilla("small_flowers")
         val TALL_FLOWERS = vanilla("tall_flowers")
