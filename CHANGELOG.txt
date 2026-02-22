@@ -1,3 +1,8 @@
+## 3.0.5
+- Added diagnostic logging when workers can't find containers to deposit items
+- Logs: cached container count, tried/failed count, scan status, and which items couldn't be deposited
+- Logs when specific containers are rejected (no space or missing block entity)
+
 ## 3.0.4
 - Workers now hold items and retry containers instead of dropping items on the ground when all containers are full
 - Retry cycle: when all nearby containers are exhausted, waits 10 seconds then re-checks (containers may have been emptied)

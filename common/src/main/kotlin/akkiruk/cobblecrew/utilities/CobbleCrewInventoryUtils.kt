@@ -8,6 +8,7 @@
 
 package akkiruk.cobblecrew.utilities
 
+import akkiruk.cobblecrew.CobbleCrew
 import akkiruk.cobblecrew.cache.CobbleCrewCacheManager
 import akkiruk.cobblecrew.enums.BlockCategory
 import com.cobblemon.mod.common.CobblemonBlocks
@@ -273,9 +274,20 @@ object CobbleCrewInventoryUtils {
     ) {
         val pokemonId = pokemonEntity.pokemon.uuid
         val triedPositions = failedDepositLocations.getOrPut(pokemonId) { mutableSetOf() }
+        val allContainers = CobbleCrewCacheManager.getTargets(origin, BlockCategory.CONTAINER)
         val inventoryPos = findClosestInventory(world, origin, triedPositions, itemsToDeposit)
 
         if (inventoryPos == null) {
+            val items = itemsToDeposit.joinToString { "${it.count}x ${it.item}" }
+            CobbleCrew.LOGGER.warn(
+                "[CobbleCrew] {} ({}) can't deposit [{}]: {} cached containers, {} tried/failed, scanActive={}",
+                pokemonEntity.pokemon.species.name,
+                pokemonId.toString().take(8),
+                items,
+                allContainers.size,
+                triedPositions.size,
+                DeferredBlockScanner.isScanActive(origin)
+            )
             // Don't drop items yet if scan is running as inventory might be found within the next ticks.
             if (DeferredBlockScanner.isScanActive(origin)) {
                 heldItemsByPokemon[pokemonId] = itemsToDeposit
@@ -304,6 +316,10 @@ object CobbleCrewInventoryUtils {
             // First tick at container: verify space, then open and start deposit delay
             if (arrived == null) {
                 if (!hasSpaceFor(world, inventoryPos, itemsToDeposit)) {
+                    CobbleCrew.LOGGER.info(
+                        "[CobbleCrew] Container at {} has no space for {}'s items, marking tried",
+                        inventoryPos, pokemonEntity.pokemon.species.name
+                    )
                     triedPositions.add(inventoryPos)
                     return
                 }
@@ -329,6 +345,10 @@ object CobbleCrewInventoryUtils {
 
             val inventory = world.getBlockEntity(inventoryPos) as? Inventory
             if (inventory == null) {
+                CobbleCrew.LOGGER.warn(
+                    "[CobbleCrew] Container at {} has no block entity for {}, marking tried",
+                    inventoryPos, pokemonEntity.pokemon.species.name
+                )
                 triedPositions.add(inventoryPos)
                 pendingCloses.add(PendingClose(inventoryPos.toImmutable(), now + 5L))
                 return
