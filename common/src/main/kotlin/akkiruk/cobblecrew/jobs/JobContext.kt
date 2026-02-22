@@ -26,19 +26,20 @@ sealed interface JobContext {
         override val cacheKey: CacheKey get() = CacheKey.PastureKey(origin)
     }
 
-    /** Party Pokémon — origin tracks the player, pinned when a scan completes. */
+    /**
+     * Party Pokémon — origin is set to the player's position when each eager scan runs.
+     * Between scans, origin stays fixed so cache lookups are stable.
+     */
     data class Party(
         val player: ServerPlayerEntity,
         override val world: World,
     ) : JobContext {
-        var pinnedOrigin: BlockPos? = null
+        /** Updated every time the eager party scan runs. */
+        var scanOrigin: BlockPos? = null
 
         override val origin: BlockPos
-            get() = pinnedOrigin ?: player.blockPos
+            get() = scanOrigin ?: player.blockPos
 
-        // Uses PastureKey(origin) so downstream callers that only have a BlockPos
-        // can look up cache results via the same key. Collision between two players
-        // at the exact same BlockPos is negligible in practice.
         override val cacheKey: CacheKey get() = CacheKey.PastureKey(origin)
     }
 }

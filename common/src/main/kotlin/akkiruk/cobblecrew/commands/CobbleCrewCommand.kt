@@ -587,7 +587,8 @@ object CobbleCrewCommand {
         s.sendFeedback({ label("Enabled", if (partyConfig.enabled) "§aYes" else "§cNo") }, false)
         s.sendFeedback({ label("Active party workers", workers.size.toString()) }, false)
         s.sendFeedback({ label("Max work distance", "${partyConfig.maxWorkDistance} blocks") }, false)
-        s.sendFeedback({ label("Zone transition", "${partyConfig.zoneTransitionDistance} blocks") }, false)
+        s.sendFeedback({ label("Scan interval", "${partyConfig.scanIntervalTicks} ticks") }, false)
+        s.sendFeedback({ label("Scan radius", "${partyConfig.searchRadius} blocks") }, false)
         s.sendFeedback({ label("Teleport distance", "${partyConfig.teleportDistance} blocks") }, false)
 
         if (workers.isEmpty()) {

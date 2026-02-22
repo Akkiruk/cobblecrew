@@ -1,3 +1,10 @@
+## 3.0.9
+- Replaced deferred block scanner for party workers with eager synchronous scan
+- Party Pokémon now find targets in ~2 seconds instead of ~16 seconds
+- Scan runs every 40 ticks (2s) with a smaller radius (6 blocks, height 3)
+- Removed zone transition / pinnedOrigin complexity — scan always follows the player
+- Added party-specific config: scanIntervalTicks, searchRadius, searchHeight
+
 ## 3.0.8
 - Fixed party Pokémon scans never completing — zone transition was clearing in-progress scans every tick
 - Party workers (sand_miner, etc.) now correctly find nearby blocks and start working

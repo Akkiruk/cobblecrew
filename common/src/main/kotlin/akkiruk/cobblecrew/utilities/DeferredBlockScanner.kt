@@ -38,7 +38,7 @@ object DeferredBlockScanner {
     /** Categories actually needed by registered workers — computed once after init. */
     private var neededCategories: Set<BlockCategory>? = null
 
-    private fun getNeededCategories(): Set<BlockCategory> {
+    fun getNeededCategories(): Set<BlockCategory> {
         neededCategories?.let { return it }
         val cats = WorkerRegistry.workers.mapNotNull { it.targetCategory }.toMutableSet()
         cats.add(BlockCategory.CONTAINER)
@@ -51,8 +51,7 @@ object DeferredBlockScanner {
     /**
      * Initiates or continues a deferred area scan for one tick.
      * Populates BlockCategory caches for all registered validators.
-     *
-     * For Party contexts, sets [JobContext.Party.pinnedOrigin] when the scan completes.
+     * Used for pasture contexts; party contexts use eager scanning instead.
      */
     fun tickAreaScan(context: JobContext) {
         val world = context.world
@@ -85,11 +84,6 @@ object DeferredBlockScanner {
                 CobbleCrewCacheManager.replaceAllCategoryTargets(key, scanJob.staged)
                 activeScans.remove(key)
                 lastScanCompletion[key] = currentTick
-
-                // Pin origin for party contexts when scan completes
-                if (context is JobContext.Party && context.pinnedOrigin == null) {
-                    context.pinnedOrigin = scanCenter
-                }
 
                 val counts = needed.associateWith { cat ->
                     CobbleCrewCacheManager.getTargets(key, cat).size
@@ -137,7 +131,7 @@ object DeferredBlockScanner {
         lastScanCompletion.remove(key)
     }
 
-    private fun hasExposedFace(world: World, pos: BlockPos): Boolean {
+    fun hasExposedFace(world: World, pos: BlockPos): Boolean {
         return net.minecraft.util.math.Direction.entries.any { dir ->
             val adjacent = pos.offset(dir)
             !world.getBlockState(adjacent).isOpaqueFullCube(world, adjacent)

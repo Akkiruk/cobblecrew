@@ -37,13 +37,21 @@ class CobbleCrewConfig : ConfigData {
         /** Enable party Pokémon jobs globally. */
         var enabled = true
 
+        /** Ticks between party area scans (lower = more responsive, higher = less CPU). */
+        @ConfigEntry.BoundedDiscrete(min = 20, max = 200)
+        var scanIntervalTicks = 40
+
+        /** Horizontal radius for party area scans (blocks). */
+        @ConfigEntry.BoundedDiscrete(min = 3, max = 12)
+        var searchRadius = 6
+
+        /** Vertical radius for party area scans (blocks). */
+        @ConfigEntry.BoundedDiscrete(min = 2, max = 8)
+        var searchHeight = 3
+
         /** Max distance a party worker can travel from the player. */
         @ConfigEntry.BoundedDiscrete(min = 8, max = 64)
         var maxWorkDistance = 32
-
-        /** Distance from pinned origin at which zone transitions. */
-        @ConfigEntry.BoundedDiscrete(min = 24, max = 96)
-        var zoneTransitionDistance = 48
 
         /** Auto-teleport party workers to player if they fall behind. */
         var teleportIfTooFar = true

@@ -9,8 +9,11 @@
 package akkiruk.cobblecrew.jobs
 
 import akkiruk.cobblecrew.CobbleCrew
+import akkiruk.cobblecrew.cache.CacheKey
 import akkiruk.cobblecrew.cache.CobbleCrewCacheManager
 import akkiruk.cobblecrew.config.CobbleCrewConfigHolder
+import akkiruk.cobblecrew.enums.BlockCategory
+import akkiruk.cobblecrew.utilities.BlockCategoryValidators
 import akkiruk.cobblecrew.utilities.CobbleCrewInventoryUtils
 import akkiruk.cobblecrew.utilities.CobbleCrewNavigationUtils
 import akkiruk.cobblecrew.utilities.DeferredBlockScanner
@@ -21,6 +24,7 @@ import com.cobblemon.mod.common.entity.PoseType
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import net.minecraft.server.MinecraftServer
 import net.minecraft.server.network.ServerPlayerEntity
+import net.minecraft.util.math.BlockPos
 import java.util.UUID
 
 /**
@@ -40,7 +44,7 @@ object PartyWorkerManager {
     // pokemonId → entry
     private val activePartyWorkers = mutableMapOf<UUID, PartyWorkerEntry>()
 
-    // playerUUID → context (persists across ticks so pinnedOrigin stays stable)
+    // playerUUID → context (persists across ticks so scanOrigin stays stable)
     private val playerContexts = mutableMapOf<UUID, JobContext.Party>()
 
     // Players currently in battle — skip their workers during tick
@@ -146,6 +150,9 @@ object PartyWorkerManager {
         playerUUIDs.forEach { playersInBattle.remove(it) }
     }
 
+    // playerUUID → last tick we ran a scan
+    private val lastScanTick = mutableMapOf<UUID, Long>()
+
     fun tick(server: MinecraftServer) {
         if (!config.enabled) return
         if (activePartyWorkers.isEmpty()) return
@@ -165,14 +172,13 @@ object PartyWorkerManager {
                 JobContext.Party(first.owner, first.owner.serverWorld)
             }
 
-            // Drive shared area scan — once per player
-            WorkerDispatcher.tickAreaScan(context)
+            // Eager synchronous scan — small radius, runs every scanIntervalTicks
+            runEagerScan(context)
 
             // Drive chest animations for party workers
             CobbleCrewInventoryUtils.tickAnimations(context.world)
 
             for (entry in entries.toList()) {
-                // Safety checks
                 if (entry.pokemonEntity.isRemoved) {
                     cleanupWorker(entry.pokemonId, playerId)
                     continue
@@ -198,24 +204,18 @@ object PartyWorkerManager {
                             context.player.x, context.player.y, context.player.z
                         )
                         WorkerDispatcher.resetAssignment(entry.pokemonId)
-                        context.pinnedOrigin = null
                     }
                 }
 
-                // Zone transition check (only when idle)
-                if (shouldTransitionZone(entry.pokemonId, context, context.world)) {
-                    transitionZone(context, playerId)
-                }
-
-                // maxWorkDistance enforcement: if Pokémon wandered too far from work origin, 
-                // recall them back instead of letting them work further away
+                // maxWorkDistance enforcement
                 val maxDist = config.maxWorkDistance.toDouble()
-                val distFromOriginSq = entry.pokemonEntity.squaredDistanceTo(
-                    context.origin.x + 0.5, context.origin.y + 0.5, context.origin.z + 0.5
+                val playerPos = context.player.blockPos
+                val distFromPlayerSq = entry.pokemonEntity.squaredDistanceTo(
+                    playerPos.x + 0.5, playerPos.y + 0.5, playerPos.z + 0.5
                 )
-                if (distFromOriginSq > maxDist * maxDist) {
+                if (distFromPlayerSq > maxDist * maxDist) {
                     WorkerDispatcher.resetAssignment(entry.pokemonId)
-                    CobbleCrewNavigationUtils.navigateTo(entry.pokemonEntity, context.origin)
+                    CobbleCrewNavigationUtils.navigateTo(entry.pokemonEntity, playerPos)
                 } else {
                     WorkerDispatcher.tickPokemon(context, entry.pokemonEntity)
                 }
@@ -226,33 +226,73 @@ object PartyWorkerManager {
                 val removed = playerContexts.remove(playerId)
                 if (removed != null) {
                     CobbleCrewCacheManager.removeCache(removed.cacheKey)
-                    DeferredBlockScanner.clearScan(removed.cacheKey)
                 }
+                lastScanTick.remove(playerId)
             }
         }
     }
 
-    private fun shouldTransitionZone(
-        pokemonId: UUID,
-        context: JobContext.Party,
-        world: net.minecraft.world.World,
-    ): Boolean {
-        if (WorkerDispatcher.hasActiveJob(pokemonId)) return false
-        if (CobbleCrewNavigationUtils.getTarget(pokemonId, world) != null) return false
+    /**
+     * Synchronous area scan centered on the player.
+     * Scans all blocks in a small radius and populates the cache atomically.
+     * Much faster than the deferred scanner — ~2,000 blocks in a single tick.
+     */
+    private fun runEagerScan(context: JobContext.Party) {
+        val now = context.world.time
+        val playerId = context.player.uuid
+        val interval = config.scanIntervalTicks.toLong()
 
-        // No pinned origin = scan hasn't completed yet — don't interrupt it
-        val pinned = context.pinnedOrigin ?: return false
-        val dist = config.zoneTransitionDistance.toDouble()
-        return pinned.getSquaredDistance(context.player.blockPos) > dist * dist
-    }
+        lastScanTick[playerId]?.let { last ->
+            if (now - last < interval) return
+        }
+        lastScanTick[playerId] = now
 
-    private fun transitionZone(context: JobContext.Party, playerId: UUID) {
-        val oldKey = context.cacheKey
-        context.pinnedOrigin = null
+        val world = context.world
+        val playerPos = context.player.blockPos
+        val radius = config.searchRadius
+        val height = config.searchHeight
 
-        // Clear old cache and scanner state
-        CobbleCrewCacheManager.removeCache(oldKey)
-        DeferredBlockScanner.clearScan(oldKey)
+        // Clear old cache if scan origin changed (player moved)
+        val oldOrigin = context.scanOrigin
+        if (oldOrigin != null && oldOrigin != playerPos) {
+            CobbleCrewCacheManager.removeCache(CacheKey.PastureKey(oldOrigin))
+        }
+
+        // Pin origin to current player pos — stable until next scan
+        context.scanOrigin = playerPos
+        val key = context.cacheKey
+
+        val categoryValidators = BlockCategoryValidators.validators
+        val needed = DeferredBlockScanner.getNeededCategories()
+        val staged = mutableMapOf<BlockCategory, MutableSet<BlockPos>>()
+
+        val minX = playerPos.x - radius
+        val maxX = playerPos.x + radius
+        val minY = playerPos.y - height
+        val maxY = playerPos.y + height
+        val minZ = playerPos.z - radius
+        val maxZ = playerPos.z + radius
+
+        for (x in minX..maxX) {
+            for (z in minZ..maxZ) {
+                val chunkX = x shr 4
+                val chunkZ = z shr 4
+                if (!world.isChunkLoaded(chunkX, chunkZ)) continue
+
+                for (y in minY..maxY) {
+                    val pos = BlockPos(x, y, z)
+                    for ((category, validator) in categoryValidators) {
+                        if (category !in needed) continue
+                        if (validator(world, pos)) {
+                            if (category.requiresExposedFace && !DeferredBlockScanner.hasExposedFace(world, pos)) continue
+                            staged.getOrPut(category) { mutableSetOf() }.add(pos.toImmutable())
+                        }
+                    }
+                }
+            }
+        }
+
+        CobbleCrewCacheManager.replaceAllCategoryTargets(key, staged)
     }
 
     private fun deliverHeldItemsOnRecall(entry: PartyWorkerEntry) {
@@ -290,8 +330,8 @@ object PartyWorkerManager {
         val context = playerContexts.remove(playerId)
         if (context != null) {
             CobbleCrewCacheManager.removeCache(context.cacheKey)
-            DeferredBlockScanner.clearScan(context.cacheKey)
         }
+        lastScanTick.remove(playerId)
         playersInBattle.remove(playerId)
     }
 
