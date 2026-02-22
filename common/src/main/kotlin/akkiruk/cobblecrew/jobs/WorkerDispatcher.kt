@@ -73,7 +73,12 @@ object WorkerDispatcher {
         if (eligible.isEmpty()) {
             activeJobs.remove(pokemonId)
             WorkerVisualUtils.setExcited(pokemonEntity, false)
-            CobbleCrewDebugLogger.noEligibleJobs(pokemonEntity.pokemon.species.name, pokemonId)
+            val now = world.time
+            val lastLog = idleLogTick[pokemonId] ?: 0L
+            if (now - lastLog >= IDLE_LOG_INTERVAL) {
+                idleLogTick[pokemonId] = now
+                CobbleCrewDebugLogger.noEligibleJobs(pokemonEntity.pokemon.species.name, pokemonId)
+            }
             returnToOrigin(pokemonEntity, context)
             return
         }

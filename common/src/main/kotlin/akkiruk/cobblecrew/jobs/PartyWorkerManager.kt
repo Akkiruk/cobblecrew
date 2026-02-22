@@ -240,7 +240,8 @@ object PartyWorkerManager {
         if (WorkerDispatcher.hasActiveJob(pokemonId)) return false
         if (CobbleCrewNavigationUtils.getTarget(pokemonId, world) != null) return false
 
-        val pinned = context.pinnedOrigin ?: return true
+        // No pinned origin = scan hasn't completed yet — don't interrupt it
+        val pinned = context.pinnedOrigin ?: return false
         val dist = config.zoneTransitionDistance.toDouble()
         return pinned.getSquaredDistance(context.player.blockPos) > dist * dist
     }
