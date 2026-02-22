@@ -10,10 +10,11 @@ package akkiruk.cobblecrew.jobs.registry
 
 import akkiruk.cobblecrew.jobs.WorkerRegistry
 import akkiruk.cobblecrew.jobs.dsl.PlacementJob
-import akkiruk.cobblecrew.utilities.CobbleCrewTags
+import net.minecraft.block.Block
 import net.minecraft.block.Blocks
 import net.minecraft.block.CropBlock
 import net.minecraft.block.SaplingBlock
+import net.minecraft.item.BlockItem
 import net.minecraft.item.BoneMealItem
 import net.minecraft.item.Items
 import net.minecraft.particle.ParticleTypes
@@ -46,16 +47,18 @@ object PlacementJobs {
         },
     )
 
+    private val DIRT_BLOCKS = setOf(Blocks.DIRT, Blocks.COARSE_DIRT, Blocks.GRASS_BLOCK, Blocks.PODZOL, Blocks.ROOTED_DIRT, Blocks.MYCELIUM, Blocks.MUD, Blocks.MUDDY_MANGROVE_ROOTS)
+
     val TREE_PLANTER = PlacementJob(
         name = "tree_planter",
         qualifyingMoves = setOf("ingrain", "seedbomb"),
         particle = ParticleTypes.HAPPY_VILLAGER,
-        itemCheck = { stack -> stack.isIn(CobbleCrewTags.Items.SAPLINGS) },
+        itemCheck = { stack -> (stack.item as? BlockItem)?.block is SaplingBlock },
         findTarget = { world, origin ->
             BlockPos.iterateOutwards(origin, SEARCH_RADIUS, SEARCH_RADIUS, SEARCH_RADIUS)
                 .firstOrNull { pos ->
                     world.getBlockState(pos).isAir
-                        && world.getBlockState(pos.down()).isIn(CobbleCrewTags.Blocks.DIRT)
+                        && world.getBlockState(pos.down()).block in DIRT_BLOCKS
                         && world.isSkyVisible(pos)
                 }?.toImmutable()
         },

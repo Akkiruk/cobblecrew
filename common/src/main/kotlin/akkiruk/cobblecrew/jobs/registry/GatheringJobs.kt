@@ -13,7 +13,6 @@ import akkiruk.cobblecrew.enums.BlockCategory
 import akkiruk.cobblecrew.jobs.WorkerRegistry
 import akkiruk.cobblecrew.jobs.dsl.GatheringJob
 import akkiruk.cobblecrew.utilities.CobbleCrewCropUtils
-import akkiruk.cobblecrew.utilities.CobbleCrewTags
 import com.cobblemon.mod.common.CobblemonBlocks
 import com.cobblemon.mod.common.block.ApricornBlock
 import com.cobblemon.mod.common.block.BerryBlock
@@ -308,11 +307,11 @@ object GatheringJobs {
         qualifyingMoves = setOf("bugbite"),
         particle = ParticleTypes.HAPPY_VILLAGER,
         readyCheck = { world, pos ->
-            world.getBlockState(pos).isIn(CobbleCrewTags.Blocks.APRICORNS)
+            world.getBlockState(pos).block is ApricornBlock
                 && world.getBlockState(pos).get(ApricornBlock.AGE) == ApricornBlock.MAX_AGE
         },
         afterHarvestAction = { world, pos, state ->
-            if (state.isIn(CobbleCrewTags.Blocks.APRICORNS)) {
+            if (state.block is ApricornBlock) {
                 world.setBlockState(pos, state.with(ApricornBlock.AGE, 0), Block.NOTIFY_ALL)
             }
         },
@@ -346,11 +345,11 @@ object GatheringJobs {
         qualifyingMoves = setOf("aromatherapy", "sweetscent"),
         particle = ParticleTypes.HAPPY_VILLAGER,
         readyCheck = { world, pos ->
-            world.getBlockState(pos).isIn(CobbleCrewTags.Blocks.MINTS)
+            world.getBlockState(pos).block is MintBlock
                 && world.getBlockState(pos).get(MintBlock.AGE) == MintBlock.MATURE_AGE
         },
         afterHarvestAction = { world, pos, state ->
-            if (state.isIn(CobbleCrewTags.Blocks.MINTS)) {
+            if (state.block is MintBlock) {
                 world.setBlockState(pos, state.with(MintBlock.AGE, 0), Block.NOTIFY_ALL)
             }
         },

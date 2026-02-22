@@ -10,7 +10,9 @@ package akkiruk.cobblecrew.utilities
 
 import akkiruk.cobblecrew.enums.BlockCategory
 import com.cobblemon.mod.common.CobblemonBlocks
+import com.cobblemon.mod.common.block.ApricornBlock
 import com.cobblemon.mod.common.block.BerryBlock
+import com.cobblemon.mod.common.block.MintBlock
 import net.minecraft.block.*
 import net.minecraft.util.math.BlockPos
 import net.minecraft.world.World
@@ -41,14 +43,23 @@ object BlockCategoryValidators {
         Blocks.DEAD_BUSH,
     )
 
+    private val SMALL_FLOWER_BLOCKS = setOf(
+        Blocks.DANDELION, Blocks.POPPY, Blocks.BLUE_ORCHID, Blocks.ALLIUM,
+        Blocks.AZURE_BLUET, Blocks.RED_TULIP, Blocks.ORANGE_TULIP,
+        Blocks.WHITE_TULIP, Blocks.PINK_TULIP, Blocks.OXEYE_DAISY,
+        Blocks.CORNFLOWER, Blocks.LILY_OF_THE_VALLEY, Blocks.TORCHFLOWER,
+        Blocks.WITHER_ROSE,
+    )
+    private val TALL_FLOWER_BLOCKS = setOf(
+        Blocks.SUNFLOWER, Blocks.LILAC, Blocks.ROSE_BUSH,
+        Blocks.PEONY, Blocks.PITCHER_PLANT,
+    )
+
     val validators: Map<BlockCategory, (World, BlockPos) -> Boolean> = mapOf(
         // Cobblemon growables
-        BlockCategory.APRICORN to { world, pos -> world.getBlockState(pos).isIn(CobbleCrewTags.Blocks.APRICORNS) },
-        BlockCategory.BERRY to { world, pos ->
-            val state = world.getBlockState(pos)
-            state.block is BerryBlock || state.isIn(CobbleCrewTags.Blocks.BERRIES)
-        },
-        BlockCategory.MINT to { world, pos -> world.getBlockState(pos).isIn(CobbleCrewTags.Blocks.MINTS) },
+        BlockCategory.APRICORN to { world, pos -> world.getBlockState(pos).block is ApricornBlock },
+        BlockCategory.BERRY to { world, pos -> world.getBlockState(pos).block is BerryBlock },
+        BlockCategory.MINT to { world, pos -> world.getBlockState(pos).block is MintBlock },
         BlockCategory.TUMBLESTONE to { world, pos -> world.getBlockState(pos).block in TUMBLESTONE_BLOCKS },
         BlockCategory.AMETHYST to { world, pos -> world.getBlockState(pos).block == Blocks.AMETHYST_CLUSTER },
 
@@ -97,22 +108,22 @@ object BlockCategoryValidators {
 
         // Nature
         BlockCategory.MUSHROOM to { world, pos -> world.getBlockState(pos).block in MUSHROOM_BLOCKS },
-        BlockCategory.FLOWER to { world, pos ->
-            val state = world.getBlockState(pos)
-            state.isIn(CobbleCrewTags.Blocks.SMALL_FLOWERS) || state.isIn(CobbleCrewTags.Blocks.TALL_FLOWERS)
-        },
+        BlockCategory.FLOWER to { world, pos -> world.getBlockState(pos).block in SMALL_FLOWER_BLOCKS || world.getBlockState(pos).block in TALL_FLOWER_BLOCKS },
         BlockCategory.MOSS to { world, pos ->
             val block = world.getBlockState(pos).block
             block == Blocks.MOSS_BLOCK || block == Blocks.MOSS_CARPET || block == Blocks.AZALEA || block == Blocks.FLOWERING_AZALEA
         },
-        BlockCategory.LEAVES to { world, pos -> world.getBlockState(pos).isIn(CobbleCrewTags.Blocks.LEAVES) },
+        BlockCategory.LEAVES to { world, pos -> world.getBlockState(pos).block is LeavesBlock },
         BlockCategory.VEGETATION to { world, pos -> world.getBlockState(pos).block in VEGETATION_BLOCKS },
 
         // Honey
         BlockCategory.HONEY to { world, pos -> world.getBlockState(pos).block is BeehiveBlock },
 
         // Fire
-        BlockCategory.FIRE to { world, pos -> world.getBlockState(pos).isIn(CobbleCrewTags.Blocks.FIRE) },
+        BlockCategory.FIRE to { world, pos ->
+            val block = world.getBlockState(pos).block
+            block == Blocks.FIRE || block == Blocks.SOUL_FIRE
+        },
 
         // Fluids (source blocks only — flowing would be too noisy)
         BlockCategory.WATER to { world, pos ->

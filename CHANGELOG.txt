@@ -1,3 +1,9 @@
+## 3.0.3
+- Eliminated ALL block/item tag usage in favor of direct block class and hardcoded checks
+- Fixes apricorn, mint, flower, leaf, fire, sapling, and raw material detection that could silently fail due to tag resolution issues
+- Cobblemon blocks now use instanceof checks (ApricornBlock, BerryBlock, MintBlock)
+- Vanilla blocks use hardcoded sets or class checks (LeavesBlock, SaplingBlock, etc.)
+
 ## 3.0.2
 - Added diagnostic logging for job assignment and block scan results
 - Fixed species name resolution (use species.name instead of translatedName for reliable matching)

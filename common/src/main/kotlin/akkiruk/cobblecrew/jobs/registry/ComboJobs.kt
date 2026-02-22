@@ -17,7 +17,6 @@ import akkiruk.cobblecrew.jobs.dsl.GatheringJob
 import akkiruk.cobblecrew.jobs.dsl.ProductionJob
 import akkiruk.cobblecrew.jobs.dsl.ProcessingJob
 import akkiruk.cobblecrew.jobs.dsl.SupportJob
-import akkiruk.cobblecrew.utilities.CobbleCrewTags
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import net.minecraft.block.Block
 import net.minecraft.entity.effect.StatusEffects
@@ -303,6 +302,8 @@ object ComboJobs {
             comboEligible(qualifyingMoves, JobConfigManager.get(name), moves, types, species)
     }
 
+    private val RAW_MATERIALS = setOf(Items.RAW_IRON, Items.RAW_GOLD, Items.RAW_COPPER)
+
     // ── C11: Blast Furnace (combo processing) ────────────────────────
     // overheat + ironhead → smelt raw ores into ingots at 2x rate
     val BLAST_FURNACE = object : ProcessingJob(
@@ -311,7 +312,7 @@ object ComboJobs {
         qualifyingMoves = setOf("overheat", "ironhead"),
         particle = ParticleTypes.LAVA,
         priority = WorkerPriority.COMBO,
-        inputCheck = { stack -> stack.isIn(CobbleCrewTags.Items.RAW_MATERIALS) },
+        inputCheck = { stack -> stack.item in RAW_MATERIALS },
         transformFn = { input ->
             val ingot = when (input.item) {
                 Items.RAW_IRON -> Items.IRON_INGOT
