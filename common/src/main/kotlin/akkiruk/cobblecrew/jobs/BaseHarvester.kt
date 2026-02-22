@@ -54,7 +54,7 @@ abstract class BaseHarvester : Worker {
     }
 
     companion object {
-        private const val OVERFLOW_TIMEOUT_TICKS = 600L // 30 seconds
+        private const val OVERFLOW_TIMEOUT_TICKS = 6000L // 5 minutes — last resort safety valve
     }
 
     override fun tick(world: World, origin: BlockPos, pokemonEntity: PokemonEntity) {

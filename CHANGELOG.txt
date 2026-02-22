@@ -1,3 +1,8 @@
+## 3.0.4
+- Workers now hold items and retry containers instead of dropping items on the ground when all containers are full
+- Retry cycle: when all nearby containers are exhausted, waits 10 seconds then re-checks (containers may have been emptied)
+- Increased overflow safety timeout from 30 seconds to 5 minutes before force-dropping as last resort
+
 ## 3.0.3
 - Eliminated ALL block/item tag usage in favor of direct block class and hardcoded checks
 - Fixes apricorn, mint, flower, leaf, fire, sapling, and raw material detection that could silently fail due to tag resolution issues

@@ -49,6 +49,10 @@ object CobbleCrewInventoryUtils {
     private const val CHEST_OPEN_DURATION = 20L // ticks chest stays open
     private const val DEPOSIT_DELAY = 15L // ticks before depositing after arrival
 
+    // Retry logic: when all containers are full, wait then try again instead of dropping
+    private val depositRetryTimers = mutableMapOf<UUID, Long>()
+    private const val DEPOSIT_RETRY_COOLDOWN = 200L // 10 seconds before retrying all containers
+
     /**
      * Ticks pending chest close animations. Call once per server tick.
      */
@@ -278,10 +282,18 @@ object CobbleCrewInventoryUtils {
                 return
             }
 
-            // No (untried) inventories found, so we just drop the remaining items and reset.
-            itemsToDeposit.forEach { stack -> Block.dropStack(world, pokemonEntity.blockPos, stack) }
-            heldItemsByPokemon.remove(pokemonId)
-            failedDepositLocations.remove(pokemonId)
+            // All containers exhausted — hold items and retry after cooldown instead of dropping.
+            // Containers may get emptied by players or other Pokémon.
+            val retryStart = depositRetryTimers.getOrPut(pokemonId) { world.time }
+            if (world.time - retryStart >= DEPOSIT_RETRY_COOLDOWN) {
+                // Cooldown elapsed: clear failed locations so we re-check all containers
+                failedDepositLocations.remove(pokemonId)
+                depositRetryTimers.remove(pokemonId)
+            }
+
+            // Keep holding items and wander back towards origin while waiting
+            heldItemsByPokemon[pokemonId] = itemsToDeposit
+            CobbleCrewNavigationUtils.navigateTo(pokemonEntity, origin)
             return
         }
 
@@ -337,6 +349,7 @@ object CobbleCrewInventoryUtils {
             } else {
                 heldItemsByPokemon.remove(pokemonId)
                 failedDepositLocations.remove(pokemonId)
+                depositRetryTimers.remove(pokemonId)
                 pokemonEntity.navigation.stop()
             }
         } else {
