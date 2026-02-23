@@ -65,11 +65,13 @@ object WorkerAnimationUtils {
         val serverWorld = world as? ServerWorld ?: return
         // Pass full fallback chain — client picks the first animation that exists on the model
         val packet = PlayPosableAnimationPacket(entity.id, phase.animations.toSet(), emptyList())
+        // Last param is exclusionCondition — returns true to EXCLUDE a player.
+        // false = don't exclude anyone within range.
         packet.sendToPlayersAround(
             entity.x, entity.y, entity.z,
-            256.0,
+            128.0,
             serverWorld.registryKey
-        ) { true }
+        ) { false }
     }
 
     fun cleanup(pokemonId: UUID) {

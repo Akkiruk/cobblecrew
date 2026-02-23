@@ -1,3 +1,7 @@
+## 3.0.12
+- Fixed animation packets never reaching clients — the exclusion filter was inverted, silently dropping all packets
+- Reduced animation send range from 256 to 128 blocks (matches Cobblemon's default)
+
 ## 3.0.11
 - Fixed animation fallback chains not actually working — only the first animation was ever tried
 - Now sends the full fallback set to the client, which picks the first animation that exists on the Pokémon's model
