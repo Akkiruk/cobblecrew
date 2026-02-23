@@ -25,8 +25,8 @@ class CobbleCrewConfig : ConfigData {
     var debug = DebugGroup()
 
     class GeneralGroup {
-        @ConfigEntry.BoundedDiscrete(min = 10, max = 30)
-        var blocksScannedPerTick = 15
+        @ConfigEntry.BoundedDiscrete(min = 10, max = 100)
+        var blocksScannedPerTick = 50
         @ConfigEntry.BoundedDiscrete(min = 1, max = 10)
         var searchRadius = 8
         @ConfigEntry.BoundedDiscrete(min = 1, max = 8)

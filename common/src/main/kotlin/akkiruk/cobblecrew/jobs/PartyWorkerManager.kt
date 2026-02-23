@@ -252,9 +252,16 @@ object PartyWorkerManager {
         val radius = config.searchRadius
         val height = config.searchHeight
 
-        // Clear old cache if scan origin changed (player moved)
+        // Only rescan if the player moved far enough from the last scan origin.
+        // Avoids thrashing the cache when the player shifts 1 block.
         val oldOrigin = context.scanOrigin
-        if (oldOrigin != null && oldOrigin != playerPos) {
+        val RESCAN_DISTANCE_SQ = 9 // 3 blocks — must move at least this far to trigger new scan origin
+        if (oldOrigin != null) {
+            val dx = playerPos.x - oldOrigin.x
+            val dy = playerPos.y - oldOrigin.y
+            val dz = playerPos.z - oldOrigin.z
+            val distSq = dx * dx + dy * dy + dz * dz
+            if (distSq < RESCAN_DISTANCE_SQ) return  // Too close — skip rescan, keep old cache
             CobbleCrewCacheManager.removeCache(CacheKey.PastureKey(oldOrigin))
         }
 

@@ -29,6 +29,9 @@ import java.util.List;
 
 @Mixin(PokemonPastureBlockEntity.class)
 public class PokemonPastureBlockEntityMixin {
+	/** Tick Pokémon dispatch every N ticks instead of every tick. */
+	private static final int POKEMON_TICK_INTERVAL = 5;
+
 	@Inject(at = @At("TAIL"), method = "TICKER$lambda$0")
 	private static void init(World world, BlockPos blockPos, BlockState blockState, PokemonPastureBlockEntity pastureBlock, CallbackInfo ci) {
 		if (world.isClient) return;
@@ -37,11 +40,16 @@ public class PokemonPastureBlockEntityMixin {
 		try {
 			context = new JobContext.Pasture(blockPos, world);
 			WorkerDispatcher.INSTANCE.tickAreaScan(context);
-			CobbleCrewInventoryUtils.INSTANCE.tickAnimations(world);
 		} catch (Exception e) {
 			CobbleCrew.LOGGER.error("[CobbleCrew] - Error processing WorkerDispatcher tickAreaScan", e);
 			return;
 		}
+
+		// Throttle Pokémon dispatch — no need to evaluate jobs every tick.
+		// Stagger per-pasture using blockPos hash so pastures don't all tick the same frame.
+		if ((world.getTime() + (blockPos.hashCode() & 0x7FFFFFFF)) % POKEMON_TICK_INTERVAL != 0) return;
+
+		CobbleCrewInventoryUtils.INSTANCE.tickAnimations(world);
 
 		List<PokemonPastureBlockEntity.Tethering> tetheredPokemon = pastureBlock.getTetheredPokemon();
         for (PokemonPastureBlockEntity.Tethering tethering : tetheredPokemon) {

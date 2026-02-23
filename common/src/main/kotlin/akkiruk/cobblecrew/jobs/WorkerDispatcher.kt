@@ -205,7 +205,8 @@ object WorkerDispatcher {
         job.cleanup(pokemonId)
         jobAssignedTick.remove(pokemonId)
         idleLogTick.remove(pokemonId)
-        profiles.remove(pokemonId)
+        // Don't clear profiles — moves/types don't change on reset.
+        // Profile will be invalidated if moves actually change (getOrBuildProfile checks).
     }
 
     fun resetAllAssignments() {

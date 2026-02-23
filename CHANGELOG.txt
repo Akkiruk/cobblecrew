@@ -1,3 +1,10 @@
+## 3.0.13
+- Major server performance fix — pasture Pokémon dispatch now runs every 5 ticks instead of every tick, staggered per-pasture to spread load
+- Fixed support jobs (healer, resistance, speed, etc.) causing a tight loop — now cooldown for 10+ seconds after applying an effect instead of immediately re-evaluating
+- Fixed resetAssignment() needlessly destroying the Pokémon profile cache, forcing a full 128-worker re-evaluation on every reset
+- Increased default blocksScannedPerTick from 15 to 50 (max raised to 100) — block scans complete in ~3 seconds instead of ~11
+- Party scanner no longer thrashes the cache when a player moves 1 block — requires 3+ blocks of movement before rescanning
+
 ## 3.0.12
 - Fixed animation packets never reaching clients — the exclusion filter was inverted, silently dropping all packets
 - Reduced animation send range from 256 to 128 blocks (matches Cobblemon's default)

@@ -54,7 +54,25 @@ abstract class BaseSupport : Worker {
     /** Whether this support job only targets damaged players (e.g. Healer). */
     open val requiresDamage: Boolean = false
 
+    /**
+     * Per-Pokémon cooldown after applying an effect. Prevents the tight loop where
+     * the Pokémon applies → releases → re-assigns → re-applies every few ticks.
+     * Cooldown = half the effect duration so it waits near the player.
+     */
+    private val cooldownUntil = mutableMapOf<UUID, Long>()
+    private companion object {
+        const val MIN_COOLDOWN_TICKS = 200L  // 10 seconds minimum
+    }
+
+    override fun hasActiveState(pokemonId: UUID): Boolean = pokemonId in cooldownUntil
+
     override fun isAvailable(context: JobContext, pokemonId: java.util.UUID): Boolean {
+        // Still on cooldown from last application
+        cooldownUntil[pokemonId]?.let { until ->
+            if (context.world.time < until) return false
+            cooldownUntil.remove(pokemonId)
+        }
+
         val players = findNearbyPlayers(context.world, context.origin)
         return players.any { player ->
             val effectOk = if (skipIfAlreadyActive) !player.hasStatusEffect(statusEffect) else true
@@ -67,6 +85,13 @@ abstract class BaseSupport : Worker {
         val world = context.world
         val origin = context.origin
         val pokemonId = pokemonEntity.pokemon.uuid
+
+        // On cooldown — just idle near the target, don't re-evaluate
+        cooldownUntil[pokemonId]?.let { until ->
+            if (world.time < until) return
+            cooldownUntil.remove(pokemonId)
+        }
+
         val nearbyPlayers = findNearbyPlayers(world, origin)
         if (nearbyPlayers.isEmpty()) {
             CobbleCrewNavigationUtils.releasePlayerTarget(pokemonId)
@@ -98,6 +123,9 @@ abstract class BaseSupport : Worker {
             applyEffect(target)
             CobbleCrewDebugLogger.supportEffectApplied(pokemonEntity, name, target.name.string)
             CobbleCrewNavigationUtils.releasePlayerTarget(pokemonId)
+            // Cooldown: wait at least MIN_COOLDOWN_TICKS or half the effect duration
+            val cooldown = maxOf(MIN_COOLDOWN_TICKS, effectDurationTicks / 2L)
+            cooldownUntil[pokemonId] = world.time + cooldown
         }
     }
 
@@ -114,5 +142,6 @@ abstract class BaseSupport : Worker {
 
     override fun cleanup(pokemonId: UUID) {
         CobbleCrewNavigationUtils.releasePlayerTarget(pokemonId)
+        cooldownUntil.remove(pokemonId)
     }
 }
