@@ -10,15 +10,17 @@ package akkiruk.cobblecrew.utilities
 
 import akkiruk.cobblecrew.enums.WorkPhase
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
+import com.cobblemon.mod.common.net.messages.client.animation.PlayPosableAnimationPacket
+import net.minecraft.server.world.ServerWorld
 import net.minecraft.world.World
 import java.util.UUID
 
 /**
  * Plays Cobblemon's native Bedrock animations on working Pokémon.
  *
- * Calls `PokemonEntity.playAnimation(name, expressions)` which sends a
- * `PlayPosableAnimationPacket` to nearby clients. Missing animations
- * are silently ignored by Cobblemon, so any name is safe to attempt.
+ * Sends a [PlayPosableAnimationPacket] directly with the full fallback
+ * chain so the client tries each animation in order and plays the first
+ * one that actually exists on the Pokémon's model.
  *
  * Internally throttled so animations aren't spammed faster than once
  * per [ANIM_COOLDOWN_TICKS] per Pokémon.
@@ -30,8 +32,8 @@ object WorkerAnimationUtils {
 
     /**
      * Play the best available animation for the given [phase].
-     * The first animation in the phase's chain is used — Cobblemon
-     * silently skips animations that don't exist on the model.
+     * The full fallback chain is sent — the client picks the first
+     * animation that exists on the model.
      */
     fun playWorkAnimation(
         entity: PokemonEntity,
@@ -42,9 +44,7 @@ object WorkerAnimationUtils {
         val now = world.time
         if (now - (lastAnimationTick[pokemonId] ?: 0L) < ANIM_COOLDOWN_TICKS) return
         lastAnimationTick[pokemonId] = now
-
-        val anim = phase.animations.firstOrNull() ?: return
-        entity.playAnimation(anim, emptyList())
+        sendAnimationPacket(entity, phase, world)
     }
 
     /**
@@ -57,8 +57,19 @@ object WorkerAnimationUtils {
         world: World,
     ) {
         lastAnimationTick[entity.pokemon.uuid] = world.time
-        val anim = phase.animations.firstOrNull() ?: return
-        entity.playAnimation(anim, emptyList())
+        sendAnimationPacket(entity, phase, world)
+    }
+
+    private fun sendAnimationPacket(entity: PokemonEntity, phase: WorkPhase, world: World) {
+        if (phase.animations.isEmpty()) return
+        val serverWorld = world as? ServerWorld ?: return
+        // Pass full fallback chain — client picks the first animation that exists on the model
+        val packet = PlayPosableAnimationPacket(entity.id, phase.animations.toSet(), emptyList())
+        packet.sendToPlayersAround(
+            entity.x, entity.y, entity.z,
+            256.0,
+            serverWorld.registryKey
+        ) { true }
     }
 
     fun cleanup(pokemonId: UUID) {

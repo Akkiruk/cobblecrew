@@ -1,3 +1,8 @@
+## 3.0.11
+- Fixed animation fallback chains not actually working — only the first animation was ever tried
+- Now sends the full fallback set to the client, which picks the first animation that exists on the Pokémon's model
+- Pokémon like Dugtrio and Sandslash (which lack "physical") now correctly fall back to "cry" or other available animations
+
 ## 3.0.10
 - Pokémon now play species-specific animations during work (physical, special, happy, angry, etc.) instead of a generic hand-swing
 - Each job phase has its own animation fallback chain — if a Pokémon doesn't have the preferred animation, it tries the next in the list
