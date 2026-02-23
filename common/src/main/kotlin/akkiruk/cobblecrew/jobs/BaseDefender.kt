@@ -9,9 +9,11 @@
 package akkiruk.cobblecrew.jobs
 
 import akkiruk.cobblecrew.config.CobbleCrewConfigHolder
+import akkiruk.cobblecrew.enums.WorkPhase
 import akkiruk.cobblecrew.interfaces.Worker
 import akkiruk.cobblecrew.utilities.CobbleCrewDebugLogger
 import akkiruk.cobblecrew.utilities.CobbleCrewNavigationUtils
+import akkiruk.cobblecrew.utilities.WorkerAnimationUtils
 import akkiruk.cobblecrew.utilities.WorkerVisualUtils
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import net.minecraft.entity.mob.HostileEntity
@@ -34,6 +36,7 @@ abstract class BaseDefender : Worker {
     protected val searchHeight get() = generalConfig.searchHeight
 
     open val attackParticle: ParticleEffect = ParticleTypes.CRIT
+    open val combatPhase: WorkPhase = WorkPhase.ATTACKING
 
     private val lastHostileScan = mutableMapOf<UUID, Long>()
     private val cachedHostiles = mutableMapOf<UUID, List<HostileEntity>>()
@@ -63,7 +66,7 @@ abstract class BaseDefender : Worker {
                 return
             }
             CobbleCrewNavigationUtils.navigateTo(pokemonEntity, targetMob.blockPos)
-            if (WorkerVisualUtils.handleArrival(pokemonEntity, targetMob.blockPos, world, attackParticle, 2.0)) {
+            if (WorkerVisualUtils.handleArrival(pokemonEntity, targetMob.blockPos, world, attackParticle, 2.0, combatPhase)) {
                 applyEffect(world, pokemonEntity, targetMob)
                 CobbleCrewDebugLogger.defenseEffectApplied(pokemonEntity, name, currentMobTarget)
                 CobbleCrewNavigationUtils.releaseMobTarget(pokemonId)
@@ -87,6 +90,7 @@ abstract class BaseDefender : Worker {
             ?: return
 
         CobbleCrewNavigationUtils.claimMobTarget(pokemonId, target.id)
+        WorkerAnimationUtils.playImmediate(pokemonEntity, WorkPhase.HOSTILE_SPOTTED, world)
         CobbleCrewDebugLogger.defenseTargetFound(pokemonEntity, name, target.id)
     }
 

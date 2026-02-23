@@ -1,3 +1,11 @@
+## 3.0.10
+- Pokémon now play species-specific animations during work (physical, special, happy, angry, etc.) instead of a generic hand-swing
+- Each job phase has its own animation fallback chain — if a Pokémon doesn't have the preferred animation, it tries the next in the list
+- Idle Pokémon at their origin now play ground_idle; after 30 seconds of boredom they switch to unamused/sleep
+- Defenders play an angry reaction when spotting a hostile
+- Deposit arrival, success, and work-complete moments each trigger distinct reactions
+- Debuff-style defense jobs (Repeller, Fearmonger, Sentry, Poison/Ice Trap) use special/status animations instead of physical
+
 ## 3.0.9
 - Replaced deferred block scanner for party workers with eager synchronous scan
 - Party Pokémon now find targets in ~2 seconds instead of ~16 seconds

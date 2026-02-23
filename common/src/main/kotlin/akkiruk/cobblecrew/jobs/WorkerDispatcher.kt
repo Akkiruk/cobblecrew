@@ -8,10 +8,12 @@
 
 package akkiruk.cobblecrew.jobs
 
+import akkiruk.cobblecrew.enums.WorkPhase
 import akkiruk.cobblecrew.interfaces.Worker
 import akkiruk.cobblecrew.utilities.CobbleCrewDebugLogger
 import akkiruk.cobblecrew.utilities.CobbleCrewNavigationUtils
 import akkiruk.cobblecrew.utilities.DeferredBlockScanner
+import akkiruk.cobblecrew.utilities.WorkerAnimationUtils
 import akkiruk.cobblecrew.utilities.WorkerVisualUtils
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import net.minecraft.util.math.BlockPos
@@ -25,8 +27,10 @@ object WorkerDispatcher {
     private val profiles = mutableMapOf<UUID, PokemonProfile>()
     private val jobAssignedTick = mutableMapOf<UUID, Long>()
     private val idleLogTick = mutableMapOf<UUID, Long>()
+    private val idleSinceTick = mutableMapOf<UUID, Long>()
     private const val JOB_STICKINESS_TICKS = 100L // 5 seconds
     private const val IDLE_LOG_INTERVAL = 600L // log idle reason every 30s
+    private const val IDLE_BORED_THRESHOLD = 600L // 30 seconds idle → bored animation
 
     fun tickAreaScan(context: JobContext) {
         DeferredBlockScanner.tickAreaScan(context)
@@ -79,12 +83,14 @@ object WorkerDispatcher {
                 idleLogTick[pokemonId] = now
                 CobbleCrewDebugLogger.noEligibleJobs(pokemonEntity.pokemon.species.name, pokemonId)
             }
+            handleIdleAnimation(pokemonEntity, world, pokemonId)
             returnToOrigin(pokemonEntity, context)
             return
         }
 
         val current = activeJobs[pokemonId]
         val now = world.time
+        idleSinceTick.remove(pokemonId) // Working, not idle
 
         // Stick with current job while it has work or stickiness hasn't expired
         if (current != null && current in eligible) {
@@ -115,6 +121,7 @@ object WorkerDispatcher {
             // Nothing available right now — idle at origin
             activeJobs.remove(pokemonId)
             WorkerVisualUtils.setExcited(pokemonEntity, false)
+            handleIdleAnimation(pokemonEntity, world, pokemonId)
             returnToOrigin(pokemonEntity, context)
 
             val lastLog = idleLogTick[pokemonId] ?: 0L
@@ -134,9 +141,17 @@ object WorkerDispatcher {
 
         activeJobs[pokemonId] = job
         jobAssignedTick[pokemonId] = now
+        idleSinceTick.remove(pokemonId)
         CobbleCrewDebugLogger.jobAssigned(pokemonEntity.pokemon.species.name, pokemonId, job.name)
         WorkerVisualUtils.setExcited(pokemonEntity, true)
         job.tick(context, pokemonEntity)
+    }
+
+    private fun handleIdleAnimation(pokemonEntity: PokemonEntity, world: World, pokemonId: UUID) {
+        val now = world.time
+        val idleSince = idleSinceTick.getOrPut(pokemonId) { now }
+        val phase = if (now - idleSince >= IDLE_BORED_THRESHOLD) WorkPhase.IDLE_BORED else WorkPhase.IDLE_AT_ORIGIN
+        WorkerAnimationUtils.playWorkAnimation(pokemonEntity, phase, world)
     }
 
     private fun returnToOrigin(pokemonEntity: PokemonEntity, context: JobContext) {
@@ -161,6 +176,7 @@ object WorkerDispatcher {
         profiles.remove(pokemonId)
         jobAssignedTick.remove(pokemonId)
         idleLogTick.remove(pokemonId)
+        idleSinceTick.remove(pokemonId)
         WorkerVisualUtils.cleanup(pokemonId)
         CobbleCrewNavigationUtils.cleanupPokemon(pokemonId, world)
         CobbleCrewDebugLogger.pokemonCleanedUp(species, pokemonId)

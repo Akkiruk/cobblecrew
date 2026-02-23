@@ -12,6 +12,7 @@ import akkiruk.cobblecrew.cache.CobbleCrewCacheManager
 import akkiruk.cobblecrew.config.JobConfig
 import akkiruk.cobblecrew.config.JobConfigManager
 import akkiruk.cobblecrew.enums.BlockCategory
+import akkiruk.cobblecrew.enums.WorkPhase
 import akkiruk.cobblecrew.enums.WorkerPriority
 import akkiruk.cobblecrew.interfaces.Worker
 import akkiruk.cobblecrew.jobs.JobContext
@@ -211,7 +212,7 @@ object SupportJobs {
                 return
             }
             CobbleCrewNavigationUtils.navigateTo(pokemonEntity, currentTarget)
-            if (WorkerVisualUtils.handleArrival(pokemonEntity, currentTarget, world, ParticleTypes.END_ROD, 3.0)) {
+            if (WorkerVisualUtils.handleArrival(pokemonEntity, currentTarget, world, ParticleTypes.END_ROD, 3.0, WorkPhase.HARVESTING)) {
                 if (mapItem.stack.item == Items.MAP) {
                     val singleItem = mapItem.stack.split(1)
                     if (mapItem.stack.isEmpty) mapItem.discard()

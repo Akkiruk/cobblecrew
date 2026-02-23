@@ -8,19 +8,19 @@
 
 package akkiruk.cobblecrew.utilities
 
+import akkiruk.cobblecrew.enums.WorkPhase
 import com.cobblemon.mod.common.entity.pokemon.PokemonBehaviourFlag
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import net.minecraft.entity.player.PlayerEntity
 import net.minecraft.particle.ParticleEffect
 import net.minecraft.server.world.ServerWorld
-import net.minecraft.util.Hand
 import net.minecraft.util.math.BlockPos
 import net.minecraft.world.World
 import java.util.UUID
 
 /**
  * Handles visual feedback and work delays for Pokémon workers.
- * Provides look-at, hand swing, particles, cry, and excited flag behavior.
+ * Provides look-at, particles, animations, and excited flag behavior.
  */
 object WorkerVisualUtils {
     private val arrivalTick = mutableMapOf<UUID, Long>()
@@ -32,16 +32,17 @@ object WorkerVisualUtils {
      * Handles the "working" animation when a Pokémon arrives at its target block.
      * Returns true when the work delay is complete and the action should execute.
      *
-     * On first arrival: swings hand, looks at target, starts timer.
+     * On first arrival: plays work animation, looks at target, starts timer.
      * During delay: keeps looking at target.
-     * On completion: spawns particles, swings hand, chance of cry.
+     * On completion: plays completion animation, spawns particles.
      */
     fun handleArrival(
         pokemonEntity: PokemonEntity,
         targetPos: BlockPos,
         world: World,
         particleType: ParticleEffect? = null,
-        offset: Double = 3.0
+        offset: Double = 3.0,
+        workPhase: WorkPhase = WorkPhase.HARVESTING,
     ): Boolean {
         val pokemonId = pokemonEntity.pokemon.uuid
         val now = world.time
@@ -65,7 +66,7 @@ object WorkerVisualUtils {
 
         if (arrived == null) {
             arrivalTick[pokemonId] = now
-            pokemonEntity.swingHand(Hand.MAIN_HAND)
+            WorkerAnimationUtils.playWorkAnimation(pokemonEntity, workPhase, world)
             lookAt(pokemonEntity, targetPos)
             pokemonEntity.navigation.stop()
             return false
@@ -79,20 +80,20 @@ object WorkerVisualUtils {
         // Work delay complete
         arrivalTick.remove(pokemonId)
         CobbleCrewDebugLogger.arrivedAtTarget(pokemonEntity, targetPos)
-        pokemonEntity.swingHand(Hand.MAIN_HAND)
+        WorkerAnimationUtils.playImmediate(pokemonEntity, WorkPhase.WORK_COMPLETE, world)
         if (particleType != null) spawnParticles(world, targetPos, particleType)
-        if (pokemonEntity.random.nextInt(5) == 0) pokemonEntity.cry()
         return true
     }
 
     /**
-     * Same as handleArrival but for player targets (Healer job).
+     * Same as handleArrival but for player targets (support jobs).
      */
     fun handlePlayerArrival(
         pokemonEntity: PokemonEntity,
         player: PlayerEntity,
         world: World,
-        particleType: ParticleEffect? = null
+        particleType: ParticleEffect? = null,
+        workPhase: WorkPhase = WorkPhase.HEALING,
     ): Boolean {
         if (!CobbleCrewNavigationUtils.isPokemonNearPlayer(pokemonEntity, player)) {
             arrivalTick.remove(pokemonEntity.pokemon.uuid)
@@ -105,6 +106,7 @@ object WorkerVisualUtils {
 
         if (arrived == null) {
             arrivalTick[pokemonId] = now
+            WorkerAnimationUtils.playWorkAnimation(pokemonEntity, workPhase, world)
             pokemonEntity.lookControl.lookAt(player.x, player.eyeY, player.z)
             return false
         }
@@ -115,8 +117,8 @@ object WorkerVisualUtils {
         }
 
         arrivalTick.remove(pokemonId)
+        WorkerAnimationUtils.playImmediate(pokemonEntity, WorkPhase.WORK_COMPLETE, world)
         if (particleType != null) spawnParticles(world, player.blockPos, particleType)
-        if (pokemonEntity.random.nextInt(5) == 0) pokemonEntity.cry()
         return true
     }
 
@@ -144,5 +146,6 @@ object WorkerVisualUtils {
     fun cleanup(pokemonId: UUID) {
         arrivalTick.remove(pokemonId)
         graceTick.remove(pokemonId)
+        WorkerAnimationUtils.cleanup(pokemonId)
     }
 }

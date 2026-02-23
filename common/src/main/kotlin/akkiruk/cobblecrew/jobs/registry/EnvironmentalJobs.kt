@@ -12,6 +12,7 @@ import akkiruk.cobblecrew.cache.CobbleCrewCacheManager
 import akkiruk.cobblecrew.config.JobConfig
 import akkiruk.cobblecrew.config.JobConfigManager
 import akkiruk.cobblecrew.enums.BlockCategory
+import akkiruk.cobblecrew.enums.WorkPhase
 import akkiruk.cobblecrew.enums.WorkerPriority
 import akkiruk.cobblecrew.interfaces.Worker
 import akkiruk.cobblecrew.jobs.JobContext
@@ -95,7 +96,7 @@ object EnvironmentalJobs {
             }
 
             CobbleCrewNavigationUtils.navigateTo(pokemonEntity, target)
-            if (WorkerVisualUtils.handleArrival(pokemonEntity, target, world, ParticleTypes.SNOWFLAKE, 3.0)) {
+            if (WorkerVisualUtils.handleArrival(pokemonEntity, target, world, ParticleTypes.SNOWFLAKE, 3.0, WorkPhase.ENVIRONMENTAL)) {
                 val state = world.getBlockState(target)
                 val next = CHAIN[state.block]
                 if (next != null) {
@@ -171,7 +172,7 @@ object EnvironmentalJobs {
             }
 
             CobbleCrewNavigationUtils.navigateTo(pokemonEntity, target)
-            if (WorkerVisualUtils.handleArrival(pokemonEntity, target, world, ParticleTypes.CLOUD, 3.0)) {
+            if (WorkerVisualUtils.handleArrival(pokemonEntity, target, world, ParticleTypes.CLOUD, 3.0, WorkPhase.ENVIRONMENTAL)) {
                 val state = world.getBlockState(target)
                 if (state.block == Blocks.LAVA) {
                     world.setBlockState(target, Blocks.OBSIDIAN.defaultState)
@@ -244,7 +245,7 @@ object EnvironmentalJobs {
             }
 
             CobbleCrewNavigationUtils.navigateTo(pokemonEntity, target)
-            if (WorkerVisualUtils.handleArrival(pokemonEntity, target, world, ParticleTypes.HAPPY_VILLAGER, 3.0)) {
+            if (WorkerVisualUtils.handleArrival(pokemonEntity, target, world, ParticleTypes.HAPPY_VILLAGER, 3.0, WorkPhase.ENVIRONMENTAL)) {
                 val sw = world as? ServerWorld
                 if (sw != null) {
                     val state = world.getBlockState(target)
@@ -318,7 +319,7 @@ object EnvironmentalJobs {
                 return
             }
             CobbleCrewNavigationUtils.navigateTo(pokemonEntity, current)
-            if (WorkerVisualUtils.handleArrival(pokemonEntity, current, world, ParticleTypes.LAVA, 3.0)) {
+            if (WorkerVisualUtils.handleArrival(pokemonEntity, current, world, ParticleTypes.LAVA, 3.0, WorkPhase.ENVIRONMENTAL)) {
                 CobbleCrewCauldronUtils.addFluid(world, current, CobbleCrewCauldronUtils.CauldronFluid.LAVA)
                 lastGenTime[pid] = now
                 CobbleCrewNavigationUtils.releaseTarget(pid, world)
@@ -377,7 +378,7 @@ object EnvironmentalJobs {
                 return
             }
             CobbleCrewNavigationUtils.navigateTo(pokemonEntity, current)
-            if (WorkerVisualUtils.handleArrival(pokemonEntity, current, world, ParticleTypes.SPLASH, 3.0)) {
+            if (WorkerVisualUtils.handleArrival(pokemonEntity, current, world, ParticleTypes.SPLASH, 3.0, WorkPhase.ENVIRONMENTAL)) {
                 CobbleCrewCauldronUtils.addFluid(world, current, CobbleCrewCauldronUtils.CauldronFluid.WATER)
                 lastGenTime[pid] = now
                 CobbleCrewNavigationUtils.releaseTarget(pid, world)
@@ -436,7 +437,7 @@ object EnvironmentalJobs {
                 return
             }
             CobbleCrewNavigationUtils.navigateTo(pokemonEntity, current)
-            if (WorkerVisualUtils.handleArrival(pokemonEntity, current, world, ParticleTypes.SNOWFLAKE, 3.0)) {
+            if (WorkerVisualUtils.handleArrival(pokemonEntity, current, world, ParticleTypes.SNOWFLAKE, 3.0, WorkPhase.ENVIRONMENTAL)) {
                 CobbleCrewCauldronUtils.addFluid(world, current, CobbleCrewCauldronUtils.CauldronFluid.POWDER_SNOW)
                 lastGenTime[pid] = now
                 CobbleCrewNavigationUtils.releaseTarget(pid, world)
@@ -496,7 +497,7 @@ object EnvironmentalJobs {
                 return
             }
             CobbleCrewNavigationUtils.navigateTo(pokemonEntity, current)
-            if (WorkerVisualUtils.handleArrival(pokemonEntity, current, world, ParticleTypes.FLAME, 3.0)) {
+            if (WorkerVisualUtils.handleArrival(pokemonEntity, current, world, ParticleTypes.FLAME, 3.0, WorkPhase.ENVIRONMENTAL)) {
                 addBurnTime(world, current)
                 lastGenTime[pid] = now
                 CobbleCrewNavigationUtils.releaseTarget(pid, world)
@@ -579,7 +580,7 @@ object EnvironmentalJobs {
                 return
             }
             CobbleCrewNavigationUtils.navigateTo(pokemonEntity, current)
-            if (WorkerVisualUtils.handleArrival(pokemonEntity, current, world, ParticleTypes.FLAME, 3.0)) {
+            if (WorkerVisualUtils.handleArrival(pokemonEntity, current, world, ParticleTypes.FLAME, 3.0, WorkPhase.ENVIRONMENTAL)) {
                 addFuel(world, current)
                 lastGenTime[pid] = now
                 CobbleCrewNavigationUtils.releaseTarget(pid, world)
@@ -655,7 +656,7 @@ object EnvironmentalJobs {
                 return
             }
             CobbleCrewNavigationUtils.navigateTo(pokemonEntity, target)
-            if (WorkerVisualUtils.handleArrival(pokemonEntity, target, world, ParticleTypes.SMOKE, 3.0)) {
+            if (WorkerVisualUtils.handleArrival(pokemonEntity, target, world, ParticleTypes.SMOKE, 3.0, WorkPhase.ENVIRONMENTAL)) {
                 val r = config.radius?.takeIf { it > 0 } ?: 2
                 BlockPos.iterate(target.add(-r, 0, -r), target.add(r, 0, r)).forEach { p ->
                     if (world.getBlockState(p).block == Blocks.FIRE || world.getBlockState(p).block == Blocks.SOUL_FIRE) {
@@ -723,7 +724,7 @@ object EnvironmentalJobs {
                 return
             }
             CobbleCrewNavigationUtils.navigateTo(pokemonEntity, target)
-            if (WorkerVisualUtils.handleArrival(pokemonEntity, target, world, ParticleTypes.SPLASH, 3.0)) {
+            if (WorkerVisualUtils.handleArrival(pokemonEntity, target, world, ParticleTypes.SPLASH, 3.0, WorkPhase.ENVIRONMENTAL)) {
                 val r = config.radius?.takeIf { it > 0 } ?: 2
                 BlockPos.iterate(target.add(-r, 0, -r), target.add(r, 0, r)).forEach { p ->
                     val s = world.getBlockState(p)
@@ -807,7 +808,7 @@ object EnvironmentalJobs {
                 return
             }
             CobbleCrewNavigationUtils.navigateTo(pokemonEntity, target)
-            if (WorkerVisualUtils.handleArrival(pokemonEntity, target, world, ParticleTypes.WAX_ON, 3.0)) {
+            if (WorkerVisualUtils.handleArrival(pokemonEntity, target, world, ParticleTypes.WAX_ON, 3.0, WorkPhase.ENVIRONMENTAL)) {
                 val state = world.getBlockState(target)
                 if (state.block is BeehiveBlock) {
                     val level = state.get(BeehiveBlock.HONEY_LEVEL)

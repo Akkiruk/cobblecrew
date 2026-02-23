@@ -11,6 +11,7 @@ package akkiruk.cobblecrew.jobs.dsl
 import akkiruk.cobblecrew.config.JobConfig
 import akkiruk.cobblecrew.config.JobConfigManager
 import akkiruk.cobblecrew.enums.BlockCategory
+import akkiruk.cobblecrew.enums.WorkPhase
 import akkiruk.cobblecrew.enums.WorkerPriority
 import akkiruk.cobblecrew.jobs.BaseDefender
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
@@ -31,6 +32,7 @@ open class DefenseJob(
     val fallbackSpecies: List<String> = emptyList(),
     override val priority: WorkerPriority = WorkerPriority.MOVE,
     val particle: ParticleEffect = ParticleTypes.CRIT,
+    val phase: WorkPhase = WorkPhase.ATTACKING,
     val effectFn: (World, PokemonEntity, HostileEntity) -> Unit,
 ) : BaseDefender() {
 
@@ -38,6 +40,7 @@ open class DefenseJob(
 
     override val targetCategory: BlockCategory? = null
     override val attackParticle: ParticleEffect = particle
+    override val combatPhase: WorkPhase = phase
 
     fun defaultConfig(): JobConfig = JobConfig(
         enabled = true,

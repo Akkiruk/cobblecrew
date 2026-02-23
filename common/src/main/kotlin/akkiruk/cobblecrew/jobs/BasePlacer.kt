@@ -9,6 +9,7 @@
 package akkiruk.cobblecrew.jobs
 
 import akkiruk.cobblecrew.config.CobbleCrewConfigHolder
+import akkiruk.cobblecrew.enums.WorkPhase
 import akkiruk.cobblecrew.interfaces.Worker
 import akkiruk.cobblecrew.utilities.CobbleCrewDebugLogger
 import akkiruk.cobblecrew.utilities.CobbleCrewInventoryUtils
@@ -106,7 +107,7 @@ abstract class BasePlacer : Worker {
                     phases[pokemonId] = Phase.IDLE; return
                 }
                 CobbleCrewNavigationUtils.navigateTo(pokemonEntity, target)
-                if (WorkerVisualUtils.handleArrival(pokemonEntity, target, world, placeParticle, 1.5)) {
+                if (WorkerVisualUtils.handleArrival(pokemonEntity, target, world, placeParticle, 1.5, WorkPhase.PLACING)) {
                     val item = heldItems.remove(pokemonId) ?: run {
                         phases[pokemonId] = Phase.IDLE; return
                     }

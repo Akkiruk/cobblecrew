@@ -8,6 +8,7 @@
 
 package akkiruk.cobblecrew.jobs.registry
 
+import akkiruk.cobblecrew.enums.WorkPhase
 import akkiruk.cobblecrew.jobs.WorkerRegistry
 import akkiruk.cobblecrew.jobs.dsl.DefenseJob
 import net.minecraft.entity.effect.StatusEffectInstance
@@ -36,6 +37,7 @@ object DefenseJobs {
         name = "sentry",
         qualifyingMoves = setOf("detect", "foresight"),
         particle = ParticleTypes.ELECTRIC_SPARK,
+        phase = WorkPhase.DEBUFFING,
         effectFn = { _, _, target ->
             target.addStatusEffect(StatusEffectInstance(StatusEffects.GLOWING, 400, 0))
             target.addStatusEffect(StatusEffectInstance(StatusEffects.WEAKNESS, 200, 0))
@@ -46,6 +48,7 @@ object DefenseJobs {
         name = "repeller",
         qualifyingMoves = setOf("roar", "whirlwind"),
         particle = ParticleTypes.POOF,
+        phase = WorkPhase.DEBUFFING,
         effectFn = { _, pokemon, target ->
             val dx = target.x - pokemon.x
             val dz = target.z - pokemon.z
@@ -60,6 +63,7 @@ object DefenseJobs {
         name = "fearmonger",
         qualifyingMoves = setOf("scaryface", "glare"),
         particle = ParticleTypes.WITCH,
+        phase = WorkPhase.DEBUFFING,
         effectFn = { _, pokemon, target ->
             val dx = target.x - pokemon.x
             val dz = target.z - pokemon.z
@@ -83,6 +87,7 @@ object DefenseJobs {
         name = "poison_trap",
         qualifyingMoves = setOf("toxicspikes"),
         particle = ParticleTypes.ITEM_SLIME,
+        phase = WorkPhase.DEBUFFING,
         effectFn = { _, _, target ->
             target.addStatusEffect(StatusEffectInstance(StatusEffects.POISON, 200, 1))
         },
@@ -92,6 +97,7 @@ object DefenseJobs {
         name = "ice_trap",
         qualifyingMoves = setOf("freezedry"),
         particle = ParticleTypes.SNOWFLAKE,
+        phase = WorkPhase.DEBUFFING,
         effectFn = { _, _, target ->
             target.addStatusEffect(StatusEffectInstance(StatusEffects.SLOWNESS, 300, 3))
             target.addStatusEffect(StatusEffectInstance(StatusEffects.MINING_FATIGUE, 300, 2))

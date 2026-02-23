@@ -8,10 +8,12 @@
 
 package akkiruk.cobblecrew.jobs
 
+import akkiruk.cobblecrew.enums.WorkPhase
 import akkiruk.cobblecrew.interfaces.Worker
 import akkiruk.cobblecrew.utilities.CobbleCrewDebugLogger
 import akkiruk.cobblecrew.utilities.CobbleCrewInventoryUtils
 import akkiruk.cobblecrew.utilities.CobbleCrewNavigationUtils
+import akkiruk.cobblecrew.utilities.WorkerAnimationUtils
 import akkiruk.cobblecrew.utilities.WorkerVisualUtils
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import net.minecraft.item.ItemStack
@@ -84,6 +86,7 @@ abstract class BaseProcessor : Worker {
                         phases[pokemonId] = Phase.IDLE
                         return
                     }
+                    WorkerAnimationUtils.playImmediate(pokemonEntity, WorkPhase.PROCESSING, world)
                     WorkerVisualUtils.spawnParticles(world, pokemonEntity.blockPos, processParticle, 5)
                     val output = transform(taken)
                     CobbleCrewDebugLogger.processingExtracted(pokemonEntity, name, taken, output)

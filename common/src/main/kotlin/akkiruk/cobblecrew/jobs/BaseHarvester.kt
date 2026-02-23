@@ -9,6 +9,7 @@
 package akkiruk.cobblecrew.jobs
 
 import akkiruk.cobblecrew.cache.CobbleCrewCacheManager
+import akkiruk.cobblecrew.enums.WorkPhase
 import akkiruk.cobblecrew.interfaces.Worker
 import akkiruk.cobblecrew.utilities.CobbleCrewDebugLogger
 import akkiruk.cobblecrew.utilities.CobbleCrewInventoryUtils
@@ -124,7 +125,7 @@ abstract class BaseHarvester : Worker {
 
         CobbleCrewNavigationUtils.navigateTo(pokemonEntity, currentTarget)
 
-        if (WorkerVisualUtils.handleArrival(pokemonEntity, currentTarget, world, arrivalParticle, arrivalTolerance)) {
+        if (WorkerVisualUtils.handleArrival(pokemonEntity, currentTarget, world, arrivalParticle, arrivalTolerance, WorkPhase.HARVESTING)) {
             harvest(world, currentTarget, pokemonEntity)
             CobbleCrewNavigationUtils.releaseTarget(pokemonId, world)
         }

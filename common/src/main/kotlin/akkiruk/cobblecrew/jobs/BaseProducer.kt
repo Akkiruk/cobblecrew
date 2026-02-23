@@ -8,9 +8,11 @@
 
 package akkiruk.cobblecrew.jobs
 
+import akkiruk.cobblecrew.enums.WorkPhase
 import akkiruk.cobblecrew.interfaces.Worker
 import akkiruk.cobblecrew.utilities.CobbleCrewDebugLogger
 import akkiruk.cobblecrew.utilities.CobbleCrewInventoryUtils
+import akkiruk.cobblecrew.utilities.WorkerAnimationUtils
 import akkiruk.cobblecrew.utilities.WorkerVisualUtils
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import net.minecraft.block.Block
@@ -82,6 +84,7 @@ abstract class BaseProducer : Worker {
             CobbleCrewDebugLogger.productionProduced(pokemonEntity, name, items)
 
             // Visual feedback
+            WorkerAnimationUtils.playImmediate(pokemonEntity, WorkPhase.PRODUCING, world)
             WorkerVisualUtils.spawnParticles(world, pokemonEntity.blockPos, productionParticle, 5)
         }
     }

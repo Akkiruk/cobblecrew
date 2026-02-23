@@ -10,6 +10,7 @@ package akkiruk.cobblecrew.utilities
 
 import akkiruk.cobblecrew.cache.CobbleCrewCacheManager
 import akkiruk.cobblecrew.enums.BlockCategory
+import akkiruk.cobblecrew.enums.WorkPhase
 import com.cobblemon.mod.common.CobblemonBlocks
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import net.minecraft.block.BarrelBlock
@@ -23,7 +24,6 @@ import net.minecraft.item.ItemStack
 import net.minecraft.server.network.ServerPlayerEntity
 import net.minecraft.sound.SoundCategory
 import net.minecraft.sound.SoundEvents
-import net.minecraft.util.Hand
 import net.minecraft.util.math.BlockPos
 import net.minecraft.world.World
 import java.util.UUID
@@ -323,7 +323,7 @@ object CobbleCrewInventoryUtils {
                 }
                 depositArrival[pokemonId] = now
                 pokemonEntity.navigation.stop()
-                pokemonEntity.swingHand(Hand.MAIN_HAND)
+                WorkerAnimationUtils.playImmediate(pokemonEntity, WorkPhase.DEPOSITING, world)
                 pokemonEntity.lookControl.lookAt(
                     inventoryPos.x + 0.5, inventoryPos.y + 0.5, inventoryPos.z + 0.5
                 )
@@ -352,7 +352,7 @@ object CobbleCrewInventoryUtils {
                 return
             }
 
-            pokemonEntity.swingHand(Hand.MAIN_HAND)
+            WorkerAnimationUtils.playImmediate(pokemonEntity, WorkPhase.DEPOSIT_SUCCESS, world)
             val remainingDrops = insertStacks(inventory, itemsToDeposit)
 
             if (remainingDrops.size == itemsToDeposit.size) {

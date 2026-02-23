@@ -12,6 +12,7 @@ import akkiruk.cobblecrew.cache.CobbleCrewCacheManager
 import akkiruk.cobblecrew.config.JobConfig
 import akkiruk.cobblecrew.config.JobConfigManager
 import akkiruk.cobblecrew.enums.BlockCategory
+import akkiruk.cobblecrew.enums.WorkPhase
 import akkiruk.cobblecrew.enums.WorkerPriority
 import akkiruk.cobblecrew.interfaces.Worker
 import akkiruk.cobblecrew.jobs.JobContext
@@ -568,7 +569,7 @@ object ProductionJobs {
                 return
             }
             CobbleCrewNavigationUtils.navigateTo(pokemonEntity, target)
-            if (WorkerVisualUtils.handleArrival(pokemonEntity, target, world, ParticleTypes.COMPOSTER, 3.0)) {
+            if (WorkerVisualUtils.handleArrival(pokemonEntity, target, world, ParticleTypes.COMPOSTER, 3.0, WorkPhase.HARVESTING)) {
                 generateLoot(world, target, pokemonEntity)
                 CobbleCrewNavigationUtils.releaseTarget(pid, world)
                 targets.remove(pid)
