@@ -128,6 +128,10 @@ abstract class BaseHarvester : Worker {
         if (WorkerVisualUtils.handleArrival(pokemonEntity, currentTarget, world, arrivalParticle, arrivalTolerance, WorkPhase.HARVESTING)) {
             harvest(world, currentTarget, pokemonEntity)
             CobbleCrewNavigationUtils.releaseTarget(pokemonId, world)
+            // Remove harvested block from cache to prevent re-targeting air blocks
+            targetCategory?.let { cat ->
+                CobbleCrewCacheManager.removeTarget(context.cacheKey, cat, currentTarget)
+            }
         }
     }
 
