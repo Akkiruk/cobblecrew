@@ -1,3 +1,8 @@
+## 3.0.19
+- Fixed idle Pokémon playing sleep animation while walking back to the player/pasture
+- Idle animations now only play when the Pokémon has actually reached its origin
+- Replaced "sleep" with "yawn" in idle and cooldown animation fallback chains
+
 ## 3.0.18
 - Fixed party workers unable to find targets — Cobblemon entities don't support vanilla pathfinding queries when sent out by the player, so party workers now skip pathfind validation and use direct distance-based target selection instead
 - Added party scan logging to show what blocks the eager scanner finds

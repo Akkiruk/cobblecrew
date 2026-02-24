@@ -86,8 +86,10 @@ object WorkerDispatcher {
                 idleLogTick[pokemonId] = now
                 CobbleCrewDebugLogger.noEligibleJobs(pokemonEntity.pokemon.species.name, pokemonId)
             }
-            handleIdleAnimation(pokemonEntity, world, pokemonId)
-            returnToOrigin(pokemonEntity, context)
+            // Only play idle animation when already at origin — don't animate while walking back
+            if (!returnToOrigin(pokemonEntity, context)) {
+                handleIdleAnimation(pokemonEntity, world, pokemonId)
+            }
             return
         }
 
@@ -124,8 +126,10 @@ object WorkerDispatcher {
             // Nothing available right now — idle at origin
             activeJobs.remove(pokemonId)
             WorkerVisualUtils.setExcited(pokemonEntity, false)
-            handleIdleAnimation(pokemonEntity, world, pokemonId)
-            returnToOrigin(pokemonEntity, context)
+            // Only play idle animation when already at origin — don't animate while walking back
+            if (!returnToOrigin(pokemonEntity, context)) {
+                handleIdleAnimation(pokemonEntity, world, pokemonId)
+            }
 
             val lastLog = idleLogTick[pokemonId] ?: 0L
             if (now - lastLog >= IDLE_LOG_INTERVAL) {
@@ -157,17 +161,23 @@ object WorkerDispatcher {
         WorkerAnimationUtils.playWorkAnimation(pokemonEntity, phase, world)
     }
 
-    private fun returnToOrigin(pokemonEntity: PokemonEntity, context: JobContext) {
-        when (context) {
+    /**
+     * Walks the Pokémon back to its origin (pasture block or player).
+     * Returns true if the Pokémon is still walking, false if already at origin.
+     */
+    private fun returnToOrigin(pokemonEntity: PokemonEntity, context: JobContext): Boolean {
+        return when (context) {
             is JobContext.Pasture -> {
                 if (!CobbleCrewNavigationUtils.isPokemonAtPosition(pokemonEntity, context.origin, 3.0)) {
                     CobbleCrewNavigationUtils.navigateTo(pokemonEntity, context.origin)
-                }
+                    true
+                } else false
             }
             is JobContext.Party -> {
                 if (!CobbleCrewNavigationUtils.isPokemonAtPosition(pokemonEntity, context.player.blockPos, 5.0)) {
                     CobbleCrewNavigationUtils.navigateTo(pokemonEntity, context.player.blockPos)
-                }
+                    true
+                } else false
             }
         }
     }

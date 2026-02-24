@@ -35,7 +35,7 @@ enum class WorkPhase(val animations: List<String>) {
     DEPOSIT_FAILED(listOf("sad", "unamused")),
     TARGET_LOST(listOf("shocked", "shock", "sad")),
     NO_TARGETS(listOf("unamused", "sad")),
-    COOLDOWN_WAITING(listOf("sleep", "ground_idle")),
+    COOLDOWN_WAITING(listOf("yawn", "ground_idle")),
 
     // -- Combat-specific --
     HOSTILE_SPOTTED(listOf("angry", "battle_cry", "battle_idle")),
@@ -43,5 +43,5 @@ enum class WorkPhase(val animations: List<String>) {
 
     // -- Idle --
     IDLE_AT_ORIGIN(listOf("ground_idle")),
-    IDLE_BORED(listOf("unamused", "sleep", "ground_idle")),
+    IDLE_BORED(listOf("unamused", "yawn", "ground_idle")),
 }
