@@ -51,7 +51,9 @@ object ComboJobs {
         config: JobConfig,
         pokemonEntity: PokemonEntity,
     ): Boolean {
-        val moves = pokemonEntity.pokemon.moveSet.getMoves().map { it.name.lowercase() }.toSet()
+        val active = pokemonEntity.pokemon.moveSet.getMoves().map { it.name.lowercase() }
+        val benchedMvs = pokemonEntity.pokemon.benchedMoves.map { it.moveTemplate.name.lowercase() }
+        val moves = (active + benchedMvs).toSet()
         val types = pokemonEntity.pokemon.types.map { it.name.uppercase() }.toSet()
         val species = pokemonEntity.pokemon.species.translatedName.string.lowercase()
         return comboEligible(requiredMoves, config, moves, types, species)

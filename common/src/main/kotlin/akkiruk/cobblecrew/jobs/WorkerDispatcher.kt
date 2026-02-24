@@ -45,7 +45,10 @@ object WorkerDispatcher {
         val pokemon = pokemonEntity.pokemon
         val pokemonId = pokemon.uuid
 
-        val moves = pokemon.moveSet.getMoves().map { it.name.lowercase() }.toSet()
+        // Include both active and benched moves — workers can use any move the Pokémon knows
+        val active = pokemon.moveSet.getMoves().map { it.name.lowercase() }
+        val benched = pokemon.benchedMoves.map { it.moveTemplate.name.lowercase() }
+        val moves = (active + benched).toSet()
 
         // Invalidate cache if moves changed (e.g. player taught/forgot a move)
         profiles[pokemonId]?.let { cached ->

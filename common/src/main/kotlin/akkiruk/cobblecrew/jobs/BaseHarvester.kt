@@ -52,7 +52,15 @@ abstract class BaseHarvester : Worker {
     open fun isTargetReady(world: World, pos: BlockPos): Boolean = true
 
     override fun isAvailable(context: JobContext, pokemonId: UUID): Boolean {
-        return findClosestTarget(context.world, context.origin) != null
+        val cat = targetCategory ?: return false
+        val targets = CobbleCrewCacheManager.getTargets(context.origin, cat)
+        if (targets.isEmpty()) return false
+        val now = context.world.time
+        return targets.any { pos ->
+            isTargetReady(context.world, pos)
+                && !CobbleCrewNavigationUtils.isRecentlyExpired(pos, context.world)
+                && !CobbleCrewNavigationUtils.isUnreachable(pokemonId, pos, now)
+        }
     }
 
     companion object {
