@@ -128,6 +128,7 @@ object ComboJobs {
         qualifyingMoves = setOf("cut", "headbutt"),
         particle = ParticleTypes.CAMPFIRE_COSY_SMOKE,
         priority = WorkerPriority.COMBO,
+        topDownHarvest = true,
     ) {
         override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String) =
             comboEligible(qualifyingMoves, JobConfigManager.get(name), moves, types, species)

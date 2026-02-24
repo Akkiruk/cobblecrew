@@ -19,6 +19,7 @@ import net.minecraft.item.ItemStack
 import net.minecraft.particle.ParticleEffect
 import net.minecraft.particle.ParticleTypes
 import net.minecraft.util.math.BlockPos
+import net.minecraft.util.math.Direction
 import net.minecraft.world.World
 
 /**
@@ -48,6 +49,7 @@ open class GatheringJob(
     val readyCheck: ((World, BlockPos) -> Boolean)? = null,
     val afterHarvestAction: ((World, BlockPos, BlockState) -> Unit)? = null,
     val tolerance: Double = 3.0,
+    val topDownHarvest: Boolean = false,
 ) : BaseHarvester() {
 
     private val config get() = JobConfigManager.get(name)
@@ -91,5 +93,40 @@ open class GatheringJob(
                     ?: w.setBlockState(pos, net.minecraft.block.Blocks.AIR.defaultState)
             }
         }
+    }
+
+    /**
+     * For top-down harvesting: BFS from [targetPos] to find all connected blocks of the
+     * same type, then return the one with the highest Y. This makes trees fall from top
+     * to bottom instead of leaving floating canopies.
+     */
+    override fun resolveHarvestPos(world: World, targetPos: BlockPos): BlockPos {
+        if (!topDownHarvest) return targetPos
+
+        val targetBlock = world.getBlockState(targetPos).block
+        val visited = mutableSetOf(targetPos)
+        val queue = ArrayDeque<BlockPos>()
+        queue.add(targetPos)
+        var topmost = targetPos
+
+        while (queue.isNotEmpty() && visited.size < MAX_CONNECTED_SCAN) {
+            val current = queue.removeFirst()
+            if (current.y > topmost.y || (current.y == topmost.y && current.getSquaredDistance(targetPos) > topmost.getSquaredDistance(targetPos))) {
+                topmost = current
+            }
+            for (dir in Direction.entries) {
+                val neighbor = current.offset(dir)
+                if (neighbor in visited) continue
+                if (world.getBlockState(neighbor).block == targetBlock) {
+                    visited.add(neighbor)
+                    queue.add(neighbor)
+                }
+            }
+        }
+        return topmost
+    }
+
+    companion object {
+        private const val MAX_CONNECTED_SCAN = 128
     }
 }

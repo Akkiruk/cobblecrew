@@ -46,6 +46,7 @@ object GatheringJobs {
         targetCategory = BlockCategory.LOG_OVERWORLD,
         qualifyingMoves = setOf("cut", "furycutter"),
         particle = ParticleTypes.CAMPFIRE_COSY_SMOKE,
+        topDownHarvest = true,
     )
 
     val JUNGLE_CHOPPER = GatheringJob(
@@ -53,6 +54,7 @@ object GatheringJobs {
         targetCategory = BlockCategory.LOG_TROPICAL,
         qualifyingMoves = setOf("xscissor"),
         particle = ParticleTypes.CAMPFIRE_COSY_SMOKE,
+        topDownHarvest = true,
     )
 
     val FUNGI_HARVESTER = GatheringJob(
@@ -60,6 +62,7 @@ object GatheringJobs {
         targetCategory = BlockCategory.LOG_NETHER,
         qualifyingMoves = setOf("shadowclaw"),
         particle = ParticleTypes.SOUL,
+        topDownHarvest = true,
     )
 
     val BAMBOO_CHOPPER = GatheringJob(

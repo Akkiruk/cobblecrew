@@ -1,3 +1,7 @@
+## 3.0.22
+- Tree-cutting jobs now fell trees top-down — Pokémon scans connected logs and breaks the highest one first, preventing floating tree canopies
+- Applies to overworld logger, jungle chopper, fungi harvester, and tree feller combo
+
 ## 3.0.21
 - Disabled Pokémon cries during job animations — workers still play visual animations but no longer make sounds
 
