@@ -19,26 +19,26 @@ package akkiruk.cobblecrew.enums
 enum class WorkPhase(val animations: List<String>) {
 
     // -- Work actions --
-    HARVESTING(listOf("physical", "cry")),
-    PRODUCING(listOf("special", "happy", "cry")),
-    PROCESSING(listOf("physical", "cry")),
-    PLACING(listOf("physical", "cry")),
-    ATTACKING(listOf("physical", "battle_cry", "angry")),
+    HARVESTING(listOf("physical")),
+    PRODUCING(listOf("special", "happy")),
+    PROCESSING(listOf("physical")),
+    PLACING(listOf("physical")),
+    ATTACKING(listOf("physical", "angry")),
     DEBUFFING(listOf("special", "status", "angry")),
     HEALING(listOf("status", "happy")),
-    ENVIRONMENTAL(listOf("special", "cry")),
+    ENVIRONMENTAL(listOf("special")),
 
     // -- Reactions --
-    WORK_COMPLETE(listOf("happy", "cry")),
-    DEPOSITING(listOf("physical", "cry")),
-    DEPOSIT_SUCCESS(listOf("happy", "cry")),
+    WORK_COMPLETE(listOf("happy")),
+    DEPOSITING(listOf("physical")),
+    DEPOSIT_SUCCESS(listOf("happy")),
     DEPOSIT_FAILED(listOf("sad", "unamused")),
     TARGET_LOST(listOf("shocked", "shock", "sad")),
     NO_TARGETS(listOf("unamused", "sad")),
     COOLDOWN_WAITING(listOf("yawn", "ground_idle")),
 
     // -- Combat-specific --
-    HOSTILE_SPOTTED(listOf("angry", "battle_cry", "battle_idle")),
+    HOSTILE_SPOTTED(listOf("angry", "battle_idle")),
     COMBAT_READY(listOf("battle_idle", "pose")),
 
     // -- Idle --

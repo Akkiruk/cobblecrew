@@ -1,3 +1,6 @@
+## 3.0.21
+- Disabled Pokémon cries during job animations — workers still play visual animations but no longer make sounds
+
 ## 3.0.20
 - Tree planter now enforces 4-block minimum spacing between saplings and avoids planting near existing trees so saplings actually grow
 
