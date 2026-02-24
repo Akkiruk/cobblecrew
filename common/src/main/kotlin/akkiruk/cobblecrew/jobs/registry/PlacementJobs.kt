@@ -21,6 +21,7 @@ import net.minecraft.particle.ParticleTypes
 import net.minecraft.registry.Registries
 import net.minecraft.util.math.BlockPos
 import net.minecraft.world.LightType
+import net.minecraft.world.World
 
 /**
  * Placement jobs (D1–D4). Take items from containers, place as blocks.
@@ -49,6 +50,8 @@ object PlacementJobs {
 
     private val DIRT_BLOCKS = setOf(Blocks.DIRT, Blocks.COARSE_DIRT, Blocks.GRASS_BLOCK, Blocks.PODZOL, Blocks.ROOTED_DIRT, Blocks.MYCELIUM, Blocks.MUD, Blocks.MUDDY_MANGROVE_ROOTS)
 
+    private const val SAPLING_SPACING = 4 // min blocks between saplings so trees grow properly
+
     val TREE_PLANTER = PlacementJob(
         name = "tree_planter",
         qualifyingMoves = setOf("ingrain", "seedbomb"),
@@ -60,6 +63,7 @@ object PlacementJobs {
                     world.getBlockState(pos).isAir
                         && world.getBlockState(pos.down()).block in DIRT_BLOCKS
                         && world.isSkyVisible(pos)
+                        && hasNoNearbySaplingOrLog(world, pos, SAPLING_SPACING)
                 }?.toImmutable()
         },
         placeFn = { world, pos, item ->
@@ -126,6 +130,21 @@ object PlacementJobs {
             BoneMealItem.useOnFertilizable(stack.copy(), world, pos)
         },
     )
+
+    /** Checks that no sapling or log exists within [radius] blocks horizontally. */
+    private fun hasNoNearbySaplingOrLog(world: World, pos: BlockPos, radius: Int): Boolean {
+        for (dx in -radius..radius) {
+            for (dz in -radius..radius) {
+                if (dx == 0 && dz == 0) continue
+                for (dy in -1..3) {
+                    val state = world.getBlockState(pos.add(dx, dy, dz))
+                    if (state.block is SaplingBlock) return false
+                    if (state.isIn(net.minecraft.registry.tag.BlockTags.LOGS)) return false
+                }
+            }
+        }
+        return true
+    }
 
     fun register() {
         WorkerRegistry.registerAll(

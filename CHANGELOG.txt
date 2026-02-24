@@ -1,3 +1,6 @@
+## 3.0.20
+- Tree planter now enforces 4-block minimum spacing between saplings and avoids planting near existing trees so saplings actually grow
+
 ## 3.0.19
 - Fixed idle Pokémon playing sleep animation while walking back to the player/pasture
 - Idle animations now only play when the Pokémon has actually reached its origin
