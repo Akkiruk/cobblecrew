@@ -111,7 +111,14 @@ abstract class BaseHarvester : Worker {
         val currentTarget = CobbleCrewNavigationUtils.getTarget(pokemonId, world)
 
         if (currentTarget == null) {
-            val closestTarget = findReachableTarget(world, origin, pokemonEntity) ?: return
+            // Party workers skip pathfinding validation — targets are always within the
+            // small party scan radius and Cobblemon entities don't reliably support
+            // findPathTo() queries when sent out by the player.
+            val closestTarget = if (context is JobContext.Party) {
+                findClosestPartyTarget(world, origin, pokemonEntity)
+            } else {
+                findReachableTarget(world, origin, pokemonEntity)
+            } ?: return
             if (!CobbleCrewNavigationUtils.isTargeted(closestTarget, world)
                 && !CobbleCrewNavigationUtils.isRecentlyExpired(closestTarget, world)) {
                 CobbleCrewDebugLogger.harvestTargetFound(pokemonEntity, name, closestTarget)
@@ -153,6 +160,25 @@ abstract class BaseHarvester : Worker {
                     && !CobbleCrewNavigationUtils.isRecentlyExpired(pos, world)
             }
             .minByOrNull { it.getSquaredDistance(origin) }
+    }
+
+    /**
+     * Party-optimized target finder: skips pathfinding validation since party scan radius
+     * is small (6 blocks) and Cobblemon entities don't reliably support findPathTo().
+     * Sorts by distance to the entity rather than the origin for better target selection.
+     */
+    private fun findClosestPartyTarget(world: World, origin: BlockPos, pokemonEntity: PokemonEntity): BlockPos? {
+        val cat = targetCategory ?: return null
+        val targets = CobbleCrewCacheManager.getTargets(origin, cat)
+        if (targets.isEmpty()) return null
+
+        return targets
+            .filter { pos ->
+                isTargetReady(world, pos)
+                    && !CobbleCrewNavigationUtils.isRecentlyExpired(pos, world)
+                    && !CobbleCrewNavigationUtils.isTargeted(pos, world)
+            }
+            .minByOrNull { it.getSquaredDistance(pokemonEntity.blockPos) }
     }
 
     /**

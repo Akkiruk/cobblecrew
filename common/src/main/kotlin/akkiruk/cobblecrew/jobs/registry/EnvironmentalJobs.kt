@@ -43,6 +43,7 @@ object EnvironmentalJobs {
         override val name = "frost_former"
         override val priority = WorkerPriority.MOVE
         override val targetCategory = BlockCategory.WATER
+        override val additionalScanCategories = setOf(BlockCategory.ICE)
 
         private val config get() = JobConfigManager.get(name)
         private val qualifyingMoves = setOf("icebeam")

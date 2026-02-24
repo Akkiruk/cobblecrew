@@ -300,6 +300,11 @@ object PartyWorkerManager {
         }
 
         CobbleCrewCacheManager.replaceAllCategoryTargets(key, staged)
+
+        if (staged.isNotEmpty()) {
+            val summary = staged.entries.joinToString(", ") { (cat, positions) -> "${cat.name}=${positions.size}" }
+            CobbleCrew.LOGGER.debug("[CobbleCrew:PARTY_SCAN] Scan at {} found: {}", playerPos, summary)
+        }
     }
 
     private fun deliverHeldItemsOnRecall(entry: PartyWorkerEntry) {

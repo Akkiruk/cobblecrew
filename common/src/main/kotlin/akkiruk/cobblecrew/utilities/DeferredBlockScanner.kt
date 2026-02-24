@@ -40,7 +40,9 @@ object DeferredBlockScanner {
 
     fun getNeededCategories(): Set<BlockCategory> {
         neededCategories?.let { return it }
-        val cats = WorkerRegistry.workers.mapNotNull { it.targetCategory }.toMutableSet()
+        val cats = WorkerRegistry.workers.flatMap { w ->
+            listOfNotNull(w.targetCategory) + w.additionalScanCategories
+        }.toMutableSet()
         cats.add(BlockCategory.CONTAINER)
         return cats.also { neededCategories = it }
     }

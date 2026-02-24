@@ -9,9 +9,7 @@
 package akkiruk.cobblecrew.cache
 
 import net.minecraft.util.math.BlockPos
-import java.util.UUID
 
 sealed interface CacheKey {
     data class PastureKey(val pos: BlockPos) : CacheKey
-    data class PlayerKey(val playerId: UUID) : CacheKey
 }

@@ -21,6 +21,9 @@ interface Worker {
     /** Block category this job consumes from the scanner cache. Null = not block-based. */
     val targetCategory: BlockCategory? get() = null
 
+    /** Extra categories this job reads from the cache besides [targetCategory]. */
+    val additionalScanCategories: Set<BlockCategory> get() = emptySet()
+
     /** Priority tier for eligibility sorting. */
     val priority: WorkerPriority get() = WorkerPriority.TYPE
 
