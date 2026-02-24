@@ -97,8 +97,8 @@ open class GatheringJob(
 
     /**
      * For top-down harvesting: BFS from [targetPos] to find all connected blocks of the
-     * same type, then return the one with the highest Y. This makes trees fall from top
-     * to bottom instead of leaving floating canopies.
+     * same type, then return the one farthest away (by BFS depth). Removing the farthest
+     * node keeps the tree connected — no floating pieces even with arches or branches.
      */
     override fun resolveHarvestPos(world: World, targetPos: BlockPos): BlockPos {
         if (!topDownHarvest) return targetPos
@@ -107,13 +107,12 @@ open class GatheringJob(
         val visited = mutableSetOf(targetPos)
         val queue = ArrayDeque<BlockPos>()
         queue.add(targetPos)
-        var topmost = targetPos
+        var farthest = targetPos
 
         while (queue.isNotEmpty() && visited.size < MAX_CONNECTED_SCAN) {
             val current = queue.removeFirst()
-            if (current.y > topmost.y || (current.y == topmost.y && current.getSquaredDistance(targetPos) > topmost.getSquaredDistance(targetPos))) {
-                topmost = current
-            }
+            // Last node dequeued in BFS = farthest from root
+            farthest = current
             for (dir in Direction.entries) {
                 val neighbor = current.offset(dir)
                 if (neighbor in visited) continue
@@ -123,7 +122,7 @@ open class GatheringJob(
                 }
             }
         }
-        return topmost
+        return farthest
     }
 
     companion object {
