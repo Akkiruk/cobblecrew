@@ -204,10 +204,11 @@ object CobbleCrewCommand {
                     .then(literal("invalidate").requires(requiresOp()).executes(::runProfilesInvalidate))
                 )
 
-                // ── party (view party worker status) ──
+                // ── party (view party worker status, toggle per-player) ──
                 .then(literal("party")
                     .executes(::runPartyStatus)
                     .then(literal("status").executes(::runPartyStatus))
+                    .then(literal("toggle").executes(::runPartyToggle))
                 )
         )
     }
@@ -226,7 +227,7 @@ object CobbleCrewCommand {
         s.sendFeedback({ bullet("/cobblecrew config", Formatting.YELLOW).append(info(" — View/change general config")) }, false)
         s.sendFeedback({ bullet("/cobblecrew cache", Formatting.YELLOW).append(info(" — View/clear block scan caches")) }, false)
         s.sendFeedback({ bullet("/cobblecrew profiles", Formatting.YELLOW).append(info(" — View/invalidate Pokémon profiles")) }, false)
-        s.sendFeedback({ bullet("/cobblecrew party", Formatting.YELLOW).append(info(" — View party worker status")) }, false)
+        s.sendFeedback({ bullet("/cobblecrew party", Formatting.YELLOW).append(info(" — View party worker status, toggle on/off")) }, false)
         return 1
     }
 
@@ -578,6 +579,18 @@ object CobbleCrewCommand {
     //  PARTY
     // ══════════════════════════════════════════
 
+    private fun runPartyToggle(ctx: CommandContext<ServerCommandSource>): Int {
+        val s = ctx.source
+        val player = s.playerOrThrow
+        val nowEnabled = PartyWorkerManager.togglePartyJobs(player.uuid)
+        if (nowEnabled) {
+            s.sendFeedback({ success("Party jobs enabled. Your sent-out Pokémon will work.") }, false)
+        } else {
+            s.sendFeedback({ error("Party jobs disabled. Your sent-out Pokémon will idle.") }, false)
+        }
+        return 1
+    }
+
     private fun runPartyStatus(ctx: CommandContext<ServerCommandSource>): Int {
         val s = ctx.source
         val partyConfig = CobbleCrewConfigHolder.config.party
@@ -585,6 +598,13 @@ object CobbleCrewCommand {
 
         s.sendFeedback({ header("Party Workers") }, false)
         s.sendFeedback({ label("Enabled", if (partyConfig.enabled) "§aYes" else "§cNo") }, false)
+
+        // Show per-player opt-out status if run by a player
+        val player = s.player
+        if (player != null) {
+            val personal = PartyWorkerManager.isPartyEnabled(player.uuid)
+            s.sendFeedback({ label("Your party jobs", if (personal) "§aOn" else "§cOff §7(/cobblecrew party toggle)") }, false)
+        }
         s.sendFeedback({ label("Active party workers", workers.size.toString()) }, false)
         s.sendFeedback({ label("Max work distance", "${partyConfig.maxWorkDistance} blocks") }, false)
         s.sendFeedback({ label("Scan interval", "${partyConfig.scanIntervalTicks} ticks") }, false)

@@ -1,3 +1,7 @@
+## 3.0.24
+- Added /cobblecrew party toggle — any player can disable party jobs for themselves so their sent-out Pokémon stop doing work
+- Party status now shows your personal opt-out state
+
 ## 3.0.23
 - Tree felling now breaks the farthest connected log (by BFS depth) instead of the highest — prevents disconnecting arches and branches that would leave floating pieces
 

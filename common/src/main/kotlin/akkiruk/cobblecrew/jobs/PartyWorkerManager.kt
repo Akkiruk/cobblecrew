@@ -50,6 +50,9 @@ object PartyWorkerManager {
     // Players currently in battle — skip their workers during tick
     private val playersInBattle = mutableSetOf<UUID>()
 
+    // Players who opted out of party jobs via /cobblecrew party toggle
+    private val optedOutPlayers = mutableSetOf<UUID>()
+
     fun init() {
         CobblemonEvents.POKEMON_SENT_POST.subscribe { event ->
             try {
@@ -94,6 +97,9 @@ object PartyWorkerManager {
 
         val pokemon = pokemonEntity.pokemon
         val owner = pokemon.getOwnerPlayer() as? ServerPlayerEntity ?: return
+
+        // Player opted out of party jobs
+        if (owner.uuid in optedOutPlayers) return
 
         // Only register party Pokémon (not tethered to a pasture)
         if (pokemonEntity.tethering != null) return
@@ -161,6 +167,7 @@ object PartyWorkerManager {
 
         for ((playerId, entries) in playerGroups) {
             if (playerId in playersInBattle) continue
+            if (playerId in optedOutPlayers) continue
 
             val first = entries.firstOrNull() ?: continue
             if (first.owner.isRemoved) {
@@ -352,4 +359,31 @@ object PartyWorkerManager {
     fun getActivePartyWorkers(): Map<UUID, PartyWorkerEntry> = activePartyWorkers.toMap()
 
     fun getActivePartyWorkerCount(): Int = activePartyWorkers.size
+
+    /** Toggle party jobs for a player. Returns true if now enabled, false if now disabled. */
+    fun togglePartyJobs(playerId: UUID): Boolean {
+        return if (playerId in optedOutPlayers) {
+            optedOutPlayers.remove(playerId)
+            true
+        } else {
+            optedOutPlayers.add(playerId)
+            // Clean up any active party workers for this player
+            val pokemonIds = activePartyWorkers.values
+                .filter { it.owner.uuid == playerId }
+                .map { it.pokemonId }
+            for (pokemonId in pokemonIds) {
+                val entry = activePartyWorkers[pokemonId] ?: continue
+                deliverHeldItemsOnRecall(entry)
+                cleanupWorker(pokemonId, playerId)
+            }
+            val context = playerContexts.remove(playerId)
+            if (context != null) {
+                CobbleCrewCacheManager.removeCache(context.cacheKey)
+            }
+            lastScanTick.remove(playerId)
+            false
+        }
+    }
+
+    fun isPartyEnabled(playerId: UUID): Boolean = playerId !in optedOutPlayers
 }
