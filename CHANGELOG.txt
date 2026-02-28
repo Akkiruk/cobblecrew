@@ -1,3 +1,11 @@
+## 3.0.26
+- Removed all 25 hardcoded producer jobs (wool producer, egg layer, milk producer, etc.)
+- Replaced with a single "species_drops" producer that uses each Pokémon's actual Cobblemon drop table
+- Any Pokémon with drops defined in its species/form data now produces those items on a 120s cooldown
+- No more move/species gating — if your Pokémon has drops, it works
+- Loot-based workers (fishing, pickup, dive, dig site) are unchanged
+- Combo production jobs (string crafter, book binder, etc.) are unchanged
+
 ## 3.0.25
 - Support Pokémon now provide a work speed aura — nearby workers in the same pasture (or party) get reduced production cooldowns
 - Speed Booster and Haste Provider give 15% faster cooldowns, Healer/Strength/Resistance/Hunger give 5%, Aura Master combo gives 20%, Full Restore combo gives 10%
