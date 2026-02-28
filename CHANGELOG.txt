@@ -1,3 +1,7 @@
+## 3.0.33
+- Fixed Tree Feller leaving floating leaves on large trees — leaf cap raised from 256 to 1024
+- Leaf seeding now checks diagonal neighbors (all 26 directions) since vanilla trees place leaves diagonally from logs
+
 ## 3.0.32
 - Reworked tree chopping: merged 3 separate logging jobs (overworld_logger, jungle_chopper, fungi_harvester) into one universal "logger" job
 - Logger now fells entire trees in one pass instead of one block at a time — dramatically faster

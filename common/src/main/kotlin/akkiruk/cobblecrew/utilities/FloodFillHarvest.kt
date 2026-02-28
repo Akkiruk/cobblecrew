@@ -80,7 +80,9 @@ fun treeHarvest(
     val leafPositions = mutableSetOf<BlockPos>()
     var logsBroken = 0
 
-    // Phase 1: BFS through connected logs
+    // Phase 1: BFS through connected logs, also seed leaf positions
+    // Check all 26 neighbors (face + edge + corner) for leaf seeding since
+    // vanilla tree generators place leaves diagonally from logs.
     while (frontier.isNotEmpty() && logsBroken < maxLogs) {
         val current = frontier.removeFirst()
         val state = world.getBlockState(current)
@@ -95,6 +97,7 @@ fun treeHarvest(
         brokenPositions.add(current)
         logsBroken++
 
+        // Face neighbors for log connectivity
         for (dir in Direction.entries) {
             val neighbor = current.offset(dir)
             if (neighbor in visited) continue
@@ -106,15 +109,29 @@ fun treeHarvest(
                 leafPositions.add(neighbor)
             }
         }
+
+        // Diagonal neighbors for leaf seeding only (leaves often diagonal to logs)
+        if (includeLeaves) {
+            for (dx in -1..1) for (dy in -1..1) for (dz in -1..1) {
+                if (dx == 0 && dy == 0 && dz == 0) continue
+                // Skip pure face offsets — already handled above
+                if ((dx == 0 && dz == 0) || (dx == 0 && dy == 0) || (dy == 0 && dz == 0)) continue
+                val neighbor = current.add(dx, dy, dz)
+                if (neighbor in visited || neighbor in leafPositions) continue
+                if (world.getBlockState(neighbor).block is LeavesBlock) {
+                    leafPositions.add(neighbor)
+                }
+            }
+        }
     }
 
     // Phase 2: break collected leaves (only if includeLeaves)
     if (includeLeaves && leafPositions.isNotEmpty()) {
-        // BFS outward from found leaf positions to get the full canopy
+        // BFS outward from seed positions to get the full canopy
         val leafFrontier = ArrayDeque(leafPositions)
         val leafVisited = mutableSetOf<BlockPos>().also { it.addAll(leafPositions); it.addAll(visited) }
         var leavesBroken = 0
-        val maxLeaves = 256
+        val maxLeaves = 1024
 
         while (leafFrontier.isNotEmpty() && leavesBroken < maxLeaves) {
             val current = leafFrontier.removeFirst()
