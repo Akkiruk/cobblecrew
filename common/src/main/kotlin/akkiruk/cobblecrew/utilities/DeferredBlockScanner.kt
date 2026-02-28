@@ -24,7 +24,7 @@ object DeferredBlockScanner {
     private val BLOCKS_PER_TICK get() = config.blocksScannedPerTick
     private val searchRadius get() = config.searchRadius
     private val searchHeight get() = config.searchHeight
-    private const val SCAN_COOLDOWN_TICKS = 60 * 20L
+    private val SCAN_COOLDOWN_TICKS: Long get() = config.scanCooldownSeconds.toLong() * 20L
 
     private data class ScanJob(
         val iterator: Iterator<BlockPos>,

@@ -31,6 +31,26 @@ class CobbleCrewConfig : ConfigData {
         var searchRadius = 8
         @ConfigEntry.BoundedDiscrete(min = 1, max = 8)
         var searchHeight = 5
+
+        /** Seconds between full area rescans (lower = less idle time, higher = less CPU). */
+        @ConfigEntry.BoundedDiscrete(min = 5, max = 120)
+        var scanCooldownSeconds = 20
+
+        /** Seconds a target is ignored after a Pokémon releases it (prevents immediate re-claim). */
+        @ConfigEntry.BoundedDiscrete(min = 2, max = 30)
+        var targetGracePeriodSeconds = 10
+
+        /** Blacklist duration (seconds) after 1 pathfind failure. */
+        @ConfigEntry.BoundedDiscrete(min = 5, max = 60)
+        var blacklistShortSeconds = 10
+
+        /** Blacklist duration (seconds) after 2 pathfind failures. */
+        @ConfigEntry.BoundedDiscrete(min = 10, max = 120)
+        var blacklistMediumSeconds = 30
+
+        /** Blacklist duration (seconds) after 3+ pathfind failures. */
+        @ConfigEntry.BoundedDiscrete(min = 30, max = 600)
+        var blacklistLongSeconds = 120
     }
 
     class PartyGroup {

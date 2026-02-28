@@ -1,3 +1,10 @@
+## 3.0.30
+- Reduced idle downtime — Pokémon no longer go lazy for long stretches between jobs
+- Scan cooldown reduced from 60s → 20s (configurable via `scanCooldown`)
+- Target grace period reduced from 15s → 10s (configurable via `targetGrace`)
+- Escalating blacklist softened: 10s / 30s / 2min (was 15s / 60s / 5min), all configurable
+- New config commands: `/cobblecrew config scanCooldown|targetGrace|blacklistShort|blacklistMedium|blacklistLong <value>`
+
 ## 3.0.29
 - Fixed Pokémon getting stuck staring at logs/blocks that were already harvested — stale cache entries are now removed immediately when the target is found to be air
 - Air blocks are also filtered out during job availability checks so Pokémon don't even attempt stale targets

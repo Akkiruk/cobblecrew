@@ -178,6 +178,21 @@ object CobbleCrewCommand {
                     .then(literal("scanRate").requires(requiresOp())
                         .then(argument("value", IntegerArgumentType.integer(10, 30))
                             .executes(::runConfigScanRate)))
+                    .then(literal("scanCooldown").requires(requiresOp())
+                        .then(argument("value", IntegerArgumentType.integer(5, 120))
+                            .executes(::runConfigScanCooldown)))
+                    .then(literal("targetGrace").requires(requiresOp())
+                        .then(argument("value", IntegerArgumentType.integer(2, 30))
+                            .executes(::runConfigTargetGrace)))
+                    .then(literal("blacklistShort").requires(requiresOp())
+                        .then(argument("value", IntegerArgumentType.integer(5, 60))
+                            .executes(::runConfigBlacklistShort)))
+                    .then(literal("blacklistMedium").requires(requiresOp())
+                        .then(argument("value", IntegerArgumentType.integer(10, 120))
+                            .executes(::runConfigBlacklistMedium)))
+                    .then(literal("blacklistLong").requires(requiresOp())
+                        .then(argument("value", IntegerArgumentType.integer(30, 600))
+                            .executes(::runConfigBlacklistLong)))
                     .then(literal("reload").requires(requiresOp()).executes(::runConfigReload))
                 )
 
@@ -644,9 +659,15 @@ object CobbleCrewCommand {
         s.sendFeedback({ label("Search Radius", "${cfg.searchRadius} chunks") }, false)
         s.sendFeedback({ label("Search Height", "${cfg.searchHeight} chunks") }, false)
         s.sendFeedback({ label("Scan Rate", "${cfg.blocksScannedPerTick} blocks/tick") }, false)
+        s.sendFeedback({ label("Scan Cooldown", "${cfg.scanCooldownSeconds}s") }, false)
+        s.sendFeedback({ label("Target Grace", "${cfg.targetGracePeriodSeconds}s") }, false)
+        s.sendFeedback({ label("Blacklist (1 fail)", "${cfg.blacklistShortSeconds}s") }, false)
+        s.sendFeedback({ label("Blacklist (2 fails)", "${cfg.blacklistMediumSeconds}s") }, false)
+        s.sendFeedback({ label("Blacklist (3+ fails)", "${cfg.blacklistLongSeconds}s") }, false)
         s.sendFeedback({ Text.empty() }, false)
         s.sendFeedback({ info("  Use /cobblecrew config <key> <value> to change.") }, false)
-        s.sendFeedback({ info("  Keys: searchRadius, searchHeight, scanRate") }, false)
+        s.sendFeedback({ info("  Keys: searchRadius, searchHeight, scanRate, scanCooldown,") }, false)
+        s.sendFeedback({ info("        targetGrace, blacklistShort, blacklistMedium, blacklistLong") }, false)
         return 1
     }
 
@@ -673,6 +694,46 @@ object CobbleCrewCommand {
         CobbleCrewConfigHolder.config.general.blocksScannedPerTick = value
         saveConfig()
         ctx.source.sendFeedback({ success("Scan rate set to $value blocks/tick.") }, true)
+        return 1
+    }
+
+    private fun runConfigScanCooldown(ctx: CommandContext<ServerCommandSource>): Int {
+        val value = IntegerArgumentType.getInteger(ctx, "value")
+        CobbleCrewConfigHolder.config.general.scanCooldownSeconds = value
+        saveConfig()
+        ctx.source.sendFeedback({ success("Scan cooldown set to ${value}s.") }, true)
+        return 1
+    }
+
+    private fun runConfigTargetGrace(ctx: CommandContext<ServerCommandSource>): Int {
+        val value = IntegerArgumentType.getInteger(ctx, "value")
+        CobbleCrewConfigHolder.config.general.targetGracePeriodSeconds = value
+        saveConfig()
+        ctx.source.sendFeedback({ success("Target grace period set to ${value}s.") }, true)
+        return 1
+    }
+
+    private fun runConfigBlacklistShort(ctx: CommandContext<ServerCommandSource>): Int {
+        val value = IntegerArgumentType.getInteger(ctx, "value")
+        CobbleCrewConfigHolder.config.general.blacklistShortSeconds = value
+        saveConfig()
+        ctx.source.sendFeedback({ success("Blacklist (1 fail) set to ${value}s.") }, true)
+        return 1
+    }
+
+    private fun runConfigBlacklistMedium(ctx: CommandContext<ServerCommandSource>): Int {
+        val value = IntegerArgumentType.getInteger(ctx, "value")
+        CobbleCrewConfigHolder.config.general.blacklistMediumSeconds = value
+        saveConfig()
+        ctx.source.sendFeedback({ success("Blacklist (2 fails) set to ${value}s.") }, true)
+        return 1
+    }
+
+    private fun runConfigBlacklistLong(ctx: CommandContext<ServerCommandSource>): Int {
+        val value = IntegerArgumentType.getInteger(ctx, "value")
+        CobbleCrewConfigHolder.config.general.blacklistLongSeconds = value
+        saveConfig()
+        ctx.source.sendFeedback({ success("Blacklist (3+ fails) set to ${value}s.") }, true)
         return 1
     }
 

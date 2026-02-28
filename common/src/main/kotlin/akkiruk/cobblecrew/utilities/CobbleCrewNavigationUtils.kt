@@ -13,6 +13,7 @@ import net.minecraft.entity.player.PlayerEntity
 import net.minecraft.util.math.BlockPos
 import net.minecraft.util.math.Box
 import net.minecraft.world.World
+import akkiruk.cobblecrew.config.CobbleCrewConfigHolder
 import java.util.PriorityQueue
 import java.util.UUID
 
@@ -20,6 +21,8 @@ import java.util.UUID
  * Pokémon navigation management.
  */
 object CobbleCrewNavigationUtils {
+    private val generalConfig get() = CobbleCrewConfigHolder.config.general
+
     private data class Claim(val pokemonId: UUID, val claimTick: Long)
     private data class ExpiredTarget(val pos: BlockPos, val expiryTick: Long)
     private val pokemonToTarget = mutableMapOf<UUID, BlockPos>()
@@ -31,14 +34,14 @@ object CobbleCrewNavigationUtils {
     private val lastPathfindTick = mutableMapOf<UUID, Long>()
     private var lastCleanUpTick = 0L
     private const val CLAIM_TIMEOUT_TICKS = 100L
-    private const val EXPIRED_TARGET_TIMEOUT_TICKS = 300L
+    private val EXPIRED_TARGET_TIMEOUT_TICKS: Long get() = generalConfig.targetGracePeriodSeconds.toLong() * 20L
     private const val PATHFIND_INTERVAL_TICKS = 5L
 
     // Escalating blacklist: tracks how many times a Pokémon failed to reach a block
     private val targetFailCounts = mutableMapOf<Pair<UUID, BlockPos>, Int>()
-    private const val BLACKLIST_SHORT = EXPIRED_TARGET_TIMEOUT_TICKS  // 15s
-    private const val BLACKLIST_MEDIUM = 60 * 20L                    // 60s
-    private const val BLACKLIST_LONG = 5 * 60 * 20L                  // 5 min
+    private val BLACKLIST_SHORT: Long get() = generalConfig.blacklistShortSeconds.toLong() * 20L
+    private val BLACKLIST_MEDIUM: Long get() = generalConfig.blacklistMediumSeconds.toLong() * 20L
+    private val BLACKLIST_LONG: Long get() = generalConfig.blacklistLongSeconds.toLong() * 20L
 
     // Pathfind validation cache: remembers unreachable targets temporarily
     private val unreachableCache = mutableMapOf<Pair<UUID, BlockPos>, Long>()  // key → expiry tick
