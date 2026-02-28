@@ -1,3 +1,8 @@
+## 3.0.27
+- Removed the species_drops producer entirely — Cobblemon's native pasture drop system handles species drops now
+- All Pokémon now pick up items from the ground when idle (not a formal job — just built-in behavior)
+- Items picked up are deposited into nearby containers (or delivered to the player in party mode)
+
 ## 3.0.26
 - Removed all 25 hardcoded producer jobs (wool producer, egg layer, milk producer, etc.)
 - Replaced with a single "species_drops" producer that uses each Pokémon's actual Cobblemon drop table

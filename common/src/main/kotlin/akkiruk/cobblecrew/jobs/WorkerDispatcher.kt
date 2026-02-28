@@ -11,12 +11,16 @@ package akkiruk.cobblecrew.jobs
 import akkiruk.cobblecrew.enums.WorkPhase
 import akkiruk.cobblecrew.interfaces.Worker
 import akkiruk.cobblecrew.utilities.CobbleCrewDebugLogger
+import akkiruk.cobblecrew.utilities.CobbleCrewInventoryUtils
 import akkiruk.cobblecrew.utilities.CobbleCrewNavigationUtils
 import akkiruk.cobblecrew.utilities.DeferredBlockScanner
 import akkiruk.cobblecrew.utilities.WorkerAnimationUtils
 import akkiruk.cobblecrew.utilities.WorkerVisualUtils
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
+import net.minecraft.entity.ItemEntity
+import net.minecraft.item.ItemStack
 import net.minecraft.util.math.BlockPos
+import net.minecraft.util.math.Box
 import net.minecraft.world.World
 import java.util.UUID
 
@@ -31,6 +35,11 @@ object WorkerDispatcher {
     private const val JOB_STICKINESS_TICKS = 100L // 5 seconds
     private const val IDLE_LOG_INTERVAL = 600L // log idle reason every 30s
     private const val IDLE_BORED_THRESHOLD = 600L // 30 seconds idle → bored animation
+    private const val IDLE_PICKUP_RADIUS = 8.0
+
+    // Idle ground pickup state — not a job, just background behavior
+    private val idleHeldItems = mutableMapOf<UUID, List<ItemStack>>()
+    private val idleFailedDeposits = mutableMapOf<UUID, MutableSet<BlockPos>>()
 
     fun tickAreaScan(context: JobContext) {
         DeferredBlockScanner.tickAreaScan(context)
@@ -86,9 +95,10 @@ object WorkerDispatcher {
                 idleLogTick[pokemonId] = now
                 CobbleCrewDebugLogger.noEligibleJobs(pokemonEntity.pokemon.species.name, pokemonId)
             }
-            // Only play idle animation when already at origin — don't animate while walking back
-            if (!returnToOrigin(pokemonEntity, context)) {
-                handleIdleAnimation(pokemonEntity, world, pokemonId)
+            if (!tryIdlePickup(context, pokemonEntity)) {
+                if (!returnToOrigin(pokemonEntity, context)) {
+                    handleIdleAnimation(pokemonEntity, world, pokemonId)
+                }
             }
             return
         }
@@ -123,12 +133,12 @@ object WorkerDispatcher {
         val job = shuffled.firstOrNull { it.isAvailable(context, pokemonId) }
 
         if (job == null) {
-            // Nothing available right now — idle at origin
             activeJobs.remove(pokemonId)
             WorkerVisualUtils.setExcited(pokemonEntity, false)
-            // Only play idle animation when already at origin — don't animate while walking back
-            if (!returnToOrigin(pokemonEntity, context)) {
-                handleIdleAnimation(pokemonEntity, world, pokemonId)
+            if (!tryIdlePickup(context, pokemonEntity)) {
+                if (!returnToOrigin(pokemonEntity, context)) {
+                    handleIdleAnimation(pokemonEntity, world, pokemonId)
+                }
             }
 
             val lastLog = idleLogTick[pokemonId] ?: 0L
@@ -162,6 +172,55 @@ object WorkerDispatcher {
     }
 
     /**
+     * Idle ground pickup — not a formal job, just background behavior.
+     * When a Pokémon has nothing to do, it picks up nearby ground items
+     * and deposits them in containers (or delivers to player in party mode).
+     * Returns true if the Pokémon is actively picking up / depositing.
+     */
+    private fun tryIdlePickup(context: JobContext, pokemonEntity: PokemonEntity): Boolean {
+        val world = context.world
+        val origin = context.origin
+        val pid = pokemonEntity.pokemon.uuid
+
+        // Already holding items — deposit them
+        val held = idleHeldItems[pid]
+        if (!held.isNullOrEmpty()) {
+            if (context is JobContext.Party) {
+                CobbleCrewInventoryUtils.deliverToPlayer(context.player, held, pokemonEntity)
+                idleHeldItems.remove(pid)
+                idleFailedDeposits.remove(pid)
+                return true
+            }
+            CobbleCrewInventoryUtils.handleDepositing(world, origin, pokemonEntity, held, idleFailedDeposits, idleHeldItems)
+            return true
+        }
+        idleFailedDeposits.remove(pid)
+
+        // Scan for ground items
+        val searchArea = Box(origin).expand(IDLE_PICKUP_RADIUS, IDLE_PICKUP_RADIUS, IDLE_PICKUP_RADIUS)
+        val item = world.getEntitiesByClass(ItemEntity::class.java, searchArea) { true }
+            .firstOrNull { it.isOnGround } ?: return false
+
+        val currentTarget = CobbleCrewNavigationUtils.getTarget(pid, world)
+        val itemPos = item.blockPos
+        if (currentTarget == null) {
+            if (!CobbleCrewNavigationUtils.isTargeted(itemPos, world)) {
+                CobbleCrewNavigationUtils.claimTarget(pid, itemPos, world)
+                CobbleCrewNavigationUtils.navigateTo(pokemonEntity, itemPos)
+            }
+            return true
+        }
+        CobbleCrewNavigationUtils.navigateTo(pokemonEntity, currentTarget)
+        if (CobbleCrewNavigationUtils.isPokemonAtPosition(pokemonEntity, currentTarget, 2.0)) {
+            val stack = item.stack.copy()
+            item.discard()
+            idleHeldItems[pid] = listOf(stack)
+            CobbleCrewNavigationUtils.releaseTarget(pid, world)
+        }
+        return true
+    }
+
+    /**
      * Walks the Pokémon back to its origin (pasture block or player).
      * Returns true if the Pokémon is still walking, false if already at origin.
      */
@@ -190,6 +249,8 @@ object WorkerDispatcher {
         jobAssignedTick.remove(pokemonId)
         idleLogTick.remove(pokemonId)
         idleSinceTick.remove(pokemonId)
+        idleHeldItems.remove(pokemonId)
+        idleFailedDeposits.remove(pokemonId)
         WorkerVisualUtils.cleanup(pokemonId)
         CobbleCrewNavigationUtils.cleanupPokemon(pokemonId, world)
         CobbleCrewDebugLogger.pokemonCleanedUp(species, pokemonId)

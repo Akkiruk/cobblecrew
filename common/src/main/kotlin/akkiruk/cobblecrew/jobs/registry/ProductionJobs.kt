@@ -20,10 +20,7 @@ import akkiruk.cobblecrew.jobs.WorkerRegistry
 import akkiruk.cobblecrew.utilities.CobbleCrewInventoryUtils
 import akkiruk.cobblecrew.utilities.CobbleCrewNavigationUtils
 import akkiruk.cobblecrew.utilities.WorkSpeedBoostManager
-import akkiruk.cobblecrew.utilities.WorkerAnimationUtils
 import akkiruk.cobblecrew.utilities.WorkerVisualUtils
-import com.cobblemon.mod.common.api.drop.ItemDropEntry
-import com.cobblemon.mod.common.api.pokemon.PokemonSpecies
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import net.minecraft.item.ItemStack
 import net.minecraft.item.Items
@@ -41,100 +38,9 @@ import net.minecraft.world.World
 import java.util.UUID
 
 /**
- * Production jobs. Includes the unified species drop producer and
- * loot-table-based custom workers (fishing, pickup, dive, dig site).
+ * Production jobs. Loot-table-based custom workers (fishing, pickup, dive, dig site).
  */
 object ProductionJobs {
-
-    // ── Species Drop Producer ────────────────────────────────────────
-    // Any Pokémon with drops defined in its species/form data produces those items.
-    object SpeciesDropProducer : Worker {
-        override val name = "species_drops"
-        override val priority = WorkerPriority.TYPE
-        override val targetCategory: BlockCategory? = null
-
-        private val config get() = JobConfigManager.get(name)
-        private val lastGenTime = mutableMapOf<UUID, Long>()
-        private val heldItems = mutableMapOf<UUID, List<ItemStack>>()
-        private val failedDeposits = mutableMapOf<UUID, MutableSet<BlockPos>>()
-
-        // Cache which species have drops so isEligible is fast
-        private val speciesHasDrops = mutableMapOf<String, Boolean>()
-
-        init {
-            JobConfigManager.registerDefault("production", name, JobConfig(
-                enabled = true,
-                cooldownSeconds = 120,
-            ))
-        }
-
-        override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean {
-            if (!config.enabled) return false
-            return speciesHasDrops.getOrPut(species.lowercase()) {
-                try {
-                    val sp = PokemonSpecies.getByName(species) ?: return@getOrPut false
-                    val drops = sp.standardForm.drops
-                    drops.entries.any { it is ItemDropEntry }
-                } catch (_: Exception) { false }
-            }
-        }
-
-        override fun tick(context: JobContext, pokemonEntity: PokemonEntity) {
-            val world = context.world
-            val origin = context.origin
-            val pid = pokemonEntity.pokemon.uuid
-            val held = heldItems[pid]
-            if (held.isNullOrEmpty()) {
-                failedDeposits.remove(pid)
-                produce(world, origin, pokemonEntity)
-            } else {
-                if (context is JobContext.Party) {
-                    CobbleCrewInventoryUtils.deliverToPlayer(context.player, held, pokemonEntity)
-                    heldItems.remove(pid)
-                    failedDeposits.remove(pid)
-                    return
-                }
-                CobbleCrewInventoryUtils.handleDepositing(world, origin, pokemonEntity, held, failedDeposits, heldItems)
-            }
-        }
-
-        private fun produce(world: World, origin: BlockPos, pokemonEntity: PokemonEntity) {
-            val pid = pokemonEntity.pokemon.uuid
-            val now = world.time
-            val last = lastGenTime[pid] ?: 0L
-            val baseCd = (config.cooldownSeconds.takeIf { it > 0 } ?: 120) * 20L
-            val cd = WorkSpeedBoostManager.adjustCooldown(baseCd, origin, now)
-            if (now - last < cd) return
-
-            val pokemon = pokemonEntity.pokemon
-            val dropTable = pokemon.form.drops
-            val selected = dropTable.getDrops(pokemon = pokemon)
-                .filterIsInstance<ItemDropEntry>()
-            if (selected.isEmpty()) return
-
-            val registry = (world as ServerWorld).registryManager.get(RegistryKeys.ITEM)
-            val stacks = selected.mapNotNull { entry ->
-                val item = registry.get(entry.item) ?: return@mapNotNull null
-                val count = entry.quantityRange?.random() ?: entry.quantity
-                if (count <= 0) return@mapNotNull null
-                ItemStack(item, count)
-            }
-            if (stacks.isNotEmpty()) {
-                lastGenTime[pid] = now
-                heldItems[pid] = stacks
-                WorkerAnimationUtils.playImmediate(pokemonEntity, WorkPhase.PRODUCING, world)
-                WorkerVisualUtils.spawnParticles(world, pokemonEntity.blockPos, ParticleTypes.HAPPY_VILLAGER, 5)
-            }
-        }
-
-        override fun hasActiveState(pokemonId: UUID) = pokemonId in heldItems
-        override fun cleanup(pokemonId: UUID) {
-            lastGenTime.remove(pokemonId)
-            heldItems.remove(pokemonId)
-            failedDeposits.remove(pokemonId)
-        }
-        override fun getHeldItems(pokemonId: UUID): List<ItemStack>? = heldItems[pokemonId]
-    }
 
     // ── Loot-based Workers ───────────────────────────────────────────
 
@@ -486,7 +392,6 @@ object ProductionJobs {
 
     fun register() {
         WorkerRegistry.registerAll(
-            SpeciesDropProducer,
             FishingLooter,
             PickupLooter,
             DiveCollector,
