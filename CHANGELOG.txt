@@ -1,3 +1,9 @@
+## 3.0.25
+- Support Pokémon now provide a work speed aura — nearby workers in the same pasture (or party) get reduced production cooldowns
+- Speed Booster and Haste Provider give 15% faster cooldowns, Healer/Strength/Resistance/Hunger give 5%, Aura Master combo gives 20%, Full Restore combo gives 10%
+- Boosts stack diminishingly (multiplicative) with a 40% max reduction cap
+- Affects all production jobs, environmental jobs (cauldron fillers, fuelers, pollinator), and the scout
+
 ## 3.0.24
 - Added /cobblecrew party toggle — any player can disable party jobs for themselves so their sent-out Pokémon stop doing work
 - Party status now shows your personal opt-out state

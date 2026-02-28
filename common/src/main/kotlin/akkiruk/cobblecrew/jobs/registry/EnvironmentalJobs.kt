@@ -21,6 +21,7 @@ import akkiruk.cobblecrew.mixin.AbstractFurnaceBlockEntityAccessor
 import akkiruk.cobblecrew.mixin.BrewingStandBlockEntityAccessor
 import akkiruk.cobblecrew.utilities.CobbleCrewCauldronUtils
 import akkiruk.cobblecrew.utilities.CobbleCrewNavigationUtils
+import akkiruk.cobblecrew.utilities.WorkSpeedBoostManager
 import akkiruk.cobblecrew.utilities.WorkerVisualUtils
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import net.minecraft.block.*
@@ -250,7 +251,7 @@ object EnvironmentalJobs {
                 val sw = world as? ServerWorld
                 if (sw != null) {
                     val state = world.getBlockState(target)
-                    if (state.block is CropBlock) {
+                    if (state.block is CropBlock || state.block is SaplingBlock) {
                         repeat(3) { state.randomTick(sw, target, sw.random) }
                     }
                 }
@@ -307,7 +308,8 @@ object EnvironmentalJobs {
             val pid = pokemonEntity.pokemon.uuid
             val now = world.time
             val last = lastGenTime[pid] ?: 0L
-            val cd = (config.cooldownSeconds.takeIf { it > 0 } ?: 90) * 20L
+            val baseCd = (config.cooldownSeconds.takeIf { it > 0 } ?: 90) * 20L
+            val cd = WorkSpeedBoostManager.adjustCooldown(baseCd, origin, now)
             if (now - last < cd) return
 
             val cauldron = CobbleCrewCauldronUtils.findClosestCauldron(world, origin) ?: return
@@ -366,7 +368,8 @@ object EnvironmentalJobs {
             val pid = pokemonEntity.pokemon.uuid
             val now = world.time
             val last = lastGenTime[pid] ?: 0L
-            val cd = (config.cooldownSeconds.takeIf { it > 0 } ?: 90) * 20L
+            val baseCd = (config.cooldownSeconds.takeIf { it > 0 } ?: 90) * 20L
+            val cd = WorkSpeedBoostManager.adjustCooldown(baseCd, origin, now)
             if (now - last < cd) return
 
             val cauldron = CobbleCrewCauldronUtils.findClosestCauldron(world, origin) ?: return
@@ -425,7 +428,8 @@ object EnvironmentalJobs {
             val pid = pokemonEntity.pokemon.uuid
             val now = world.time
             val last = lastGenTime[pid] ?: 0L
-            val cd = (config.cooldownSeconds.takeIf { it > 0 } ?: 90) * 20L
+            val baseCd = (config.cooldownSeconds.takeIf { it > 0 } ?: 90) * 20L
+            val cd = WorkSpeedBoostManager.adjustCooldown(baseCd, origin, now)
             if (now - last < cd) return
 
             val cauldron = CobbleCrewCauldronUtils.findClosestCauldron(world, origin) ?: return
@@ -455,7 +459,7 @@ object EnvironmentalJobs {
         override val targetCategory = BlockCategory.FURNACE
 
         private val config get() = JobConfigManager.get(name)
-        private val qualifyingMoves = setOf("flamethrower")
+        private val qualifyingMoves = setOf("fireblast")
         private val lastGenTime = mutableMapOf<UUID, Long>()
 
         init {
@@ -485,7 +489,8 @@ object EnvironmentalJobs {
             val pid = pokemonEntity.pokemon.uuid
             val now = world.time
             val last = lastGenTime[pid] ?: 0L
-            val cd = (config.cooldownSeconds.takeIf { it > 0 } ?: 80) * 20L
+            val baseCd = (config.cooldownSeconds.takeIf { it > 0 } ?: 80) * 20L
+            val cd = WorkSpeedBoostManager.adjustCooldown(baseCd, origin, now)
             if (now - last < cd) return
 
             val furnace = findReadyFurnace(world, origin) ?: return
@@ -568,7 +573,8 @@ object EnvironmentalJobs {
             val pid = pokemonEntity.pokemon.uuid
             val now = world.time
             val last = lastGenTime[pid] ?: 0L
-            val cd = (config.cooldownSeconds.takeIf { it > 0 } ?: 80) * 20L
+            val baseCd = (config.cooldownSeconds.takeIf { it > 0 } ?: 80) * 20L
+            val cd = WorkSpeedBoostManager.adjustCooldown(baseCd, origin, now)
             if (now - last < cd) return
 
             val stand = findReadyBrewingStand(world, origin) ?: return
@@ -687,7 +693,7 @@ object EnvironmentalJobs {
         override val targetCategory = BlockCategory.FARMLAND
 
         private val config get() = JobConfigManager.get(name)
-        private val qualifyingMoves = setOf("aquaring", "lifedew")
+        private val qualifyingMoves = setOf("muddywater")
         private val targets = mutableMapOf<UUID, BlockPos>()
 
         init {
@@ -795,7 +801,8 @@ object EnvironmentalJobs {
             val pid = pokemonEntity.pokemon.uuid
             val now = world.time
             val last = lastGenTime[pid] ?: 0L
-            val cd = (config.cooldownSeconds.takeIf { it > 0 } ?: 120) * 20L
+            val baseCd = (config.cooldownSeconds.takeIf { it > 0 } ?: 120) * 20L
+            val cd = WorkSpeedBoostManager.adjustCooldown(baseCd, origin, now)
             if (now - last < cd) return
 
             val target = targets[pid]

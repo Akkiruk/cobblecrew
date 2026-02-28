@@ -20,6 +20,7 @@ import akkiruk.cobblecrew.jobs.WorkerRegistry
 import akkiruk.cobblecrew.jobs.dsl.ProductionJob
 import akkiruk.cobblecrew.utilities.CobbleCrewInventoryUtils
 import akkiruk.cobblecrew.utilities.CobbleCrewNavigationUtils
+import akkiruk.cobblecrew.utilities.WorkSpeedBoostManager
 import akkiruk.cobblecrew.utilities.WorkerVisualUtils
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import net.minecraft.item.ItemStack
@@ -96,9 +97,9 @@ object ProductionJobs {
         name = "pearl_creator",
         qualifyingMoves = setOf("shellsmash"),
         fallbackSpecies = listOf("Clamperl"),
-        defaultCooldownSeconds = 180,
+        defaultCooldownSeconds = 300,
         particle = ParticleTypes.BUBBLE,
-        output = { _, _ -> listOf(ItemStack(Items.PRISMARINE_SHARD, 2)) },
+        output = { _, _ -> listOf(ItemStack(Items.ENDER_PEARL)) },
     )
 
     val FEATHER_MOLTER = ProductionJob(
@@ -203,7 +204,7 @@ object ProductionJobs {
         qualifyingMoves = setOf("charge"),
         defaultCooldownSeconds = 120,
         particle = ParticleTypes.ELECTRIC_SPARK,
-        output = { _, _ -> listOf(ItemStack(Items.GLOWSTONE_DUST, 2)) },
+        output = { _, _ -> listOf(ItemStack(Items.COPPER_INGOT)) },
     )
 
     val WAX_PRODUCER = ProductionJob(
@@ -328,7 +329,8 @@ object ProductionJobs {
             val pid = pokemonEntity.pokemon.uuid
             val now = world.time
             val last = lastGenTime[pid] ?: 0L
-            val cd = (config.cooldownSeconds.takeIf { it > 0 } ?: 120) * 20L
+            val baseCd = (config.cooldownSeconds.takeIf { it > 0 } ?: 120) * 20L
+            val cd = WorkSpeedBoostManager.adjustCooldown(baseCd, origin, now)
             if (now - last < cd) return
 
             val chance = (config.treasureChance?.takeIf { it > 0 } ?: 10).toDouble() / 100
@@ -408,7 +410,8 @@ object ProductionJobs {
             val pid = pokemonEntity.pokemon.uuid
             val now = world.time
             val last = lastGenTime[pid] ?: 0L
-            val cd = (config.cooldownSeconds.takeIf { it > 0 } ?: 120) * 20L
+            val baseCd = (config.cooldownSeconds.takeIf { it > 0 } ?: 120) * 20L
+            val cd = WorkSpeedBoostManager.adjustCooldown(baseCd, origin, now)
             if (now - last < cd) return
 
             val tables = (config.lootTables ?: emptyList()).ifEmpty { listOf("cobblemon:gameplay/pickup") }
@@ -442,7 +445,7 @@ object ProductionJobs {
         override val targetCategory: BlockCategory? = null
 
         private val config get() = JobConfigManager.get(name)
-        private val qualifyingMoves = setOf("dive")
+        private val qualifyingMoves = setOf("waterfall")
         private val lastGenTime = mutableMapOf<UUID, Long>()
         private val heldItems = mutableMapOf<UUID, List<ItemStack>>()
         private val failedDeposits = mutableMapOf<UUID, MutableSet<BlockPos>>()
@@ -487,7 +490,8 @@ object ProductionJobs {
             val pid = pokemonEntity.pokemon.uuid
             val now = world.time
             val last = lastGenTime[pid] ?: 0L
-            val cd = (config.cooldownSeconds.takeIf { it > 0 } ?: 210) * 20L
+            val baseCd = (config.cooldownSeconds.takeIf { it > 0 } ?: 210) * 20L
+            val cd = WorkSpeedBoostManager.adjustCooldown(baseCd, origin, now)
             if (now - last < cd) return
 
             val tables = (config.lootTables ?: emptyList()).ifEmpty { listOf("cobblemon:gameplay/pickup") }
@@ -590,7 +594,8 @@ object ProductionJobs {
             val pid = pokemonEntity.pokemon.uuid
             val now = world.time
             val last = lastGenTime[pid] ?: 0L
-            val cd = (config.cooldownSeconds.takeIf { it > 0 } ?: 120) * 20L
+            val baseCd = (config.cooldownSeconds.takeIf { it > 0 } ?: 120) * 20L
+            val cd = WorkSpeedBoostManager.adjustCooldown(baseCd, pos, now)
             if (now - last < cd) return
 
             val tables = (config.lootTables ?: emptyList()).ifEmpty { listOf("cobblemon:gameplay/pickup") }

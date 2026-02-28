@@ -34,6 +34,7 @@ enum class BlockCategory(val requiresExposedFace: Boolean = false) {
     STONE(requiresExposedFace = true),
     IGNEOUS(requiresExposedFace = true),
     DEEPSLATE(requiresExposedFace = true),
+    ORE(requiresExposedFace = true),
     DIRT(requiresExposedFace = true),
     SAND(requiresExposedFace = true),
     CLAY(requiresExposedFace = true),

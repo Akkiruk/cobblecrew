@@ -20,6 +20,7 @@ import akkiruk.cobblecrew.jobs.WorkerRegistry
 import akkiruk.cobblecrew.jobs.dsl.SupportJob
 import akkiruk.cobblecrew.utilities.CobbleCrewInventoryUtils
 import akkiruk.cobblecrew.utilities.CobbleCrewNavigationUtils
+import akkiruk.cobblecrew.utilities.WorkSpeedBoostManager
 import akkiruk.cobblecrew.utilities.WorkerVisualUtils
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import net.minecraft.component.DataComponentTypes
@@ -61,6 +62,7 @@ object SupportJobs {
         defaultDurationSeconds = 30,
         effectAmplifier = 0,
         requiresDamage = true,
+        workBoostPercent = 5,
     )
 
     val SPEED_BOOSTER = SupportJob(
@@ -70,6 +72,7 @@ object SupportJobs {
         statusEffect = StatusEffects.SPEED,
         defaultDurationSeconds = 30,
         effectAmplifier = 0,
+        workBoostPercent = 15,
     )
 
     val STRENGTH_BOOSTER = SupportJob(
@@ -79,6 +82,7 @@ object SupportJobs {
         statusEffect = StatusEffects.STRENGTH,
         defaultDurationSeconds = 30,
         effectAmplifier = 0,
+        workBoostPercent = 5,
     )
 
     val RESISTANCE_PROVIDER = SupportJob(
@@ -88,6 +92,7 @@ object SupportJobs {
         statusEffect = StatusEffects.RESISTANCE,
         defaultDurationSeconds = 30,
         effectAmplifier = 0,
+        workBoostPercent = 5,
     )
 
     val HASTE_PROVIDER = SupportJob(
@@ -97,6 +102,7 @@ object SupportJobs {
         statusEffect = StatusEffects.HASTE,
         defaultDurationSeconds = 30,
         effectAmplifier = 0,
+        workBoostPercent = 15,
     )
 
     val JUMP_BOOSTER = SupportJob(
@@ -131,8 +137,9 @@ object SupportJobs {
         qualifyingMoves = setOf("swallow"),
         particle = ParticleTypes.HAPPY_VILLAGER,
         statusEffect = StatusEffects.SATURATION,
-        defaultDurationSeconds = 5,
-        effectAmplifier = 0,
+        defaultDurationSeconds = 10,
+        effectAmplifier = 1,
+        workBoostPercent = 5,
     )
 
     // ── Scout (migrated from legacy) ─────────────────────────────────
@@ -187,7 +194,8 @@ object SupportJobs {
 
             val now = world.time
             val last = lastGenTime[pid] ?: 0L
-            val cd = (config.cooldownSeconds.takeIf { it > 0 } ?: 600) * 20L
+            val baseCd = (config.cooldownSeconds.takeIf { it > 0 } ?: 600) * 20L
+            val cd = WorkSpeedBoostManager.adjustCooldown(baseCd, origin, now)
             if (now - last < cd) return
 
             handleMapPickup(world, origin, pokemonEntity)

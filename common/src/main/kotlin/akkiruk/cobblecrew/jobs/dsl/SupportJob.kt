@@ -34,6 +34,7 @@ open class SupportJob(
     val defaultDurationSeconds: Int = 20,
     override val effectAmplifier: Int = 0,
     override val requiresDamage: Boolean = false,
+    override val workBoostPercent: Int = 0,
 ) : BaseSupport() {
 
     private val config get() = JobConfigManager.get(name)

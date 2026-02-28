@@ -12,6 +12,7 @@ import akkiruk.cobblecrew.enums.WorkPhase
 import akkiruk.cobblecrew.interfaces.Worker
 import akkiruk.cobblecrew.utilities.CobbleCrewDebugLogger
 import akkiruk.cobblecrew.utilities.CobbleCrewInventoryUtils
+import akkiruk.cobblecrew.utilities.WorkSpeedBoostManager
 import akkiruk.cobblecrew.utilities.WorkerAnimationUtils
 import akkiruk.cobblecrew.utilities.WorkerVisualUtils
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
@@ -72,8 +73,9 @@ abstract class BaseProducer : Worker {
         val now = world.time
         val lastTime = lastProductionTime[pokemonId] ?: 0L
 
-        if (now - lastTime < cooldownTicks) {
-            CobbleCrewDebugLogger.productionOnCooldown(pokemonEntity, name, cooldownTicks - (now - lastTime))
+        val adjustedCooldown = WorkSpeedBoostManager.adjustCooldown(cooldownTicks, context.origin, now)
+        if (now - lastTime < adjustedCooldown) {
+            CobbleCrewDebugLogger.productionOnCooldown(pokemonEntity, name, adjustedCooldown - (now - lastTime))
             return
         }
 

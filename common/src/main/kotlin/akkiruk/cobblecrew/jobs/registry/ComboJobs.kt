@@ -19,10 +19,20 @@ import akkiruk.cobblecrew.jobs.dsl.ProcessingJob
 import akkiruk.cobblecrew.jobs.dsl.SupportJob
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import net.minecraft.block.Block
+import net.minecraft.block.Blocks
+import net.minecraft.entity.effect.StatusEffectCategory
+import net.minecraft.entity.effect.StatusEffectInstance
 import net.minecraft.entity.effect.StatusEffects
+import net.minecraft.entity.player.PlayerEntity
 import net.minecraft.item.ItemStack
 import net.minecraft.item.Items
+import net.minecraft.enchantment.Enchantments
+import net.minecraft.loot.context.LootContextParameterSet
+import net.minecraft.loot.context.LootContextParameters
 import net.minecraft.particle.ParticleTypes
+import net.minecraft.registry.RegistryKeys
+import net.minecraft.server.world.ServerWorld
+import net.minecraft.util.math.Direction
 
 /**
  * Combo jobs — require ALL listed moves. COMBO priority (highest).
@@ -60,7 +70,7 @@ object ComboJobs {
     }
 
     // ── CM1: Demolisher ──────────────────────────────────────────────
-    // cut + rocksmash → breaks ANY block type (universal gatherer)
+    // cut + rocksmash → heavy-duty stone miner for Fighting/Normal types
     val DEMOLISHER = object : GatheringJob(
         name = "demolisher",
         category = "combo",
@@ -74,21 +84,35 @@ object ComboJobs {
     }
 
     // ── CM11: Fortune Miner ──────────────────────────────────────────
-    // powergem + dig → mining with doubled drops
+    // powergem + dig → mining with Fortune III loot table drops
     val FORTUNE_MINER = object : GatheringJob(
         name = "fortune_miner",
         category = "combo",
-        targetCategory = BlockCategory.STONE,
+        targetCategory = BlockCategory.ORE,
         qualifyingMoves = setOf("powergem", "dig"),
         particle = ParticleTypes.ENCHANT,
         priority = WorkerPriority.COMBO,
+        harvestOverride = { world, pos, _ ->
+            val state = world.getBlockState(pos)
+            val sw = world as ServerWorld
+            val fortunePick = ItemStack(Items.DIAMOND_PICKAXE)
+            val enchReg = sw.registryManager.get(RegistryKeys.ENCHANTMENT)
+            enchReg.getEntry(Enchantments.FORTUNE).ifPresent { fortunePick.addEnchantment(it, 3) }
+            val lootBuilder = LootContextParameterSet.Builder(sw)
+                .add(LootContextParameters.ORIGIN, pos.toCenterPos())
+                .add(LootContextParameters.BLOCK_STATE, state)
+                .add(LootContextParameters.TOOL, fortunePick)
+            val drops = state.getDroppedStacks(lootBuilder)
+            world.setBlockState(pos, Blocks.AIR.defaultState)
+            drops
+        },
     ) {
         override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String) =
             comboEligible(qualifyingMoves, JobConfigManager.get(name), moves, types, species)
     }
 
     // ── CM12: Silk Touch Extractor ───────────────────────────────────
-    // psychic + any gathering move → silk-touch harvest
+    // psychic + any gathering move → drops the block itself (silk touch)
     val SILK_TOUCH_EXTRACTOR = object : GatheringJob(
         name = "silk_touch_extractor",
         category = "combo",
@@ -96,6 +120,12 @@ object ComboJobs {
         qualifyingMoves = setOf("psychic"),
         particle = ParticleTypes.ENCHANT,
         priority = WorkerPriority.COMBO,
+        harvestOverride = { world, pos, _ ->
+            val state = world.getBlockState(pos)
+            val item = state.block.asItem()
+            world.setBlockState(pos, Blocks.AIR.defaultState)
+            if (item != Items.AIR) listOf(ItemStack(item)) else emptyList()
+        },
     ) {
         private val gatheringMoves = setOf("cut", "rocksmash", "dig", "icebeam")
 
@@ -106,14 +136,44 @@ object ComboJobs {
     }
 
     // ── CM13: Vein Miner ─────────────────────────────────────────────
-    // earthquake + dig → breaks target + connected same-type blocks
+    // earthquake + dig → breaks target + connected same-type ore blocks (up to 16)
     val VEIN_MINER = object : GatheringJob(
         name = "vein_miner",
         category = "combo",
-        targetCategory = BlockCategory.STONE,
+        targetCategory = BlockCategory.ORE,
         qualifyingMoves = setOf("earthquake", "dig"),
         particle = ParticleTypes.EXPLOSION,
         priority = WorkerPriority.COMBO,
+        harvestOverride = { world, pos, _ ->
+            val targetBlock = world.getBlockState(pos).block
+            val visited = mutableSetOf(pos)
+            val frontier = mutableListOf(pos)
+            val allDrops = mutableListOf<ItemStack>()
+            val pickaxe = ItemStack(Items.DIAMOND_PICKAXE)
+            var broken = 0
+            while (frontier.isNotEmpty() && broken < 16) {
+                val current = frontier.removeFirst()
+                if (world.getBlockState(current).block != targetBlock) continue
+                val state = world.getBlockState(current)
+                val lootBuilder = LootContextParameterSet.Builder(world as ServerWorld)
+                    .add(LootContextParameters.ORIGIN, current.toCenterPos())
+                    .add(LootContextParameters.BLOCK_STATE, state)
+                    .add(LootContextParameters.TOOL, pickaxe)
+                allDrops.addAll(state.getDroppedStacks(lootBuilder))
+                world.setBlockState(current, Blocks.AIR.defaultState)
+                broken++
+                for (dir in Direction.entries) {
+                    val neighbor = current.offset(dir)
+                    if (neighbor !in visited) {
+                        visited.add(neighbor)
+                        if (world.getBlockState(neighbor).block == targetBlock) {
+                            frontier.add(neighbor)
+                        }
+                    }
+                }
+            }
+            allDrops
+        },
     ) {
         override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String) =
             comboEligible(qualifyingMoves, JobConfigManager.get(name), moves, types, species)
@@ -135,7 +195,7 @@ object ComboJobs {
     }
 
     // ── CM17: Fossil Hunter ──────────────────────────────────────────
-    // dig + rocksmash → fossil-weighted loot
+    // dig + rocksmash → fossil/mineral-weighted loot from stone
     val FOSSIL_HUNTER = object : GatheringJob(
         name = "fossil_hunter",
         category = "combo",
@@ -143,20 +203,43 @@ object ComboJobs {
         qualifyingMoves = setOf("dig", "rocksmash"),
         particle = ParticleTypes.CRIT,
         priority = WorkerPriority.COMBO,
+        harvestOverride = { world, pos, _ ->
+            world.setBlockState(pos, Blocks.AIR.defaultState)
+            val roll = Math.random()
+            when {
+                roll < 0.03 -> listOf(ItemStack(Items.DIAMOND))
+                roll < 0.10 -> listOf(ItemStack(Items.GOLD_INGOT, 2))
+                roll < 0.25 -> listOf(ItemStack(Items.IRON_INGOT, 2))
+                roll < 0.45 -> listOf(ItemStack(Items.BONE, 3))
+                roll < 0.65 -> listOf(ItemStack(Items.CLAY_BALL, 4))
+                else -> listOf(ItemStack(Items.FLINT, 2))
+            }
+        },
     ) {
         override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String) =
             comboEligible(qualifyingMoves, JobConfigManager.get(name), moves, types, species)
     }
 
     // ── CM18: Gem Vein Finder ────────────────────────────────────────
-    // dig + powergem → gem-weighted loot
+    // powergem + ancientpower → gem-weighted loot from stone
     val GEM_VEIN_FINDER = object : GatheringJob(
         name = "gem_vein_finder",
         category = "combo",
         targetCategory = BlockCategory.STONE,
-        qualifyingMoves = setOf("dig", "powergem"),
+        qualifyingMoves = setOf("powergem", "ancientpower"),
         particle = ParticleTypes.ENCHANT,
         priority = WorkerPriority.COMBO,
+        harvestOverride = { world, pos, _ ->
+            world.setBlockState(pos, Blocks.AIR.defaultState)
+            val roll = Math.random()
+            when {
+                roll < 0.05 -> listOf(ItemStack(Items.DIAMOND))
+                roll < 0.15 -> listOf(ItemStack(Items.EMERALD, 2))
+                roll < 0.35 -> listOf(ItemStack(Items.AMETHYST_SHARD, 3))
+                roll < 0.55 -> listOf(ItemStack(Items.LAPIS_LAZULI, 4))
+                else -> listOf(ItemStack(Items.QUARTZ, 3))
+            }
+        },
     ) {
         override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String) =
             comboEligible(qualifyingMoves, JobConfigManager.get(name), moves, types, species)
@@ -273,10 +356,10 @@ object ComboJobs {
         output = { _, _ ->
             val roll = Math.random()
             when {
-                roll < 0.01 -> listOf(ItemStack(Items.TRIDENT))
-                roll < 0.05 -> listOf(ItemStack(Items.HEART_OF_THE_SEA))
-                roll < 0.30 -> listOf(ItemStack(Items.NAUTILUS_SHELL))
-                else -> listOf(ItemStack(Items.PRISMARINE_SHARD, 2))
+                roll < 0.03 -> listOf(ItemStack(Items.HEART_OF_THE_SEA))
+                roll < 0.25 -> listOf(ItemStack(Items.NAUTILUS_SHELL))
+                roll < 0.50 -> listOf(ItemStack(Items.PRISMARINE_CRYSTALS, 2))
+                else -> listOf(ItemStack(Items.PRISMARINE_SHARD, 3))
             }
         },
     ) {
@@ -295,8 +378,9 @@ object ComboJobs {
         output = { _, _ ->
             val roll = Math.random()
             when {
-                roll < 0.005 -> listOf(ItemStack(Items.NETHERITE_SCRAP))
-                roll < 0.15 -> listOf(ItemStack(Items.MAGMA_CREAM, 2))
+                roll < 0.03 -> listOf(ItemStack(Items.BLAZE_ROD, 2))
+                roll < 0.15 -> listOf(ItemStack(Items.MAGMA_CREAM, 3))
+                roll < 0.35 -> listOf(ItemStack(Items.GOLD_NUGGET, 5))
                 else -> listOf(ItemStack(Items.OBSIDIAN))
             }
         },
@@ -331,7 +415,7 @@ object ComboJobs {
     }
 
     // ── F11: Full Restore (combo support) ────────────────────────────
-    // healbell + aromatherapy → Regeneration II + clears all negatives
+    // healbell + aromatherapy → Regeneration II + clears all harmful effects
     val FULL_RESTORE = object : SupportJob(
         name = "full_restore",
         category = "combo",
@@ -341,9 +425,19 @@ object ComboJobs {
         defaultDurationSeconds = 30,
         effectAmplifier = 1,
         priority = WorkerPriority.COMBO,
+        workBoostPercent = 10,
     ) {
         override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String) =
             comboEligible(qualifyingMoves, JobConfigManager.get(name), moves, types, species)
+
+        override fun applyEffect(player: PlayerEntity) {
+            player.statusEffects
+                .filter { it.effectType.value().category == StatusEffectCategory.HARMFUL }
+                .map { it.effectType }
+                .toList()
+                .forEach { player.removeStatusEffect(it) }
+            super.applyEffect(player)
+        }
     }
 
     // ── F12: Aura Master (combo support) ─────────────────────────────
@@ -353,13 +447,23 @@ object ComboJobs {
         category = "combo",
         qualifyingMoves = setOf("calmmind", "helpinghand"),
         particle = ParticleTypes.ENCHANT,
-        statusEffect = StatusEffects.SPEED, // primary; secondary effects applied via override
+        statusEffect = StatusEffects.SPEED, // primary; all 4 applied via override
         defaultDurationSeconds = 30,
         effectAmplifier = 0,
         priority = WorkerPriority.COMBO,
+        workBoostPercent = 20,
     ) {
         override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String) =
             comboEligible(qualifyingMoves, JobConfigManager.get(name), moves, types, species)
+
+        override fun applyEffect(player: PlayerEntity) {
+            listOf(StatusEffects.SPEED, StatusEffects.STRENGTH, StatusEffects.HASTE, StatusEffects.RESISTANCE)
+                .forEach { effect ->
+                    if (!player.hasStatusEffect(effect)) {
+                        player.addStatusEffect(StatusEffectInstance(effect, effectDurationTicks, 0))
+                    }
+                }
+        }
     }
 
     fun register() {

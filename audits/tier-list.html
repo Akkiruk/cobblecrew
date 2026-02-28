@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CobbleCrew Job Tier List</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --card: #181a20;
+    --border: #2a2d36;
+    --text: #e0e0e0;
+    --muted: #888;
+    --s: #ff4455;
+    --a: #ff8c00;
+    --b: #3b82f6;
+    --c: #8b5cf6;
+    --d: #6b7280;
+    --f: #374151;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+    padding: 0 1rem 4rem;
+  }
+  header {
+    text-align: center;
+    padding: 2.5rem 0 1rem;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 2rem;
+  }
+  header h1 { font-size: 2rem; font-weight: 700; letter-spacing: -0.5px; }
+  header p { color: var(--muted); margin-top: .4rem; font-size: .95rem; }
+  .controls {
+    display: flex; gap: .75rem; flex-wrap: wrap;
+    justify-content: center; margin-bottom: 2rem;
+  }
+  .controls input {
+    background: var(--card); border: 1px solid var(--border);
+    color: var(--text); padding: .5rem 1rem; border-radius: 8px;
+    font-size: .9rem; width: 260px; outline: none;
+  }
+  .controls input:focus { border-color: #555; }
+  .controls select {
+    background: var(--card); border: 1px solid var(--border);
+    color: var(--text); padding: .5rem .75rem; border-radius: 8px;
+    font-size: .9rem; outline: none; cursor: pointer;
+  }
+  .stats-bar {
+    display: flex; gap: 6px; justify-content: center;
+    margin-bottom: 2rem; flex-wrap: wrap;
+  }
+  .stat-chip {
+    display: flex; align-items: center; gap: 6px;
+    padding: .35rem .75rem; border-radius: 6px;
+    font-size: .8rem; font-weight: 600;
+    background: var(--card); border: 1px solid var(--border);
+  }
+  .stat-chip .dot {
+    width: 10px; height: 10px; border-radius: 50%;
+  }
+  .tier-section { margin-bottom: 2.5rem; }
+  .tier-header {
+    display: flex; align-items: center; gap: .75rem;
+    margin-bottom: 1rem; padding-bottom: .5rem;
+    border-bottom: 2px solid var(--border);
+  }
+  .tier-badge {
+    font-size: 1.6rem; font-weight: 800;
+    width: 48px; height: 48px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .tier-badge.S { background: var(--s); color: #fff; }
+  .tier-badge.A { background: var(--a); color: #fff; }
+  .tier-badge.B { background: var(--b); color: #fff; }
+  .tier-badge.C { background: var(--c); color: #fff; }
+  .tier-badge.D { background: var(--d); color: #fff; }
+  .tier-badge.F { background: var(--f); color: #aaa; }
+  .tier-label h2 { font-size: 1.15rem; font-weight: 700; }
+  .tier-label span { font-size: .8rem; color: var(--muted); }
+  .job-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: .75rem;
+  }
+  .job-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem 1.1rem;
+    transition: border-color .15s, transform .15s;
+    cursor: default;
+    position: relative;
+    overflow: hidden;
+  }
+  .job-card::before {
+    content: '';
+    position: absolute; left: 0; top: 0; bottom: 0;
+    width: 3px; border-radius: 10px 0 0 10px;
+  }
+  .job-card.S::before { background: var(--s); }
+  .job-card.A::before { background: var(--a); }
+  .job-card.B::before { background: var(--b); }
+  .job-card.C::before { background: var(--c); }
+  .job-card.D::before { background: var(--d); }
+  .job-card.F::before { background: var(--f); }
+  .job-card:hover { border-color: #444; transform: translateY(-1px); }
+  .job-card .name {
+    font-weight: 700; font-size: 1rem;
+    display: flex; align-items: center; gap: .5rem;
+  }
+  .job-card .name .combo-tag {
+    font-size: .65rem; font-weight: 600;
+    background: #3b2a00; color: #f59e0b;
+    padding: .1rem .4rem; border-radius: 4px;
+    text-transform: uppercase; letter-spacing: .5px;
+  }
+  .job-card .cat-tag {
+    display: inline-block; font-size: .7rem; font-weight: 600;
+    padding: .15rem .45rem; border-radius: 4px;
+    margin-top: .35rem; text-transform: uppercase; letter-spacing: .3px;
+  }
+  .cat-Gathering { background: #1a2e1a; color: #4ade80; }
+  .cat-Production { background: #2e2a1a; color: #fbbf24; }
+  .cat-Processing { background: #1a1a2e; color: #818cf8; }
+  .cat-Placement { background: #2e1a2a; color: #f472b6; }
+  .cat-Environmental { background: #1a2e2e; color: #2dd4bf; }
+  .cat-Defense { background: #2e1a1a; color: #f87171; }
+  .cat-Support { background: #1a2a2e; color: #38bdf8; }
+  .cat-Logistics { background: #2a2e1a; color: #a3e635; }
+  .job-card .desc {
+    font-size: .85rem; color: #bbb; margin-top: .4rem;
+  }
+  .job-card .why {
+    font-size: .8rem; color: var(--muted); margin-top: .35rem;
+    font-style: italic;
+  }
+  .balance-section {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 12px; padding: 1.5rem; margin-bottom: 2rem;
+  }
+  .balance-section h3 {
+    font-size: 1.1rem; margin-bottom: 1rem;
+    display: flex; align-items: center; gap: .5rem;
+  }
+  .balance-section h3 .icon { font-size: 1.2rem; }
+  .balance-item {
+    margin-bottom: 1rem; padding-left: 1rem;
+    border-left: 2px solid var(--border);
+  }
+  .balance-item strong { color: #ddd; }
+  .balance-item p { font-size: .85rem; color: var(--muted); margin-top: .2rem; }
+  .observations {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 12px; padding: 1.5rem; margin-top: 2rem;
+  }
+  .observations h3 { font-size: 1.1rem; margin-bottom: .75rem; }
+  .observations li {
+    font-size: .85rem; color: #bbb; margin-bottom: .5rem;
+    margin-left: 1.25rem;
+  }
+  .hidden { display: none !important; }
+  @media (max-width: 600px) {
+    .job-grid { grid-template-columns: 1fr; }
+    header h1 { font-size: 1.5rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>CobbleCrew Job Tier List</h1>
+  <p>130 jobs rated by real player value &mdash; item value, demand frequency, automation savings, uniqueness, setup effort</p>
+</header>
+
+<div class="controls">
+  <input type="text" id="search" placeholder="Search jobs..." autocomplete="off">
+  <select id="catFilter">
+    <option value="">All Categories</option>
+    <option>Gathering</option>
+    <option>Production</option>
+    <option>Processing</option>
+    <option>Placement</option>
+    <option>Environmental</option>
+    <option>Defense</option>
+    <option>Support</option>
+    <option>Logistics</option>
+  </select>
+  <select id="tierFilter">
+    <option value="">All Tiers</option>
+    <option value="S">S Tier</option>
+    <option value="A">A Tier</option>
+    <option value="B">B Tier</option>
+    <option value="C">C Tier</option>
+    <option value="D">D Tier</option>
+    <option value="F">F Tier</option>
+  </select>
+</div>
+
+<div class="stats-bar" id="statsBar"></div>
+<div id="tierList"></div>
+
+<div class="balance-section">
+  <h3><span class="icon">⬇️</span> Nerf Suggestions (S Tier)</h3>
+  <div class="balance-item"><strong>Blast Furnace 2x → 1x output, 2x speed</strong><p>Currently literal duplication. Change to same yield but double processing speed. Still better than normal smelting without being free resources.</p></div>
+  <div class="balance-item"><strong>Ore/Fortune/Vein Miner — diminishing returns</strong><p>After mining 32 blocks in a session, Pokémon gets "exhausted" for 10 min. Fortune Miner should have 1.5x gathering cooldown between targets.</p></div>
+  <div class="balance-item"><strong>Growth Accelerator — 3 ticks → 1 tick</strong><p>3 random ticks per visit is too much. 1 tick is still a significant boost without being a crop-acceleration machine.</p></div>
+  <div class="balance-item"><strong>Fishing Looter — treasure penalty cooldown</strong><p>Normal loot: 120s. Treasure loot: 300s (2.5x penalty after getting treasure).</p></div>
+</div>
+
+<div class="balance-section">
+  <h3><span class="icon">⬆️</span> Buff Suggestions (F Tier)</h3>
+  <div class="balance-item"><strong>Scale Shedder</strong><p>Add evolution stone fragment or 10% nautilus shell chance alongside scute.</p></div>
+  <div class="balance-item"><strong>Gem Crafter → 2 emeralds + 10% diamond</strong><p>Double emerald output or add diamond chance to justify the job slot.</p></div>
+  <div class="balance-item"><strong>Milk Producer → cake every 300s</strong><p>Milk buckets don't stack & clear buffs. Change to producing cake instead.</p></div>
+  <div class="balance-item"><strong>Chorus Fruit → auto-smelt 50% to popped</strong><p>Popped chorus fruit for purpur blocks gives it building material value.</p></div>
+  <div class="balance-item"><strong>Glowberry → 3-5 per harvest</strong><p>1 is worthless, a stack is decent for cave decoration and light.</p></div>
+  <div class="balance-item"><strong>Cactus Pruner → bonus green dye</strong><p>1-2 green dye per harvest (auto-smelting). Becomes a dye factory.</p></div>
+  <div class="balance-item"><strong>Mushroom Forager → 20% stew chance</strong><p>Chance to produce mushroom stew adds food value.</p></div>
+  <div class="balance-item"><strong>Demolisher → 2-3x stone drops</strong><p>Requires 2 moves so it should feel impactful. More drops differentiates from Stone Breaker.</p></div>
+  <div class="balance-item"><strong>Gem Vein Finder → 10% diamond + unique drops</strong><p>5% is too low for a combo. Add prismarine crystals or lapis blocks.</p></div>
+  <div class="balance-item"><strong>Silk Touch Extractor → ORE blocks</strong><p>Let it mine silk-touched ore blocks. Diamond ore etc. would be genuinely valuable.</p></div>
+</div>
+
+<div class="observations">
+  <h3>General Observations</h3>
+  <ul>
+    <li><strong>Too many cheap production jobs.</strong> Feather Molter, Spore Releaser, Fruit Bearer, Egg Layer produce trivially farmable items. Buff quantities (5 feathers, 3 apples, 4 eggs) or add rare bonus drops.</li>
+    <li><strong>Defense jobs are largely pointless</strong> — mobs near a pasture aren't a real threat. Consider letting guards generate XP orbs stored in containers.</li>
+    <li><strong>Support buffs are great for party, mediocre for pasture.</strong> You're at base — you don't need combat buffs. Consider work-boosting auras that speed up nearby workers.</li>
+    <li><strong>Combo jobs producing decorative items waste combo slots.</strong> Candle Maker, Chain Forger, Lantern Builder, Banner Creator should produce more or produce something valuable.</li>
+  </ul>
+</div>
+
+<script>
+const TIERS = [
+  {
+    tier: "S", label: "Busted Good, Everyone Wants These",
+    jobs: [
+      { name: "Ore Miner", cat: "Gathering", combo: false, desc: "Mines ore blocks (coal, iron, gold, diamond, etc.)", why: "Free ores forever. Diamond pickaxe loot. Infinite passive mining is the #1 thing every player wants." },
+      { name: "Vein Miner", cat: "Gathering", combo: true, desc: "Breaks up to 16 connected ore blocks at once", why: "Ore Miner but on steroids. 16 blocks per action is absurd throughput." },
+      { name: "Fortune Miner", cat: "Gathering", combo: true, desc: "Mines ores with Fortune III", why: "Fortune III on diamonds/lapis/redstone automatically forever. Infinite diamond factory." },
+      { name: "Ore Smelter", cat: "Processing", combo: false, desc: "Raw iron/gold/copper → ingots", why: "Pair with Ore Miner = infinite ingots. Saves all your furnace fuel." },
+      { name: "Blast Furnace", cat: "Processing", combo: true, desc: "Raw ores → ingots at 2x rate", why: "Double ingot output is insane. Literal duplication." },
+      { name: "Crop Harvester", cat: "Gathering", combo: false, desc: "Auto-harvests mature wheat/beetroot/etc. and replants", why: "The single most universally wanted farm automation. Everyone grows crops." },
+      { name: "Growth Accelerator", cat: "Environmental", combo: false, desc: "Random-ticks crops 3x per visit", why: "Massively speeds up all farms in range. Stacks with crop harvester." },
+      { name: "Bonemeal Applicator", cat: "Placement", combo: false, desc: "Applies bone meal to crops/saplings from containers", why: "Another crop speedup. Takes bone meal from chests automatically." },
+      { name: "Berry Harvester", cat: "Gathering", combo: false, desc: "Auto-harvests Cobblemon berries", why: "Berries are the #1 Cobblemon consumable. Every competitive player needs berry farms." },
+      { name: "Fishing Looter", cat: "Production", combo: false, desc: "Generates fishing loot table drops (10% treasure)", why: "Passive treasure fishing. Enchanted books, name tags, saddles — all AFK." },
+    ]
+  },
+  {
+    tier: "A", label: "Very Useful, High Demand",
+    jobs: [
+      { name: "Overworld Logger", cat: "Gathering", combo: false, desc: "Chops logs (top-down)", why: "Wood is always needed. Top-down harvest means full trees get cleared." },
+      { name: "Tree Feller", cat: "Gathering", combo: true, desc: "Breaks entire tree (all connected logs)", why: "Logger but better — whole trees at once." },
+      { name: "Apricorn Harvester", cat: "Gathering", combo: false, desc: "Auto-harvests mature apricorns", why: "Apricorns → Pokéballs. Core Cobblemon gameplay loop." },
+      { name: "Food Cooker", cat: "Processing", combo: false, desc: "Raw meat/fish → cooked versions", why: "Saves tons of fuel and furnace babysitting. Everyone eats." },
+      { name: "Furnace Fueler", cat: "Environmental", combo: false, desc: "Adds burn time to furnaces with items in them", why: "Free furnace fuel forever. Replaces coal/charcoal entirely." },
+      { name: "Root Harvester", cat: "Gathering", combo: false, desc: "Auto-harvests carrots/potatoes/beetroots", why: "Complements crop harvester for all farm types." },
+      { name: "Crop Sower", cat: "Placement", combo: false, desc: "Plants seeds on empty farmland from containers", why: "Completes the full farm automation loop." },
+      { name: "Healer", cat: "Support", combo: false, desc: "Regeneration to nearby players", why: "Always useful for survival. Passive health regen at base." },
+      { name: "Aura Master", cat: "Support", combo: true, desc: "Speed + Strength + Haste + Resistance all at once", why: "4 buffs from one Pokémon. Amazing for party use." },
+      { name: "Mint Harvester", cat: "Gathering", combo: false, desc: "Auto-harvests Cobblemon mints", why: "Mints are valuable for competitive breeding/training." },
+      { name: "Honey Harvester", cat: "Gathering", combo: false, desc: "Harvests full beehives → 3 honeycomb", why: "Honeycomb for waxing copper, candles, etc." },
+      { name: "Ground Item Collector", cat: "Logistics", combo: false, desc: "Picks up dropped items, deposits in chests", why: "Catches overflow from all other jobs. Essential support role." },
+      { name: "Pearl Creator", cat: "Production", combo: false, desc: "Generates ender pearls every 5min", why: "Ender pearls always in demand. 300s cooldown is reasonable." },
+      { name: "Deep Sea Trawler", cat: "Production", combo: true, desc: "3% Heart of the Sea, nautilus shells, prismarine", why: "Heart of the Sea is conduit material. Very high value." },
+      { name: "Scout", cat: "Support", combo: false, desc: "Picks up blank maps → creates structure-locating maps", why: "Finding structures is useful for exploration servers." },
+      { name: "Tree Planter", cat: "Placement", combo: false, desc: "Plants saplings on dirt near pasture", why: "Sustains logger's wood supply. Great synergy." },
+    ]
+  },
+  {
+    tier: "B", label: "Solid & Practical, Situationally Great",
+    jobs: [
+      { name: "Stone Breaker", cat: "Gathering", combo: false, desc: "Mines stone/cobblestone", why: "Cobblestone is abundant but needed in bulk for builds." },
+      { name: "Tumblestone Harvester", cat: "Gathering", combo: false, desc: "Auto-harvests Cobblemon tumblestones", why: "Tumblestones used in Cobblemon items but niche." },
+      { name: "Charcoal Burner", cat: "Processing", combo: false, desc: "Logs → charcoal", why: "Good fuel source, especially paired with Logger." },
+      { name: "Sweet Berry Harvester", cat: "Gathering", combo: false, desc: "Auto-harvests sweet berry bushes", why: "Sweet berries are decent food + trading." },
+      { name: "Pumpkin/Melon Harvester", cat: "Gathering", combo: false, desc: "Harvests pumpkin/melon blocks", why: "Good for trading with villagers (emeralds)." },
+      { name: "Slime Secretor", cat: "Production", combo: false, desc: "2 slime balls every 120s", why: "Slime balls for leads, sticky pistons, slime blocks." },
+      { name: "Bone Shedder", cat: "Production", combo: false, desc: "Bone + 2 bone meal every 90s", why: "Bone meal always useful. Bones for wolves." },
+      { name: "Bone Grinder", cat: "Processing", combo: false, desc: "Bones → 3 bone meal each", why: "Great efficiency, but needs bone supply." },
+      { name: "Glass Maker", cat: "Processing", combo: false, desc: "Sand → glass", why: "Useful for builders, especially with sand miner." },
+      { name: "Guard", cat: "Defense", combo: false, desc: "4 damage to hostile mobs", why: "Keeps base safe. Simple and effective." },
+      { name: "Torch Lighter", cat: "Placement", combo: false, desc: "Places torches in dark spots", why: "Passive mob-proofing. Great quality of life." },
+      { name: "Speed Booster", cat: "Support", combo: false, desc: "Speed I to nearby players", why: "Nice QoL buff for moving around base." },
+      { name: "Haste Provider", cat: "Support", combo: false, desc: "Haste I to nearby players", why: "Faster mining at base. Good for builders." },
+      { name: "Pickup Looter", cat: "Production", combo: false, desc: "Generates Cobblemon pickup loot", why: "Ability-based (Pickup). Depends on loot table." },
+      { name: "Wool Producer", cat: "Production", combo: false, desc: "1 white wool every 120s", why: "Wool is cheap from sheep. Moderate value." },
+      { name: "Silk Spinner", cat: "Production", combo: false, desc: "2 string every 90s", why: "String is annoying to farm normally." },
+      { name: "Powder Maker", cat: "Production", combo: false, desc: "2 gunpowder every 120s", why: "Gunpowder for TNT/fireworks. Hard to farm without creeper grinders." },
+      { name: "Magnetizer", cat: "Logistics", combo: false, desc: "Consolidates 9 nuggets → 1 ingot in containers", why: "Nice QoL for messy storage but narrow use." },
+      { name: "Tear Collector", cat: "Production", combo: false, desc: "1 ghast tear every 180s", why: "Ghast tears are annoying to get. Used in potions." },
+      { name: "Netherwart Harvester", cat: "Gathering", combo: false, desc: "Auto-harvests mature nether wart", why: "Essential for potion brewing, niche otherwise." },
+      { name: "Brewing Stand Fueler", cat: "Environmental", combo: false, desc: "Adds fuel to brewing stands", why: "Free blaze powder equivalent. Great if you brew." },
+      { name: "Full Restore", cat: "Support", combo: true, desc: "Regen II + clears harmful effects", why: "Powerful heal + cleanse but requires 2 specific moves." },
+      { name: "Magma Diver", cat: "Production", combo: true, desc: "Blaze rods, magma cream, gold, obsidian", why: "Blaze rods are hard to get. Great for potion infrastructure." },
+    ]
+  },
+  {
+    tier: "C", label: "Niche But Functional",
+    jobs: [
+      { name: "Sand Miner", cat: "Gathering", combo: false, desc: "Mines sand/red sand", why: "Only useful if you have no desert nearby." },
+      { name: "Clay Digger", cat: "Gathering", combo: false, desc: "Mines clay", why: "Fairly niche (bricks, terracotta)." },
+      { name: "Bamboo Chopper", cat: "Gathering", combo: false, desc: "Harvests bamboo (top segment)", why: "Bamboo is easy to farm and low-value." },
+      { name: "Sugar Cane Cutter", cat: "Gathering", combo: false, desc: "Harvests sugar cane (top segment)", why: "Sugar cane farms are trivial with water." },
+      { name: "Igneous Miner", cat: "Gathering", combo: false, desc: "Mines granite/diorite/andesite", why: "Useful for builders wanting specific stone types." },
+      { name: "Deepslate Excavator", cat: "Gathering", combo: false, desc: "Mines deepslate variants", why: "Niche building material." },
+      { name: "Excavator", cat: "Gathering", combo: false, desc: "Mines dirt", why: "Why do you need infinite dirt?" },
+      { name: "Brick Baker", cat: "Processing", combo: false, desc: "Clay balls → bricks", why: "Only for brick builds. Very niche." },
+      { name: "Paper Maker", cat: "Processing", combo: false, desc: "3 sugar cane → 3 paper", why: "Very cheap recipe anyway." },
+      { name: "Feather Molter", cat: "Production", combo: false, desc: "2 feathers every 60s", why: "Easy to get from chickens." },
+      { name: "Fruit Bearer", cat: "Production", combo: false, desc: "2 apples every 120s", why: "Apples are common from oak leaves." },
+      { name: "Egg Layer", cat: "Production", combo: false, desc: "1 egg every 120s", why: "Chickens exist." },
+      { name: "Ink Squirter", cat: "Production", combo: false, desc: "Ink sac / glow ink sac every 90s", why: "Niche unless you use signs a lot." },
+      { name: "Electric Charger", cat: "Production", combo: false, desc: "1 copper ingot every 120s", why: "Copper has very few vanilla uses." },
+      { name: "Wax Producer", cat: "Production", combo: false, desc: "2 honeycomb every 120s", why: "Redundant if you have beehives." },
+      { name: "Static Generator", cat: "Production", combo: false, desc: "2 redstone every 120s", why: "Redstone is common in mines." },
+      { name: "Coin Minter", cat: "Production", combo: false, desc: "3 gold nuggets every 180s", why: "1/3 gold ingot every 3 min. Very slow." },
+      { name: "Spore Releaser", cat: "Production", combo: false, desc: "1 mushroom every 90s", why: "Mushrooms are everywhere in caves." },
+      { name: "Obsidian Forge", cat: "Environmental", combo: false, desc: "Converts lava source → obsidian", why: "Useful one-time if you have a lava lake." },
+      { name: "Water Cauldron Filler", cat: "Environmental", combo: false, desc: "Fills cauldrons with water", why: "Water is infinite with 2 buckets." },
+      { name: "Repeller", cat: "Defense", combo: false, desc: "Knocks back + slows hostiles", why: "Doesn't kill, just delays. Guard is better." },
+      { name: "Sentry", cat: "Defense", combo: false, desc: "Glowing + weakness to hostiles", why: "Glowing is useless for AI mobs." },
+      { name: "Fire Trap", cat: "Defense", combo: false, desc: "Sets hostiles on fire for 5s", why: "Low damage. Guard does more." },
+      { name: "Resistance Provider", cat: "Support", combo: false, desc: "Resistance I to nearby players", why: "You're usually not taking damage at base." },
+      { name: "Strength Booster", cat: "Support", combo: false, desc: "Strength I to nearby players", why: "Meh at base. Great for party exploring." },
+      { name: "Night Vision Provider", cat: "Support", combo: false, desc: "Night vision to nearby players", why: "Fullbright texture packs exist." },
+      { name: "Amethyst Harvester", cat: "Gathering", combo: false, desc: "Auto-harvests amethyst clusters", why: "Amethyst has very limited uses." },
+      { name: "String Crafter", cat: "Production", combo: true, desc: "Random: arrows, leads, or fishing rods", why: "All three items are cheap. Random output is frustrating." },
+      { name: "Fossil Hunter", cat: "Gathering", combo: true, desc: "Weighted loot from stone (3% diamond)", why: "Very low diamond chance. Mostly bones and flint." },
+      { name: "Dive Collector", cat: "Production", combo: false, desc: "Pickup loot table from water", why: "210s cooldown, needs water. Budget Fishing Looter." },
+      { name: "Dig Site Excavator", cat: "Production", combo: false, desc: "Generates loot at suspicious blocks", why: "Requires nearby suspicious sand/gravel which is rare." },
+      { name: "Crop Irrigator", cat: "Environmental", combo: false, desc: "Wets dry farmland", why: "Just place water sources every 4 blocks." },
+      { name: "Fire Douser", cat: "Environmental", combo: false, desc: "Extinguishes fire in area", why: "How often is your base on fire?" },
+      { name: "Lava Cauldron Filler", cat: "Environmental", combo: false, desc: "Fills cauldrons with lava", why: "Niche for bucket-free lava." },
+      { name: "Bee Pollinator", cat: "Environmental", combo: false, desc: "Increases beehive honey level over time", why: "Only useful paired with honey harvester." },
+    ]
+  },
+  {
+    tier: "D", label: "Why Would You Use This",
+    jobs: [
+      { name: "Flower Picker", cat: "Gathering", combo: false, desc: "Picks flowers", why: "Use bone meal on grass." },
+      { name: "Snow Scraper", cat: "Gathering", combo: false, desc: "Mines snow blocks", why: "Snow golems exist. Shovels are fast." },
+      { name: "Moss Scraper", cat: "Gathering", combo: false, desc: "Mines moss blocks", why: "Moss has almost no use." },
+      { name: "Decomposer", cat: "Gathering", combo: false, desc: "Leaves → 1 bone meal each", why: "Terrible rate. Bone shedder + grinder is 10x better." },
+      { name: "Terrain Flattener", cat: "Gathering", combo: false, desc: "Clears vegetation (grass, ferns, etc.)", why: "Breaking grass with your hand is free." },
+      { name: "Sculk Harvester", cat: "Gathering", combo: false, desc: "Mines sculk blocks", why: "Sculk has zero practical use." },
+      { name: "Ice Miner", cat: "Gathering", combo: false, desc: "Mines ice/packed ice/blue ice", why: "Just use Frost Former." },
+      { name: "Vine Trimmer", cat: "Gathering", combo: false, desc: "Harvests vines", why: "Vines are worthless." },
+      { name: "Dripleaf Harvester", cat: "Gathering", combo: false, desc: "Harvests big dripleaf", why: "Dripleaf has almost no use." },
+      { name: "Cocoa Harvester", cat: "Gathering", combo: false, desc: "Harvests cocoa beans", why: "Nobody eats cookies. Brown dye I guess?" },
+      { name: "Pollen Packer", cat: "Production", combo: false, desc: "1 honey bottle every 120s", why: "Cooked food is better." },
+      { name: "Sap Tapper", cat: "Production", combo: false, desc: "50% slime ball or honey bottle", why: "Worse than both Slime Secretor and Pollen Packer." },
+      { name: "Ash Collector", cat: "Production", combo: false, desc: "1 charcoal every 120s", why: "Charcoal Burner makes charcoal from free logs." },
+      { name: "Toxin Distiller", cat: "Production", combo: false, desc: "1 fermented spider eye every 120s", why: "Very niche crafting ingredient." },
+      { name: "Crystal Grower", cat: "Production", combo: false, desc: "2 quartz every 180s", why: "Quartz is everywhere in the Nether." },
+      { name: "Pigment Presser", cat: "Processing", combo: false, desc: "Flowers → dye", why: "Flowers + crafting table = done." },
+      { name: "Composter", cat: "Processing", combo: false, desc: "7 seeds/plants → 1 bone meal", why: "Terrible ratio. Just use a vanilla composter." },
+      { name: "Flint Knapper", cat: "Processing", combo: false, desc: "Gravel → flint", why: "Flint is useless after flint & steel." },
+      { name: "Poison Trap", cat: "Defense", combo: false, desc: "Poisons hostiles", why: "Poison can't kill. Guard + fire trap is better." },
+      { name: "Ice Trap", cat: "Defense", combo: false, desc: "Slowness III + mining fatigue to hostiles", why: "Mobs don't mine. Slowness on slow mobs is marginal." },
+      { name: "Fearmonger", cat: "Defense", combo: false, desc: "Strong knockback + weakness II", why: "Just use Guard to kill them." },
+      { name: "Jump Booster", cat: "Support", combo: false, desc: "Jump Boost I to nearby players", why: "Annoying. Makes you take fall damage." },
+      { name: "Water Breather", cat: "Support", combo: false, desc: "Water Breathing to nearby players", why: "Extremely niche. Only underwater bases." },
+      { name: "Hunger Restorer", cat: "Support", combo: false, desc: "Saturation II for 10 seconds", why: "Just eat food. It's Minecraft." },
+      { name: "Snow Cauldron Filler", cat: "Environmental", combo: false, desc: "Fills cauldrons with powder snow", why: "Powder snow has zero practical use." },
+      { name: "Frost Former", cat: "Environmental", combo: false, desc: "Water → ice → packed → blue ice", why: "Cool concept but slow. Ice has few uses." },
+      { name: "Book Binder", cat: "Production", combo: true, desc: "1 book every 180s", why: "1 every 3 min is slow." },
+      { name: "Candle Maker", cat: "Production", combo: true, desc: "1 candle every 120s", why: "Purely decorative." },
+      { name: "Chain Forger", cat: "Production", combo: true, desc: "1 chain every 120s", why: "Decorative." },
+      { name: "Lantern Builder", cat: "Production", combo: true, desc: "1 lantern every 180s", why: "Torches work fine." },
+      { name: "Banner Creator", cat: "Production", combo: true, desc: "Random colored banner every 240s", why: "Random color = can't pick. Purely decorative." },
+    ]
+  },
+  {
+    tier: "F", label: "Actively Bad or Pointless",
+    jobs: [
+      { name: "Scale Shedder", cat: "Production", combo: false, desc: "1 turtle scute + 1 prismarine shard every 180s", why: "Scute makes 1 turtle helmet. After that, useless." },
+      { name: "Gem Crafter", cat: "Production", combo: false, desc: "2 amethyst shards + 1 emerald every 180s", why: "Amethyst is nearly useless. Villager trading is faster for emeralds." },
+      { name: "Milk Producer", cat: "Production", combo: false, desc: "1 milk bucket every 120s", why: "Doesn't stack. Clears your own buffs. Actively counterproductive." },
+      { name: "Chorus Fruit Harvester", cat: "Gathering", combo: false, desc: "Harvests chorus fruit", why: "Chorus fruit teleports you randomly. Nobody wants this." },
+      { name: "Glowberry Picker", cat: "Gathering", combo: false, desc: "Picks glow berries from cave vines", why: "2 hunger. Worthless food." },
+      { name: "Cactus Pruner", cat: "Gathering", combo: false, desc: "Harvests cactus (top segment)", why: "Green dye? Auto cactus farms exist with just sand." },
+      { name: "Mushroom Forager", cat: "Gathering", combo: false, desc: "Picks mushrooms", why: "Mushrooms spawn everywhere." },
+      { name: "Demolisher", cat: "Gathering", combo: true, desc: "Heavy-duty stone mining", why: "Stone Breaker but requires 2 moves. Strictly worse." },
+      { name: "Gem Vein Finder", cat: "Gathering", combo: true, desc: "Gem-weighted loot from stone (5% diamond, 15% emerald)", why: "Competes with Fossil Hunter for same stone. Low value real estate." },
+      { name: "Silk Touch Extractor", cat: "Gathering", combo: true, desc: "Drops the block itself (silk touch)", why: "You'd still need to smelt them. Only useful for grass blocks." },
+    ]
+  }
+];
+
+function render() {
+  const search = document.getElementById('search').value.toLowerCase();
+  const catF = document.getElementById('catFilter').value;
+  const tierF = document.getElementById('tierFilter').value;
+
+  const container = document.getElementById('tierList');
+  container.innerHTML = '';
+
+  const counts = { S:0, A:0, B:0, C:0, D:0, F:0 };
+  let totalShown = 0;
+
+  TIERS.forEach(t => {
+    if (tierF && t.tier !== tierF) return;
+
+    const filtered = t.jobs.filter(j => {
+      if (catF && j.cat !== catF) return false;
+      if (search && !j.name.toLowerCase().includes(search) &&
+          !j.desc.toLowerCase().includes(search) &&
+          !j.cat.toLowerCase().includes(search) &&
+          !j.why.toLowerCase().includes(search)) return false;
+      return true;
+    });
+
+    counts[t.tier] = filtered.length;
+    totalShown += filtered.length;
+    if (!filtered.length) return;
+
+    const sec = document.createElement('div');
+    sec.className = 'tier-section';
+    sec.innerHTML = `
+      <div class="tier-header">
+        <div class="tier-badge ${t.tier}">${t.tier}</div>
+        <div class="tier-label">
+          <h2>${t.label}</h2>
+          <span>${filtered.length} job${filtered.length !== 1 ? 's' : ''}</span>
+        </div>
+      </div>
+      <div class="job-grid">
+        ${filtered.map(j => `
+          <div class="job-card ${t.tier}">
+            <div class="name">
+              ${j.name}
+              ${j.combo ? '<span class="combo-tag">combo</span>' : ''}
+            </div>
+            <span class="cat-tag cat-${j.cat}">${j.cat}</span>
+            <div class="desc">${j.desc}</div>
+            <div class="why">${j.why}</div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+    container.appendChild(sec);
+  });
+
+  // stats
+  const bar = document.getElementById('statsBar');
+  const colors = { S:'var(--s)', A:'var(--a)', B:'var(--b)', C:'var(--c)', D:'var(--d)', F:'var(--f)' };
+  bar.innerHTML = Object.entries(counts).map(([k,v]) =>
+    `<div class="stat-chip"><span class="dot" style="background:${colors[k]}"></span>${k}: ${v}</div>`
+  ).join('') + `<div class="stat-chip" style="border-color:#444"><strong>${totalShown} total</strong></div>`;
+}
+
+document.getElementById('search').addEventListener('input', render);
+document.getElementById('catFilter').addEventListener('change', render);
+document.getElementById('tierFilter').addEventListener('change', render);
+render();
+</script>
+</body>
+</html>

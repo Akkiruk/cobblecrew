@@ -35,6 +35,14 @@ object BlockCategoryValidators {
     private val STONE_BLOCKS = setOf(Blocks.STONE, Blocks.COBBLESTONE, Blocks.MOSSY_COBBLESTONE)
     private val IGNEOUS_BLOCKS = setOf(Blocks.GRANITE, Blocks.ANDESITE, Blocks.DIORITE)
     private val DEEPSLATE_BLOCKS = setOf(Blocks.DEEPSLATE, Blocks.COBBLED_DEEPSLATE, Blocks.TUFF, Blocks.CALCITE)
+    private val ORE_BLOCKS = setOf(
+        Blocks.COAL_ORE, Blocks.IRON_ORE, Blocks.GOLD_ORE, Blocks.DIAMOND_ORE,
+        Blocks.LAPIS_ORE, Blocks.REDSTONE_ORE, Blocks.EMERALD_ORE, Blocks.COPPER_ORE,
+        Blocks.DEEPSLATE_COAL_ORE, Blocks.DEEPSLATE_IRON_ORE, Blocks.DEEPSLATE_GOLD_ORE,
+        Blocks.DEEPSLATE_DIAMOND_ORE, Blocks.DEEPSLATE_LAPIS_ORE, Blocks.DEEPSLATE_REDSTONE_ORE,
+        Blocks.DEEPSLATE_EMERALD_ORE, Blocks.DEEPSLATE_COPPER_ORE,
+        Blocks.NETHER_GOLD_ORE, Blocks.NETHER_QUARTZ_ORE,
+    )
     private val DIRT_BLOCKS = setOf(Blocks.DIRT, Blocks.COARSE_DIRT, Blocks.GRAVEL, Blocks.ROOTED_DIRT)
     private val SAND_BLOCKS = setOf(Blocks.SAND, Blocks.RED_SAND)
     private val MUSHROOM_BLOCKS = setOf(Blocks.BROWN_MUSHROOM, Blocks.RED_MUSHROOM)
@@ -68,9 +76,9 @@ object BlockCategoryValidators {
         BlockCategory.CROP_GRAIN to { world, pos -> world.getBlockState(pos).block in CobbleCrewCropUtils.validCropBlocks },
         BlockCategory.CROP_ROOT to { world, pos ->
             val block = world.getBlockState(pos).block
-            block == Blocks.CARROTS || block == Blocks.POTATOES
+            block == Blocks.CARROTS || block == Blocks.POTATOES || block == Blocks.BEETROOTS
         },
-        BlockCategory.CROP_BEET to { world, pos -> world.getBlockState(pos).block == Blocks.BEETROOTS },
+
         BlockCategory.SWEET_BERRY to { world, pos -> world.getBlockState(pos).block == Blocks.SWEET_BERRY_BUSH },
         BlockCategory.PUMPKIN_MELON to { world, pos ->
             val block = world.getBlockState(pos).block
@@ -97,6 +105,7 @@ object BlockCategoryValidators {
         BlockCategory.DIRT to { world, pos -> world.getBlockState(pos).block in DIRT_BLOCKS },
         BlockCategory.SAND to { world, pos -> world.getBlockState(pos).block in SAND_BLOCKS },
         BlockCategory.CLAY to { world, pos -> world.getBlockState(pos).block == Blocks.CLAY },
+        BlockCategory.ORE to { world, pos -> world.getBlockState(pos).block in ORE_BLOCKS },
 
         // Minerals & special
         BlockCategory.ICE to { world, pos -> world.getBlockState(pos).block == Blocks.ICE || world.getBlockState(pos).block == Blocks.PACKED_ICE },
@@ -148,8 +157,7 @@ object BlockCategoryValidators {
         BlockCategory.CAULDRON to { world, pos -> world.getBlockState(pos).isOf(Blocks.CAULDRON) },
         BlockCategory.SUSPICIOUS to { world, pos ->
             val block = world.getBlockState(pos).block
-            block == Blocks.DIRT || block == Blocks.GRAVEL || block == Blocks.MUD
-                || block == Blocks.COARSE_DIRT || block == Blocks.ROOTED_DIRT
+            block == Blocks.SUSPICIOUS_SAND || block == Blocks.SUSPICIOUS_GRAVEL
         },
 
         // Aquatic (pending)

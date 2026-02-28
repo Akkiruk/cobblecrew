@@ -13,6 +13,7 @@ import akkiruk.cobblecrew.enums.WorkPhase
 import akkiruk.cobblecrew.interfaces.Worker
 import akkiruk.cobblecrew.utilities.CobbleCrewDebugLogger
 import akkiruk.cobblecrew.utilities.CobbleCrewNavigationUtils
+import akkiruk.cobblecrew.utilities.WorkSpeedBoostManager
 import akkiruk.cobblecrew.utilities.WorkerVisualUtils
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import net.minecraft.entity.effect.StatusEffect
@@ -55,6 +56,13 @@ abstract class BaseSupport : Worker {
     open val requiresDamage: Boolean = false
 
     /**
+     * Work speed boost percentage this support Pokémon provides to nearby workers.
+     * 0 = no boost. 15 = nearby workers' cooldowns are 15% shorter.
+     * Multiple support Pokémon stack diminishingly, capped at 40% total.
+     */
+    open val workBoostPercent: Int = 0
+
+    /**
      * Per-Pokémon cooldown after applying an effect. Prevents the tight loop where
      * the Pokémon applies → releases → re-assigns → re-applies every few ticks.
      * Cooldown = half the effect duration so it waits near the player.
@@ -85,6 +93,11 @@ abstract class BaseSupport : Worker {
         val world = context.world
         val origin = context.origin
         val pokemonId = pokemonEntity.pokemon.uuid
+
+        // Register work speed aura while this support Pokémon is active
+        if (workBoostPercent > 0) {
+            WorkSpeedBoostManager.registerBoost(origin, pokemonId, workBoostPercent, world.time)
+        }
 
         // On cooldown — just idle near the target, don't re-evaluate
         cooldownUntil[pokemonId]?.let { until ->
