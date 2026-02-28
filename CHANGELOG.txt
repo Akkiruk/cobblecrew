@@ -1,3 +1,8 @@
+## 3.0.29
+- Fixed Pokémon getting stuck staring at logs/blocks that were already harvested — stale cache entries are now removed immediately when the target is found to be air
+- Air blocks are also filtered out during job availability checks so Pokémon don't even attempt stale targets
+- Tree Feller combo (cut + headbutt) now breaks the ENTIRE tree at once (up to 64 connected logs) instead of one block at a time
+
 ## 3.0.28
 - Fixed harvesters (loggers, miners, crop pickers, etc.) failing to actually harvest — claim timer expired before Pokémon reached the target, causing escalating blacklists that locked out all nearby blocks
 - Claims are now renewed each tick while the Pokémon is actively navigating to or working on a target

@@ -63,7 +63,8 @@ abstract class BaseHarvester : Worker {
         if (targets.isEmpty()) return false
         val now = context.world.time
         return targets.any { pos ->
-            isTargetReady(context.world, pos)
+            !context.world.getBlockState(pos).isAir
+                && isTargetReady(context.world, pos)
                 && !CobbleCrewNavigationUtils.isRecentlyExpired(pos, context.world)
                 && !CobbleCrewNavigationUtils.isUnreachable(pokemonId, pos, now)
         }
@@ -141,6 +142,10 @@ abstract class BaseHarvester : Worker {
                 if (world.getBlockState(currentTarget).isAir) "block is air" else "not ready"
             )
             CobbleCrewNavigationUtils.releaseTarget(pokemonId, world)
+            // Purge stale entry from cache so nobody else targets it either
+            targetCategory?.let { cat ->
+                CobbleCrewCacheManager.removeTarget(context.cacheKey, cat, currentTarget)
+            }
             return
         }
 

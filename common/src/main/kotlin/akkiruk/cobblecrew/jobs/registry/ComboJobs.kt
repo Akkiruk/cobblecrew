@@ -180,7 +180,7 @@ object ComboJobs {
     }
 
     // ── CM14: Tree Feller ────────────────────────────────────────────
-    // cut + headbutt → breaks entire tree (all connected logs)
+    // cut + headbutt → breaks entire tree (all connected logs) at once
     val TREE_FELLER = object : GatheringJob(
         name = "tree_feller",
         category = "combo",
@@ -188,7 +188,36 @@ object ComboJobs {
         qualifyingMoves = setOf("cut", "headbutt"),
         particle = ParticleTypes.CAMPFIRE_COSY_SMOKE,
         priority = WorkerPriority.COMBO,
-        topDownHarvest = true,
+        harvestOverride = { world, pos, _ ->
+            val targetBlock = world.getBlockState(pos).block
+            val visited = mutableSetOf(pos)
+            val frontier = mutableListOf(pos)
+            val allDrops = mutableListOf<ItemStack>()
+            val axe = ItemStack(Items.DIAMOND_AXE)
+            var broken = 0
+            while (frontier.isNotEmpty() && broken < 64) {
+                val current = frontier.removeFirst()
+                if (world.getBlockState(current).block != targetBlock) continue
+                val state = world.getBlockState(current)
+                val lootBuilder = LootContextParameterSet.Builder(world as ServerWorld)
+                    .add(LootContextParameters.ORIGIN, current.toCenterPos())
+                    .add(LootContextParameters.BLOCK_STATE, state)
+                    .add(LootContextParameters.TOOL, axe)
+                allDrops.addAll(state.getDroppedStacks(lootBuilder))
+                world.setBlockState(current, Blocks.AIR.defaultState)
+                broken++
+                for (dir in Direction.entries) {
+                    val neighbor = current.offset(dir)
+                    if (neighbor !in visited) {
+                        visited.add(neighbor)
+                        if (world.getBlockState(neighbor).block == targetBlock) {
+                            frontier.add(neighbor)
+                        }
+                    }
+                }
+            }
+            allDrops
+        },
     ) {
         override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String) =
             comboEligible(qualifyingMoves, JobConfigManager.get(name), moves, types, species)
