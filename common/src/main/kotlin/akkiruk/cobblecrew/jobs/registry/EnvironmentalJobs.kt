@@ -65,7 +65,7 @@ object EnvironmentalJobs {
     val ObsidianForge = EnvironmentalJob(
         name = "obsidian_forge",
         targetCategory = BlockCategory.LAVA,
-        qualifyingMoves = setOf("hydropump", "scald"),
+        qualifyingMoves = setOf("hydropump"),
         priority = WorkerPriority.MOVE,
         particle = ParticleTypes.CLOUD,
         findTarget = { world, origin ->
@@ -83,7 +83,7 @@ object EnvironmentalJobs {
     val GrowthAccelerator = EnvironmentalJob(
         name = "growth_accelerator",
         targetCategory = BlockCategory.GROWABLE,
-        qualifyingMoves = setOf("growth", "sunnyday"),
+        qualifyingMoves = setOf("growth"),
         priority = WorkerPriority.MOVE,
         particle = ParticleTypes.HAPPY_VILLAGER,
         findTarget = { world, origin ->
@@ -195,7 +195,7 @@ object EnvironmentalJobs {
     val FireDouser = EnvironmentalJob(
         name = "fire_douser",
         targetCategory = BlockCategory.FIRE,
-        qualifyingMoves = setOf("waterpulse", "raindance"),
+        qualifyingMoves = setOf("waterpulse"),
         priority = WorkerPriority.TYPE,
         particle = ParticleTypes.SMOKE,
         defaultRadius = 2,

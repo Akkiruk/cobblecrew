@@ -9,7 +9,6 @@
 package akkiruk.cobblecrew.jobs.registry
 
 import akkiruk.cobblecrew.cache.CobbleCrewCacheManager
-import akkiruk.cobblecrew.config.JobConfigManager
 import akkiruk.cobblecrew.enums.BlockCategory
 import akkiruk.cobblecrew.enums.WorkerPriority
 import akkiruk.cobblecrew.jobs.WorkerRegistry
@@ -17,7 +16,6 @@ import akkiruk.cobblecrew.jobs.dsl.GatheringJob
 import akkiruk.cobblecrew.jobs.dsl.ProductionJob
 import akkiruk.cobblecrew.jobs.dsl.ProcessingJob
 import akkiruk.cobblecrew.jobs.dsl.SupportJob
-import akkiruk.cobblecrew.jobs.dsl.dslEligible
 import akkiruk.cobblecrew.utilities.floodFillHarvest
 import akkiruk.cobblecrew.utilities.treeHarvest
 import net.minecraft.entity.effect.StatusEffectCategory
@@ -44,7 +42,7 @@ object ComboJobs {
         name = "demolisher",
         category = "combo",
         targetCategory = BlockCategory.STONE,
-        qualifyingMoves = setOf("cut", "rocksmash"),
+        qualifyingMoves = setOf("rocksmash", "smackdown"),
         particle = ParticleTypes.EXPLOSION,
         priority = WorkerPriority.COMBO,
         isCombo = true,
@@ -55,7 +53,7 @@ object ComboJobs {
         name = "fortune_miner",
         category = "combo",
         targetCategory = BlockCategory.ORE,
-        qualifyingMoves = setOf("powergem", "dig"),
+        qualifyingMoves = setOf("ancientpower", "psychic"),
         particle = ParticleTypes.ENCHANT,
         priority = WorkerPriority.COMBO,
         isCombo = true,
@@ -76,35 +74,28 @@ object ComboJobs {
     )
 
     // ── CM12: Silk Touch Extractor ───────────────────────────────────
-    // Special: psychic + any gathering move (custom eligibility)
-    val SILK_TOUCH_EXTRACTOR = object : GatheringJob(
+    val SILK_TOUCH_EXTRACTOR = GatheringJob(
         name = "silk_touch_extractor",
         category = "combo",
         targetCategory = BlockCategory.STONE,
-        qualifyingMoves = setOf("psychic"),
+        qualifyingMoves = setOf("mindreader", "ironhead"),
         particle = ParticleTypes.ENCHANT,
         priority = WorkerPriority.COMBO,
+        isCombo = true,
         harvestOverride = { world, pos, _ ->
             val state = world.getBlockState(pos)
             val item = state.block.asItem()
             world.breakBlock(pos, false)
             if (item != Items.AIR) listOf(ItemStack(item)) else emptyList()
         },
-    ) {
-        private val gatheringMoves = setOf("cut", "rocksmash", "dig", "icebeam")
-
-        override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean {
-            if (!JobConfigManager.get(name).enabled) return false
-            return "psychic" in moves && gatheringMoves.any { it in moves }
-        }
-    }
+    )
 
     // ── CM13: Vein Miner ─────────────────────────────────────────────
     val VEIN_MINER = GatheringJob(
         name = "vein_miner",
         category = "combo",
         targetCategory = BlockCategory.ORE,
-        qualifyingMoves = setOf("earthquake", "dig"),
+        qualifyingMoves = setOf("earthquake", "crosschop"),
         particle = ParticleTypes.EXPLOSION,
         priority = WorkerPriority.COMBO,
         isCombo = true,
@@ -117,7 +108,7 @@ object ComboJobs {
         name = "tree_feller",
         category = "combo",
         targetCategory = BlockCategory.LOG,
-        qualifyingMoves = setOf("cut", "headbutt"),
+        qualifyingMoves = setOf("headbutt", "powerwhip"),
         particle = ParticleTypes.CAMPFIRE_COSY_SMOKE,
         priority = WorkerPriority.COMBO,
         isCombo = true,
@@ -135,7 +126,7 @@ object ComboJobs {
         name = "fossil_hunter",
         category = "combo",
         targetCategory = BlockCategory.STONE,
-        qualifyingMoves = setOf("dig", "rocksmash"),
+        qualifyingMoves = setOf("boneclub", "furycutter"),
         particle = ParticleTypes.CRIT,
         priority = WorkerPriority.COMBO,
         isCombo = true,
@@ -158,7 +149,7 @@ object ComboJobs {
         name = "gem_vein_finder",
         category = "combo",
         targetCategory = BlockCategory.STONE,
-        qualifyingMoves = setOf("powergem", "ancientpower"),
+        qualifyingMoves = setOf("flashcannon", "glare"),
         particle = ParticleTypes.ENCHANT,
         priority = WorkerPriority.COMBO,
         isCombo = true,
@@ -179,7 +170,7 @@ object ComboJobs {
     val STRING_CRAFTER = ProductionJob(
         name = "string_crafter",
         category = "combo",
-        qualifyingMoves = setOf("cut", "stringshot"),
+        qualifyingMoves = setOf("stringshot", "xscissor"),
         defaultCooldownSeconds = 120,
         particle = ParticleTypes.HAPPY_VILLAGER,
         priority = WorkerPriority.COMBO,
@@ -197,7 +188,7 @@ object ComboJobs {
     val BOOK_BINDER = ProductionJob(
         name = "book_binder",
         category = "combo",
-        qualifyingMoves = setOf("cut", "psychic"),
+        qualifyingMoves = setOf("sketch", "shadowclaw"),
         defaultCooldownSeconds = 180,
         particle = ParticleTypes.ENCHANT,
         priority = WorkerPriority.COMBO,
@@ -209,7 +200,7 @@ object ComboJobs {
     val CANDLE_MAKER = ProductionJob(
         name = "candle_maker",
         category = "combo",
-        qualifyingMoves = setOf("willowisp", "stringshot"),
+        qualifyingMoves = setOf("willowisp", "aromatherapy"),
         defaultCooldownSeconds = 120,
         particle = ParticleTypes.FLAME,
         priority = WorkerPriority.COMBO,
@@ -221,7 +212,7 @@ object ComboJobs {
     val CHAIN_FORGER = ProductionJob(
         name = "chain_forger",
         category = "combo",
-        qualifyingMoves = setOf("ironhead", "firespin"),
+        qualifyingMoves = setOf("scorchingsands", "bodypress"),
         defaultCooldownSeconds = 120,
         particle = ParticleTypes.LAVA,
         priority = WorkerPriority.COMBO,
@@ -233,7 +224,7 @@ object ComboJobs {
     val LANTERN_BUILDER = ProductionJob(
         name = "lantern_builder",
         category = "combo",
-        qualifyingMoves = setOf("flashcannon", "ironhead"),
+        qualifyingMoves = setOf("sunnyday", "icefang"),
         defaultCooldownSeconds = 180,
         particle = ParticleTypes.END_ROD,
         priority = WorkerPriority.COMBO,
@@ -245,7 +236,7 @@ object ComboJobs {
     val BANNER_CREATOR = ProductionJob(
         name = "banner_creator",
         category = "combo",
-        qualifyingMoves = setOf("cut", "sketch"),
+        qualifyingMoves = setOf("leechseed", "whirlwind"),
         defaultCooldownSeconds = 240,
         particle = ParticleTypes.HAPPY_VILLAGER,
         priority = WorkerPriority.COMBO,
@@ -266,7 +257,7 @@ object ComboJobs {
     val DEEP_SEA_TRAWLER = ProductionJob(
         name = "deep_sea_trawler",
         category = "combo",
-        qualifyingMoves = setOf("dive", "whirlpool"),
+        qualifyingMoves = setOf("whirlpool", "raindance"),
         defaultCooldownSeconds = 300,
         particle = ParticleTypes.BUBBLE,
         priority = WorkerPriority.COMBO,
@@ -286,7 +277,7 @@ object ComboJobs {
     val MAGMA_DIVER = ProductionJob(
         name = "magma_diver",
         category = "combo",
-        qualifyingMoves = setOf("dive", "lavaplume"),
+        qualifyingMoves = setOf("overheat", "nightshade"),
         defaultCooldownSeconds = 300,
         particle = ParticleTypes.LAVA,
         priority = WorkerPriority.COMBO,
@@ -308,7 +299,7 @@ object ComboJobs {
     val BLAST_FURNACE = ProcessingJob(
         name = "blast_furnace",
         category = "combo",
-        qualifyingMoves = setOf("overheat", "ironhead"),
+        qualifyingMoves = setOf("scald", "avalanche"),
         particle = ParticleTypes.LAVA,
         priority = WorkerPriority.COMBO,
         isCombo = true,
@@ -328,7 +319,7 @@ object ComboJobs {
     val FULL_RESTORE = object : SupportJob(
         name = "full_restore",
         category = "combo",
-        qualifyingMoves = setOf("healbell", "aromatherapy"),
+        qualifyingMoves = setOf("healbell", "lifedew"),
         particle = ParticleTypes.HEART,
         statusEffect = StatusEffects.REGENERATION,
         defaultDurationSeconds = 30,

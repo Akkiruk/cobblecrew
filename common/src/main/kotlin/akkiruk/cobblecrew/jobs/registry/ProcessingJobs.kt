@@ -108,7 +108,7 @@ object ProcessingJobs {
 
     val BONE_GRINDER = ProcessingJob(
         name = "bone_grinder",
-        qualifyingMoves = setOf("bonemerang", "boneclub"),
+        qualifyingMoves = setOf("bonemerang"),
         particle = ParticleTypes.CRIT,
         inputCheck = { it.item == Items.BONE },
         transformFn = { input -> listOf(ItemStack(Items.BONE_MEAL, input.count * 3)) },
@@ -116,7 +116,7 @@ object ProcessingJobs {
 
     val FLINT_KNAPPER = ProcessingJob(
         name = "flint_knapper",
-        qualifyingMoves = setOf("karatechop", "crosschop"),
+        qualifyingMoves = setOf("karatechop"),
         particle = ParticleTypes.CRIT,
         inputCheck = { it.item == Items.GRAVEL },
         transformFn = { input -> listOf(ItemStack(Items.FLINT, input.count)) },
@@ -124,7 +124,7 @@ object ProcessingJobs {
 
     val PIGMENT_PRESSER = ProcessingJob(
         name = "pigment_presser",
-        qualifyingMoves = setOf("hammerarm", "bodypress"),
+        qualifyingMoves = setOf("hammerarm"),
         particle = ParticleTypes.COMPOSTER,
         inputCheck = { stack ->
             stack.item in setOf(

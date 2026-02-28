@@ -56,7 +56,7 @@ object SupportJobs {
 
     val HEALER = SupportJob(
         name = "healer",
-        qualifyingMoves = setOf("healpulse", "lifedew"),
+        qualifyingMoves = setOf("healpulse"),
         fallbackSpecies = listOf("Chansey", "Blissey", "Happiny", "Audino"),
         particle = ParticleTypes.HEART,
         statusEffect = StatusEffects.REGENERATION,
@@ -117,7 +117,7 @@ object SupportJobs {
 
     val NIGHT_VISION_PROVIDER = SupportJob(
         name = "night_vision_provider",
-        qualifyingMoves = setOf("miracleeye", "mindreader"),
+        qualifyingMoves = setOf("miracleeye"),
         particle = ParticleTypes.END_ROD,
         statusEffect = StatusEffects.NIGHT_VISION,
         defaultDurationSeconds = 60,

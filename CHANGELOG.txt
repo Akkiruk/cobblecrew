@@ -1,3 +1,10 @@
+## 3.0.34
+- Every job now requires exactly one unique move — no move is shared across multiple jobs
+- Combo jobs each require exactly two unique moves (both must be known)
+- Simplified Silk Touch Extractor to a standard combo (Mind Reader + Iron Head)
+- Berry Harvester now uses Natural Gift, Tumblestone Harvester now uses Smart Strike
+- Updated all combo job move pairs to be unique (see API descriptions for details)
+
 ## 3.0.33
 - Fixed Tree Feller leaving floating leaves on large trees — leaf cap raised from 256 to 1024
 - Leaf seeding now checks diagonal neighbors (all 26 directions) since vanilla trees place leaves diagonally from logs

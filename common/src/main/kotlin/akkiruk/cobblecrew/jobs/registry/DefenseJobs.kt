@@ -35,7 +35,7 @@ object DefenseJobs {
 
     val SENTRY = DefenseJob(
         name = "sentry",
-        qualifyingMoves = setOf("detect", "foresight"),
+        qualifyingMoves = setOf("detect"),
         particle = ParticleTypes.ELECTRIC_SPARK,
         phase = WorkPhase.DEBUFFING,
         effectFn = { _, _, target ->
@@ -46,7 +46,7 @@ object DefenseJobs {
 
     val REPELLER = DefenseJob(
         name = "repeller",
-        qualifyingMoves = setOf("roar", "whirlwind"),
+        qualifyingMoves = setOf("roar"),
         particle = ParticleTypes.POOF,
         phase = WorkPhase.DEBUFFING,
         effectFn = { _, pokemon, target ->
@@ -61,7 +61,7 @@ object DefenseJobs {
 
     val FEARMONGER = DefenseJob(
         name = "fearmonger",
-        qualifyingMoves = setOf("scaryface", "glare"),
+        qualifyingMoves = setOf("scaryface"),
         particle = ParticleTypes.WITCH,
         phase = WorkPhase.DEBUFFING,
         effectFn = { _, pokemon, target ->

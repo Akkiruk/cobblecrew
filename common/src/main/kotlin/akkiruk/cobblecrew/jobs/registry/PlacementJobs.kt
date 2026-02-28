@@ -32,7 +32,7 @@ object PlacementJobs {
 
     val TORCH_LIGHTER = PlacementJob(
         name = "torch_lighter",
-        qualifyingMoves = setOf("flash", "willowisp"),
+        qualifyingMoves = setOf("flash"),
         particle = ParticleTypes.FLAME,
         itemCheck = { it.item == Items.TORCH },
         findTarget = { world, origin ->
@@ -54,7 +54,7 @@ object PlacementJobs {
 
     val TREE_PLANTER = PlacementJob(
         name = "tree_planter",
-        qualifyingMoves = setOf("ingrain", "seedbomb"),
+        qualifyingMoves = setOf("ingrain"),
         particle = ParticleTypes.HAPPY_VILLAGER,
         itemCheck = { stack -> (stack.item as? BlockItem)?.block is SaplingBlock },
         findTarget = { world, origin ->
@@ -77,7 +77,7 @@ object PlacementJobs {
 
     val CROP_SOWER = PlacementJob(
         name = "crop_sower",
-        qualifyingMoves = setOf("bulletseed", "leechseed"),
+        qualifyingMoves = setOf("bulletseed"),
         particle = ParticleTypes.HAPPY_VILLAGER,
         itemCheck = { stack ->
             stack.item in setOf(
