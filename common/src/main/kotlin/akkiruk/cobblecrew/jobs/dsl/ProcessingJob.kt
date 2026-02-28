@@ -31,6 +31,7 @@ open class ProcessingJob(
     val particle: ParticleEffect = ParticleTypes.SMOKE,
     val inputCheck: (ItemStack) -> Boolean,
     val transformFn: (ItemStack) -> List<ItemStack>,
+    val isCombo: Boolean = false,
 ) : BaseProcessor() {
 
     private val config get() = JobConfigManager.get(name)
@@ -38,24 +39,17 @@ open class ProcessingJob(
     override val targetCategory: BlockCategory? = null
     override val processParticle: ParticleEffect = particle
 
-    fun defaultConfig(): JobConfig = JobConfig(
-        enabled = true,
-        qualifyingMoves = qualifyingMoves.toList(),
-        fallbackType = fallbackType,
-        fallbackSpecies = fallbackSpecies,
-    )
-
     init {
-        JobConfigManager.registerDefault(category, name, defaultConfig())
+        JobConfigManager.registerDefault(category, name, JobConfig(
+            enabled = true,
+            qualifyingMoves = qualifyingMoves.toList(),
+            fallbackType = fallbackType,
+            fallbackSpecies = fallbackSpecies,
+        ))
     }
 
-    override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean {
-        if (!config.enabled) return false
-        val effectiveMoves = config.qualifyingMoves.ifEmpty { qualifyingMoves }.map { it.lowercase() }.toSet()
-        if (moves.any { it in effectiveMoves }) return true
-        val sp = config.fallbackSpecies.ifEmpty { fallbackSpecies }
-        return sp.any { it.equals(species, ignoreCase = true) }
-    }
+    override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean =
+        dslEligible(config, qualifyingMoves, fallbackSpecies, moves, species, isCombo)
 
     override fun inputPredicate(stack: ItemStack): Boolean = inputCheck(stack)
     override fun transform(input: ItemStack): List<ItemStack> = transformFn(input)

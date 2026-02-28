@@ -34,6 +34,7 @@ open class DefenseJob(
     val particle: ParticleEffect = ParticleTypes.CRIT,
     val phase: WorkPhase = WorkPhase.ATTACKING,
     val effectFn: (World, PokemonEntity, HostileEntity) -> Unit,
+    val isCombo: Boolean = false,
 ) : BaseDefender() {
 
     private val config get() = JobConfigManager.get(name)
@@ -42,24 +43,17 @@ open class DefenseJob(
     override val attackParticle: ParticleEffect = particle
     override val combatPhase: WorkPhase = phase
 
-    fun defaultConfig(): JobConfig = JobConfig(
-        enabled = true,
-        qualifyingMoves = qualifyingMoves.toList(),
-        fallbackType = fallbackType,
-        fallbackSpecies = fallbackSpecies,
-    )
-
     init {
-        JobConfigManager.registerDefault(category, name, defaultConfig())
+        JobConfigManager.registerDefault(category, name, JobConfig(
+            enabled = true,
+            qualifyingMoves = qualifyingMoves.toList(),
+            fallbackType = fallbackType,
+            fallbackSpecies = fallbackSpecies,
+        ))
     }
 
-    override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean {
-        if (!config.enabled) return false
-        val effectiveMoves = config.qualifyingMoves.ifEmpty { qualifyingMoves }.map { it.lowercase() }.toSet()
-        if (moves.any { it in effectiveMoves }) return true
-        val sp = config.fallbackSpecies.ifEmpty { fallbackSpecies }
-        return sp.any { it.equals(species, ignoreCase = true) }
-    }
+    override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean =
+        dslEligible(config, qualifyingMoves, fallbackSpecies, moves, species, isCombo)
 
     override fun applyEffect(world: World, pokemonEntity: PokemonEntity, target: HostileEntity) {
         effectFn(world, pokemonEntity, target)

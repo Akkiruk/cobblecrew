@@ -35,6 +35,7 @@ open class SupportJob(
     override val effectAmplifier: Int = 0,
     override val requiresDamage: Boolean = false,
     override val workBoostPercent: Int = 0,
+    val isCombo: Boolean = false,
 ) : BaseSupport() {
 
     private val config get() = JobConfigManager.get(name)
@@ -44,24 +45,17 @@ open class SupportJob(
     override val effectDurationTicks: Int get() =
         (config.effectDurationSeconds ?: defaultDurationSeconds) * 20
 
-    fun defaultConfig(): JobConfig = JobConfig(
-        enabled = true,
-        qualifyingMoves = qualifyingMoves.toList(),
-        fallbackType = fallbackType,
-        fallbackSpecies = fallbackSpecies,
-        effectDurationSeconds = defaultDurationSeconds,
-        effectAmplifier = effectAmplifier,
-    )
-
     init {
-        JobConfigManager.registerDefault(category, name, defaultConfig())
+        JobConfigManager.registerDefault(category, name, JobConfig(
+            enabled = true,
+            qualifyingMoves = qualifyingMoves.toList(),
+            fallbackType = fallbackType,
+            fallbackSpecies = fallbackSpecies,
+            effectDurationSeconds = defaultDurationSeconds,
+            effectAmplifier = effectAmplifier,
+        ))
     }
 
-    override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean {
-        if (!config.enabled) return false
-        val effectiveMoves = config.qualifyingMoves.ifEmpty { qualifyingMoves }.map { it.lowercase() }.toSet()
-        if (moves.any { it in effectiveMoves }) return true
-        val sp = config.fallbackSpecies.ifEmpty { fallbackSpecies }
-        return sp.any { it.equals(species, ignoreCase = true) }
-    }
+    override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean =
+        dslEligible(config, qualifyingMoves, fallbackSpecies, moves, species, isCombo)
 }

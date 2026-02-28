@@ -37,7 +37,8 @@ object CobbleCrewCacheManager {
         addTarget(CacheKey.PastureKey(origin), category, pos)
 
     fun getTargets(key: CacheKey, category: BlockCategory): Set<BlockPos> {
-        return caches[key]?.targetsByCategory?.get(category) ?: emptySet()
+        val raw = caches[key]?.targetsByCategory?.get(category) ?: return emptySet()
+        return raw.toSet()
     }
 
     /** Convenience: wrap BlockPos to PastureKey. */

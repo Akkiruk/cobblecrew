@@ -28,14 +28,20 @@ data class PokemonProfile(
     val speciesEligible: List<Worker>,
     val typeEligible: List<Worker>,
 ) {
+    private val _allEligible by lazy { comboEligible + moveEligible + speciesEligible + typeEligible }
+
     /**
      * Returns all eligible jobs flattened, ordered by priority tier
-     * (COMBO first, then MOVE, SPECIES, TYPE). Pokémon can do any
-     * eligible job — higher tiers are just listed first so shuffled
-     * selection naturally favors them.
+     * (COMBO first, then MOVE, SPECIES, TYPE). Cached on first access.
      */
-    fun allEligible(): List<Worker> =
-        comboEligible + moveEligible + speciesEligible + typeEligible
+    fun allEligible(): List<Worker> = _allEligible
+
+    fun getByPriority(priority: WorkerPriority): List<Worker> = when (priority) {
+        WorkerPriority.COMBO -> comboEligible
+        WorkerPriority.MOVE -> moveEligible
+        WorkerPriority.SPECIES -> speciesEligible
+        WorkerPriority.TYPE -> typeEligible
+    }
 
     companion object {
         fun build(

@@ -14,6 +14,7 @@ import akkiruk.cobblecrew.interfaces.Worker
 import akkiruk.cobblecrew.utilities.CobbleCrewDebugLogger
 import akkiruk.cobblecrew.utilities.CobbleCrewInventoryUtils
 import akkiruk.cobblecrew.utilities.CobbleCrewNavigationUtils
+import akkiruk.cobblecrew.utilities.PathfindingBudget
 import akkiruk.cobblecrew.utilities.WorkerVisualUtils
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import net.minecraft.block.Block
@@ -195,8 +196,9 @@ abstract class BaseHarvester : Worker {
     }
 
     /**
-     * Wraps [findClosestTarget] with pathfind validation.
-     * Tries up to 3 candidates, marking unreachable ones for 10s to avoid re-checking.
+     * Wraps [findClosestTarget] with pathfind validation using a server-wide
+     * budget to prevent lag spikes. Tries up to 3 candidates, marking
+     * unreachable ones for 10s to avoid re-checking.
      */
     private fun findReachableTarget(world: World, origin: BlockPos, pokemonEntity: PokemonEntity): BlockPos? {
         val cat = targetCategory ?: return null
@@ -218,11 +220,13 @@ abstract class BaseHarvester : Worker {
             .firstOrNull { pos ->
                 if (attempts >= 3) return@firstOrNull false
                 attempts++
-                if (CobbleCrewNavigationUtils.canPathfindTo(pokemonEntity, pos)) {
-                    true
-                } else {
-                    CobbleCrewNavigationUtils.markUnreachable(pokemonId, pos, now)
-                    false
+                when (PathfindingBudget.tryPathfind(pokemonEntity, pos, now)) {
+                    PathfindingBudget.PathResult.REACHABLE -> true
+                    PathfindingBudget.PathResult.UNREACHABLE -> {
+                        CobbleCrewNavigationUtils.markUnreachable(pokemonId, pos, now)
+                        false
+                    }
+                    PathfindingBudget.PathResult.DEFERRED -> false // budget exhausted, try next tick
                 }
             }
     }

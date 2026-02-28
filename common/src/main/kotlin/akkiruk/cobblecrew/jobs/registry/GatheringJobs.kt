@@ -237,7 +237,7 @@ object GatheringJobs {
         particle = ParticleTypes.SCULK_SOUL,
         harvestOverride = { world, pos, _ ->
             val item = world.getBlockState(pos).block.asItem()
-            world.setBlockState(pos, Blocks.AIR.defaultState)
+            world.breakBlock(pos, false)
             if (item != Items.AIR) listOf(ItemStack(item)) else emptyList()
         },
     )
@@ -249,7 +249,7 @@ object GatheringJobs {
         particle = ParticleTypes.SNOWFLAKE,
         harvestOverride = { world, pos, _ ->
             val item = world.getBlockState(pos).block.asItem()
-            world.setBlockState(pos, Blocks.AIR.defaultState)
+            world.breakBlock(pos, false)
             if (item != Items.AIR) listOf(ItemStack(item)) else emptyList()
         },
     )
@@ -294,7 +294,7 @@ object GatheringJobs {
         particle = ParticleTypes.COMPOSTER,
         harvestOverride = { world, pos, _ ->
             // Leaves → bone meal
-            world.setBlockState(pos, Blocks.AIR.defaultState)
+            world.breakBlock(pos, false)
             listOf(ItemStack(Items.BONE_MEAL, 1))
         },
     )
@@ -398,7 +398,7 @@ object GatheringJobs {
                 }
                 world.setBlockState(pos, rState)
             } else {
-                world.setBlockState(pos, Blocks.AIR.defaultState)
+                world.breakBlock(pos, false)
             }
         },
     )

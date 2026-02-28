@@ -9,830 +9,253 @@
 package akkiruk.cobblecrew.jobs.registry
 
 import akkiruk.cobblecrew.cache.CobbleCrewCacheManager
-import akkiruk.cobblecrew.config.JobConfig
 import akkiruk.cobblecrew.config.JobConfigManager
 import akkiruk.cobblecrew.enums.BlockCategory
-import akkiruk.cobblecrew.enums.WorkPhase
 import akkiruk.cobblecrew.enums.WorkerPriority
-import akkiruk.cobblecrew.interfaces.Worker
-import akkiruk.cobblecrew.jobs.JobContext
 import akkiruk.cobblecrew.jobs.WorkerRegistry
+import akkiruk.cobblecrew.jobs.dsl.EnvironmentalJob
 import akkiruk.cobblecrew.mixin.AbstractFurnaceBlockEntityAccessor
 import akkiruk.cobblecrew.mixin.BrewingStandBlockEntityAccessor
 import akkiruk.cobblecrew.utilities.CobbleCrewCauldronUtils
 import akkiruk.cobblecrew.utilities.CobbleCrewNavigationUtils
-import akkiruk.cobblecrew.utilities.WorkSpeedBoostManager
-import akkiruk.cobblecrew.utilities.WorkerVisualUtils
-import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import net.minecraft.block.*
 import net.minecraft.block.entity.AbstractFurnaceBlockEntity
 import net.minecraft.block.entity.BrewingStandBlockEntity
+import net.minecraft.particle.ParticleEffect
 import net.minecraft.particle.ParticleTypes
 import net.minecraft.server.world.ServerWorld
 import net.minecraft.util.math.BlockPos
 import net.minecraft.world.World
-import java.util.UUID
 
 /**
- * Environmental jobs (G1–G3). Modify blocks in-world without breaking them.
+ * Environmental jobs (G1–G11). Modify blocks in-world without breaking them.
+ * Most use [EnvironmentalJob] DSL; FurnaceFueler and BrewingStandFueler use
+ * custom findTarget/action for block entity manipulation via mixin accessors.
  */
 object EnvironmentalJobs {
 
+    private val FROST_CHAIN = mapOf(
+        Blocks.WATER to Blocks.ICE,
+        Blocks.ICE to Blocks.PACKED_ICE,
+        Blocks.PACKED_ICE to Blocks.BLUE_ICE,
+    )
+
     // ── G1: Frost Former ─────────────────────────────────────────────
-    // Water → Ice → Packed Ice → Blue Ice (progressive chain)
-    object FrostFormer : Worker {
-        override val name = "frost_former"
-        override val priority = WorkerPriority.MOVE
-        override val targetCategory = BlockCategory.WATER
-        override val additionalScanCategories = setOf(BlockCategory.ICE)
-
-        private val config get() = JobConfigManager.get(name)
-        private val qualifyingMoves = setOf("icebeam")
-        private val targets = mutableMapOf<UUID, BlockPos>()
-
-        private val CHAIN = mapOf(
-            Blocks.WATER to Blocks.ICE,
-            Blocks.ICE to Blocks.PACKED_ICE,
-            Blocks.PACKED_ICE to Blocks.BLUE_ICE,
-        )
-
-        init {
-            JobConfigManager.registerDefault("environmental", name, JobConfig(
-                enabled = true,
-                qualifyingMoves = qualifyingMoves.toList(),
-            ))
-        }
-
-        override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean {
-            if (!config.enabled) return false
-            val eff = config.qualifyingMoves.ifEmpty { qualifyingMoves }.map { it.lowercase() }.toSet()
-            return moves.any { it in eff }
-        }
-
-        override fun isAvailable(context: JobContext, pokemonId: UUID): Boolean {
-            val origin = context.origin
+    val FrostFormer = EnvironmentalJob(
+        name = "frost_former",
+        targetCategory = BlockCategory.WATER,
+        additionalScanCategories = setOf(BlockCategory.ICE),
+        qualifyingMoves = setOf("icebeam"),
+        priority = WorkerPriority.MOVE,
+        particle = ParticleTypes.SNOWFLAKE,
+        findTarget = { world, origin ->
             val water = CobbleCrewCacheManager.getTargets(origin, BlockCategory.WATER)
             val ice = CobbleCrewCacheManager.getTargets(origin, BlockCategory.ICE)
-            return water.isNotEmpty() || ice.isNotEmpty()
-        }
-
-        override fun tick(context: JobContext, pokemonEntity: PokemonEntity) {
-            val world = context.world
-            val origin = context.origin
-            val pid = pokemonEntity.pokemon.uuid
-            val target = targets[pid]
-            if (target == null) {
-                val found = findFrostTarget(world, origin) ?: return
-                if (!CobbleCrewNavigationUtils.isTargeted(found, world)) {
-                    CobbleCrewNavigationUtils.claimTarget(pid, found, world)
-                    targets[pid] = found
-                    CobbleCrewNavigationUtils.navigateTo(pokemonEntity, found)
-                }
-                return
-            }
-
-            if (world.getBlockState(target).isAir) {
-                CobbleCrewNavigationUtils.releaseTarget(pid, world)
-                targets.remove(pid)
-                return
-            }
-
-            CobbleCrewNavigationUtils.navigateTo(pokemonEntity, target)
-            if (WorkerVisualUtils.handleArrival(pokemonEntity, target, world, ParticleTypes.SNOWFLAKE, 3.0, WorkPhase.ENVIRONMENTAL)) {
-                val state = world.getBlockState(target)
-                val next = CHAIN[state.block]
-                if (next != null) {
-                    world.setBlockState(target, next.defaultState)
-                }
-                CobbleCrewNavigationUtils.releaseTarget(pid, world)
-                targets.remove(pid)
-            }
-        }
-
-        private fun findFrostTarget(world: World, origin: BlockPos): BlockPos? {
-            val water = CobbleCrewCacheManager.getTargets(origin, BlockCategory.WATER)
-            val ice = CobbleCrewCacheManager.getTargets(origin, BlockCategory.ICE)
-            return (water + ice)
+            (water + ice)
                 .filter { !CobbleCrewNavigationUtils.isTargeted(it, world) }
                 .minByOrNull { it.getSquaredDistance(origin) }
-        }
-
-        override fun hasActiveState(pokemonId: UUID) = pokemonId in targets
-        override fun cleanup(pokemonId: UUID) {
-            targets.remove(pokemonId)
-        }
-    }
+        },
+        action = { world, pos ->
+            val next = FROST_CHAIN[world.getBlockState(pos).block]
+            if (next != null) world.setBlockState(pos, next.defaultState)
+        },
+    )
 
     // ── G2: Obsidian Forge ───────────────────────────────────────────
-    // Lava source → obsidian (break + deposit via loot)
-    object ObsidianForge : Worker {
-        override val name = "obsidian_forge"
-        override val priority = WorkerPriority.MOVE
-        override val targetCategory = BlockCategory.LAVA
-
-        private val config get() = JobConfigManager.get(name)
-        private val qualifyingMoves = setOf("hydropump", "scald")
-        private val targets = mutableMapOf<UUID, BlockPos>()
-
-        init {
-            JobConfigManager.registerDefault("environmental", name, JobConfig(
-                enabled = true,
-                qualifyingMoves = qualifyingMoves.toList(),
-            ))
-        }
-
-        override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean {
-            if (!config.enabled) return false
-            val eff = config.qualifyingMoves.ifEmpty { qualifyingMoves }.map { it.lowercase() }.toSet()
-            return moves.any { it in eff }
-        }
-
-        override fun isAvailable(context: JobContext, pokemonId: UUID): Boolean {
-            val origin = context.origin
-            return CobbleCrewCacheManager.getTargets(origin, BlockCategory.LAVA).isNotEmpty()
-        }
-
-        override fun tick(context: JobContext, pokemonEntity: PokemonEntity) {
-            val world = context.world
-            val origin = context.origin
-            val pid = pokemonEntity.pokemon.uuid
-            val target = targets[pid]
-            if (target == null) {
-                val found = findLava(world, origin) ?: return
-                if (!CobbleCrewNavigationUtils.isTargeted(found, world)) {
-                    CobbleCrewNavigationUtils.claimTarget(pid, found, world)
-                    targets[pid] = found
-                    CobbleCrewNavigationUtils.navigateTo(pokemonEntity, found)
-                }
-                return
-            }
-
-            if (world.getBlockState(target).isAir) {
-                CobbleCrewNavigationUtils.releaseTarget(pid, world)
-                targets.remove(pid)
-                return
-            }
-
-            CobbleCrewNavigationUtils.navigateTo(pokemonEntity, target)
-            if (WorkerVisualUtils.handleArrival(pokemonEntity, target, world, ParticleTypes.CLOUD, 3.0, WorkPhase.ENVIRONMENTAL)) {
-                val state = world.getBlockState(target)
-                if (state.block == Blocks.LAVA) {
-                    world.setBlockState(target, Blocks.OBSIDIAN.defaultState)
-                }
-                CobbleCrewNavigationUtils.releaseTarget(pid, world)
-                targets.remove(pid)
-            }
-        }
-
-        private fun findLava(world: World, origin: BlockPos): BlockPos? {
-            return CobbleCrewCacheManager.getTargets(origin, BlockCategory.LAVA)
+    val ObsidianForge = EnvironmentalJob(
+        name = "obsidian_forge",
+        targetCategory = BlockCategory.LAVA,
+        qualifyingMoves = setOf("hydropump", "scald"),
+        priority = WorkerPriority.MOVE,
+        particle = ParticleTypes.CLOUD,
+        findTarget = { world, origin ->
+            CobbleCrewCacheManager.getTargets(origin, BlockCategory.LAVA)
                 .filter { !CobbleCrewNavigationUtils.isTargeted(it, world) }
                 .minByOrNull { it.getSquaredDistance(origin) }
-        }
-
-        override fun hasActiveState(pokemonId: UUID) = pokemonId in targets
-        override fun cleanup(pokemonId: UUID) {
-            targets.remove(pokemonId)
-        }
-    }
+        },
+        action = { world, pos ->
+            if (world.getBlockState(pos).block == Blocks.LAVA)
+                world.setBlockState(pos, Blocks.OBSIDIAN.defaultState)
+        },
+    )
 
     // ── G3: Growth Accelerator ───────────────────────────────────────
-    // Random-ticks crops in range to speed up growth
-    object GrowthAccelerator : Worker {
-        override val name = "growth_accelerator"
-        override val priority = WorkerPriority.MOVE
-        override val targetCategory = BlockCategory.GROWABLE
-
-        private val config get() = JobConfigManager.get(name)
-        private val qualifyingMoves = setOf("growth", "sunnyday")
-        private val targets = mutableMapOf<UUID, BlockPos>()
-
-        init {
-            JobConfigManager.registerDefault("environmental", name, JobConfig(
-                enabled = true,
-                qualifyingMoves = qualifyingMoves.toList(),
-            ))
-        }
-
-        override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean {
-            if (!config.enabled) return false
-            val eff = config.qualifyingMoves.ifEmpty { qualifyingMoves }.map { it.lowercase() }.toSet()
-            return moves.any { it in eff }
-        }
-
-        override fun isAvailable(context: JobContext, pokemonId: UUID): Boolean {
-            val origin = context.origin
-            return CobbleCrewCacheManager.getTargets(origin, BlockCategory.GROWABLE).isNotEmpty()
-        }
-
-        override fun tick(context: JobContext, pokemonEntity: PokemonEntity) {
-            val world = context.world
-            val origin = context.origin
-            val pid = pokemonEntity.pokemon.uuid
-            val target = targets[pid]
-            if (target == null) {
-                val found = findGrowable(world, origin) ?: return
-                if (!CobbleCrewNavigationUtils.isTargeted(found, world)) {
-                    CobbleCrewNavigationUtils.claimTarget(pid, found, world)
-                    targets[pid] = found
-                    CobbleCrewNavigationUtils.navigateTo(pokemonEntity, found)
-                }
-                return
-            }
-
-            if (world.getBlockState(target).isAir) {
-                CobbleCrewNavigationUtils.releaseTarget(pid, world)
-                targets.remove(pid)
-                return
-            }
-
-            CobbleCrewNavigationUtils.navigateTo(pokemonEntity, target)
-            if (WorkerVisualUtils.handleArrival(pokemonEntity, target, world, ParticleTypes.HAPPY_VILLAGER, 3.0, WorkPhase.ENVIRONMENTAL)) {
-                val sw = world as? ServerWorld
-                if (sw != null) {
-                    val state = world.getBlockState(target)
-                    if (state.block is CropBlock || state.block is SaplingBlock) {
-                        repeat(3) { state.randomTick(sw, target, sw.random) }
-                    }
-                }
-                CobbleCrewNavigationUtils.releaseTarget(pid, world)
-                targets.remove(pid)
-            }
-        }
-
-        private fun findGrowable(world: World, origin: BlockPos): BlockPos? {
-            return CobbleCrewCacheManager.getTargets(origin, BlockCategory.GROWABLE)
+    val GrowthAccelerator = EnvironmentalJob(
+        name = "growth_accelerator",
+        targetCategory = BlockCategory.GROWABLE,
+        qualifyingMoves = setOf("growth", "sunnyday"),
+        priority = WorkerPriority.MOVE,
+        particle = ParticleTypes.HAPPY_VILLAGER,
+        findTarget = { world, origin ->
+            CobbleCrewCacheManager.getTargets(origin, BlockCategory.GROWABLE)
                 .filter { !CobbleCrewNavigationUtils.isTargeted(it, world) }
                 .minByOrNull { it.getSquaredDistance(origin) }
-        }
-
-        override fun hasActiveState(pokemonId: UUID) = pokemonId in targets
-        override fun cleanup(pokemonId: UUID) {
-            targets.remove(pokemonId)
-        }
-    }
-
-    // ── G4: Lava Cauldron Filler ─────────────────────────────────────
-    object LavaCauldronFiller : Worker {
-        override val name = "lava_cauldron_filler"
-        override val priority = WorkerPriority.TYPE
-        override val targetCategory = BlockCategory.CAULDRON
-
-        private val config get() = JobConfigManager.get(name)
-        private val qualifyingMoves = setOf("lavaplume")
-        private val lastGenTime = mutableMapOf<UUID, Long>()
-
-        init {
-            JobConfigManager.registerDefault("environmental", name, JobConfig(
-                enabled = true,
-                cooldownSeconds = 90,
-                qualifyingMoves = qualifyingMoves.toList(),
-            ))
-        }
-
-        override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean {
-            if (!config.enabled) return false
-            val eff = config.qualifyingMoves.ifEmpty { qualifyingMoves }.map { it.lowercase() }.toSet()
-            return moves.any { it in eff }
-        }
-
-        override fun isAvailable(context: JobContext, pokemonId: UUID): Boolean {
-            val world = context.world
-            val origin = context.origin
-            return CobbleCrewCauldronUtils.findClosestCauldron(world, origin) != null
-        }
-
-        override fun tick(context: JobContext, pokemonEntity: PokemonEntity) {
-            val world = context.world
-            val origin = context.origin
-            val pid = pokemonEntity.pokemon.uuid
-            val now = world.time
-            val last = lastGenTime[pid] ?: 0L
-            val baseCd = (config.cooldownSeconds.takeIf { it > 0 } ?: 90) * 20L
-            val cd = WorkSpeedBoostManager.adjustCooldown(baseCd, origin, now)
-            if (now - last < cd) return
-
-            val cauldron = CobbleCrewCauldronUtils.findClosestCauldron(world, origin) ?: return
-            val current = CobbleCrewNavigationUtils.getTarget(pid, world)
-            if (current == null) {
-                if (!CobbleCrewNavigationUtils.isTargeted(cauldron, world)) {
-                    CobbleCrewNavigationUtils.claimTarget(pid, cauldron, world)
-                    CobbleCrewNavigationUtils.navigateTo(pokemonEntity, cauldron)
-                }
-                return
+        },
+        action = { world, pos ->
+            val sw = world as? ServerWorld ?: return@EnvironmentalJob
+            val state = world.getBlockState(pos)
+            if (state.block is CropBlock || state.block is SaplingBlock) {
+                repeat(3) { state.randomTick(sw, pos, sw.random) }
             }
-            CobbleCrewNavigationUtils.navigateTo(pokemonEntity, current)
-            if (WorkerVisualUtils.handleArrival(pokemonEntity, current, world, ParticleTypes.LAVA, 3.0, WorkPhase.ENVIRONMENTAL)) {
-                CobbleCrewCauldronUtils.addFluid(world, current, CobbleCrewCauldronUtils.CauldronFluid.LAVA)
-                lastGenTime[pid] = now
-                CobbleCrewNavigationUtils.releaseTarget(pid, world)
-            }
-        }
+        },
+    )
 
-        override fun cleanup(pokemonId: UUID) { lastGenTime.remove(pokemonId) }
-    }
+    // ── G4–G6: Cauldron Fillers ──────────────────────────────────────
+    private fun cauldronFiller(
+        name: String,
+        move: String,
+        particle: ParticleEffect,
+        fluid: CobbleCrewCauldronUtils.CauldronFluid,
+    ) = EnvironmentalJob(
+        name = name,
+        targetCategory = BlockCategory.CAULDRON,
+        qualifyingMoves = setOf(move),
+        priority = WorkerPriority.TYPE,
+        particle = particle,
+        defaultCooldownSeconds = 90,
+        findTarget = { world, origin -> CobbleCrewCauldronUtils.findClosestCauldron(world, origin) },
+        action = { world, pos -> CobbleCrewCauldronUtils.addFluid(world, pos, fluid) },
+        validate = { _, _ -> true },
+    )
 
-    // ── G5: Water Cauldron Filler ────────────────────────────────────
-    object WaterCauldronFiller : Worker {
-        override val name = "water_cauldron_filler"
-        override val priority = WorkerPriority.TYPE
-        override val targetCategory = BlockCategory.CAULDRON
-
-        private val config get() = JobConfigManager.get(name)
-        private val qualifyingMoves = setOf("surf")
-        private val lastGenTime = mutableMapOf<UUID, Long>()
-
-        init {
-            JobConfigManager.registerDefault("environmental", name, JobConfig(
-                enabled = true,
-                cooldownSeconds = 90,
-                qualifyingMoves = qualifyingMoves.toList(),
-            ))
-        }
-
-        override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean {
-            if (!config.enabled) return false
-            val eff = config.qualifyingMoves.ifEmpty { qualifyingMoves }.map { it.lowercase() }.toSet()
-            return moves.any { it in eff }
-        }
-
-        override fun isAvailable(context: JobContext, pokemonId: UUID): Boolean {
-            val world = context.world
-            val origin = context.origin
-            return CobbleCrewCauldronUtils.findClosestCauldron(world, origin) != null
-        }
-
-        override fun tick(context: JobContext, pokemonEntity: PokemonEntity) {
-            val world = context.world
-            val origin = context.origin
-            val pid = pokemonEntity.pokemon.uuid
-            val now = world.time
-            val last = lastGenTime[pid] ?: 0L
-            val baseCd = (config.cooldownSeconds.takeIf { it > 0 } ?: 90) * 20L
-            val cd = WorkSpeedBoostManager.adjustCooldown(baseCd, origin, now)
-            if (now - last < cd) return
-
-            val cauldron = CobbleCrewCauldronUtils.findClosestCauldron(world, origin) ?: return
-            val current = CobbleCrewNavigationUtils.getTarget(pid, world)
-            if (current == null) {
-                if (!CobbleCrewNavigationUtils.isTargeted(cauldron, world)) {
-                    CobbleCrewNavigationUtils.claimTarget(pid, cauldron, world)
-                    CobbleCrewNavigationUtils.navigateTo(pokemonEntity, cauldron)
-                }
-                return
-            }
-            CobbleCrewNavigationUtils.navigateTo(pokemonEntity, current)
-            if (WorkerVisualUtils.handleArrival(pokemonEntity, current, world, ParticleTypes.SPLASH, 3.0, WorkPhase.ENVIRONMENTAL)) {
-                CobbleCrewCauldronUtils.addFluid(world, current, CobbleCrewCauldronUtils.CauldronFluid.WATER)
-                lastGenTime[pid] = now
-                CobbleCrewNavigationUtils.releaseTarget(pid, world)
-            }
-        }
-
-        override fun cleanup(pokemonId: UUID) { lastGenTime.remove(pokemonId) }
-    }
-
-    // ── G6: Snow Cauldron Filler ─────────────────────────────────────
-    object SnowCauldronFiller : Worker {
-        override val name = "snow_cauldron_filler"
-        override val priority = WorkerPriority.TYPE
-        override val targetCategory = BlockCategory.CAULDRON
-
-        private val config get() = JobConfigManager.get(name)
-        private val qualifyingMoves = setOf("blizzard")
-        private val lastGenTime = mutableMapOf<UUID, Long>()
-
-        init {
-            JobConfigManager.registerDefault("environmental", name, JobConfig(
-                enabled = true,
-                cooldownSeconds = 90,
-                qualifyingMoves = qualifyingMoves.toList(),
-            ))
-        }
-
-        override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean {
-            if (!config.enabled) return false
-            val eff = config.qualifyingMoves.ifEmpty { qualifyingMoves }.map { it.lowercase() }.toSet()
-            return moves.any { it in eff }
-        }
-
-        override fun isAvailable(context: JobContext, pokemonId: UUID): Boolean {
-            val world = context.world
-            val origin = context.origin
-            return CobbleCrewCauldronUtils.findClosestCauldron(world, origin) != null
-        }
-
-        override fun tick(context: JobContext, pokemonEntity: PokemonEntity) {
-            val world = context.world
-            val origin = context.origin
-            val pid = pokemonEntity.pokemon.uuid
-            val now = world.time
-            val last = lastGenTime[pid] ?: 0L
-            val baseCd = (config.cooldownSeconds.takeIf { it > 0 } ?: 90) * 20L
-            val cd = WorkSpeedBoostManager.adjustCooldown(baseCd, origin, now)
-            if (now - last < cd) return
-
-            val cauldron = CobbleCrewCauldronUtils.findClosestCauldron(world, origin) ?: return
-            val current = CobbleCrewNavigationUtils.getTarget(pid, world)
-            if (current == null) {
-                if (!CobbleCrewNavigationUtils.isTargeted(cauldron, world)) {
-                    CobbleCrewNavigationUtils.claimTarget(pid, cauldron, world)
-                    CobbleCrewNavigationUtils.navigateTo(pokemonEntity, cauldron)
-                }
-                return
-            }
-            CobbleCrewNavigationUtils.navigateTo(pokemonEntity, current)
-            if (WorkerVisualUtils.handleArrival(pokemonEntity, current, world, ParticleTypes.SNOWFLAKE, 3.0, WorkPhase.ENVIRONMENTAL)) {
-                CobbleCrewCauldronUtils.addFluid(world, current, CobbleCrewCauldronUtils.CauldronFluid.POWDER_SNOW)
-                lastGenTime[pid] = now
-                CobbleCrewNavigationUtils.releaseTarget(pid, world)
-            }
-        }
-
-        override fun cleanup(pokemonId: UUID) { lastGenTime.remove(pokemonId) }
-    }
+    val LavaCauldronFiller = cauldronFiller("lava_cauldron_filler", "lavaplume", ParticleTypes.LAVA, CobbleCrewCauldronUtils.CauldronFluid.LAVA)
+    val WaterCauldronFiller = cauldronFiller("water_cauldron_filler", "surf", ParticleTypes.SPLASH, CobbleCrewCauldronUtils.CauldronFluid.WATER)
+    val SnowCauldronFiller = cauldronFiller("snow_cauldron_filler", "blizzard", ParticleTypes.SNOWFLAKE, CobbleCrewCauldronUtils.CauldronFluid.POWDER_SNOW)
 
     // ── G7: Furnace Fueler ───────────────────────────────────────────
-    object FurnaceFueler : Worker {
-        override val name = "furnace_fueler"
-        override val priority = WorkerPriority.TYPE
-        override val targetCategory = BlockCategory.FURNACE
+    val FurnaceFueler = EnvironmentalJob(
+        name = "furnace_fueler",
+        targetCategory = BlockCategory.FURNACE,
+        qualifyingMoves = setOf("fireblast"),
+        priority = WorkerPriority.TYPE,
+        particle = ParticleTypes.FLAME,
+        defaultCooldownSeconds = 80,
+        defaultBurnTimeSeconds = 200,
+        findTarget = ::findReadyFurnace,
+        action = ::addBurnTime,
+    )
 
-        private val config get() = JobConfigManager.get(name)
-        private val qualifyingMoves = setOf("fireblast")
-        private val lastGenTime = mutableMapOf<UUID, Long>()
-
-        init {
-            JobConfigManager.registerDefault("environmental", name, JobConfig(
-                enabled = true,
-                cooldownSeconds = 80,
-                qualifyingMoves = qualifyingMoves.toList(),
-                burnTimeSeconds = 200,
-            ))
-        }
-
-        override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean {
-            if (!config.enabled) return false
-            val eff = config.qualifyingMoves.ifEmpty { qualifyingMoves }.map { it.lowercase() }.toSet()
-            return moves.any { it in eff }
-        }
-
-        override fun isAvailable(context: JobContext, pokemonId: UUID): Boolean {
-            val world = context.world
-            val origin = context.origin
-            return findReadyFurnace(world, origin) != null
-        }
-
-        override fun tick(context: JobContext, pokemonEntity: PokemonEntity) {
-            val world = context.world
-            val origin = context.origin
-            val pid = pokemonEntity.pokemon.uuid
-            val now = world.time
-            val last = lastGenTime[pid] ?: 0L
-            val baseCd = (config.cooldownSeconds.takeIf { it > 0 } ?: 80) * 20L
-            val cd = WorkSpeedBoostManager.adjustCooldown(baseCd, origin, now)
-            if (now - last < cd) return
-
-            val furnace = findReadyFurnace(world, origin) ?: return
-            val current = CobbleCrewNavigationUtils.getTarget(pid, world)
-            if (current == null) {
-                if (!CobbleCrewNavigationUtils.isTargeted(furnace, world)) {
-                    CobbleCrewNavigationUtils.claimTarget(pid, furnace, world)
-                    CobbleCrewNavigationUtils.navigateTo(pokemonEntity, furnace)
-                }
-                return
+    private fun findReadyFurnace(world: World, origin: BlockPos): BlockPos? =
+        CobbleCrewCacheManager.getTargets(origin, BlockCategory.FURNACE)
+            .filter { pos ->
+                val be = world.getBlockEntity(pos) as? AbstractFurnaceBlockEntity ?: return@filter false
+                !be.getStack(0).isEmpty
+                    && !world.getBlockState(pos).get(AbstractFurnaceBlock.LIT)
+                    && !CobbleCrewNavigationUtils.isRecentlyExpired(pos, world)
             }
-            CobbleCrewNavigationUtils.navigateTo(pokemonEntity, current)
-            if (WorkerVisualUtils.handleArrival(pokemonEntity, current, world, ParticleTypes.FLAME, 3.0, WorkPhase.ENVIRONMENTAL)) {
-                addBurnTime(world, current)
-                lastGenTime[pid] = now
-                CobbleCrewNavigationUtils.releaseTarget(pid, world)
-            }
-        }
+            .minByOrNull { it.getSquaredDistance(origin) }
 
-        private fun findReadyFurnace(world: World, origin: BlockPos): BlockPos? {
-            val targets = CobbleCrewCacheManager.getTargets(origin, BlockCategory.FURNACE)
-            return targets
-                .filter { pos ->
-                    val be = world.getBlockEntity(pos) as? AbstractFurnaceBlockEntity ?: return@filter false
-                    !be.getStack(0).isEmpty
-                        && !world.getBlockState(pos).get(AbstractFurnaceBlock.LIT)
-                        && !CobbleCrewNavigationUtils.isRecentlyExpired(pos, world)
-                }
-                .minByOrNull { it.getSquaredDistance(origin) }
-        }
-
-        private fun addBurnTime(world: World, pos: BlockPos) {
-            val be = world.getBlockEntity(pos) as? AbstractFurnaceBlockEntity ?: return
-            val accessor = be as AbstractFurnaceBlockEntityAccessor
-            val bt = (config.burnTimeSeconds?.takeIf { it > 0 } ?: 200) * 20
-            val clamped = bt.coerceAtMost(20000)
-            accessor.setBurnTime(clamped)
-            accessor.setFuelTime(clamped)
-            world.setBlockState(pos, world.getBlockState(pos).with(AbstractFurnaceBlock.LIT, true))
-            be.markDirty()
-        }
-
-        override fun cleanup(pokemonId: UUID) { lastGenTime.remove(pokemonId) }
+    private fun addBurnTime(world: World, pos: BlockPos) {
+        val be = world.getBlockEntity(pos) as? AbstractFurnaceBlockEntity ?: return
+        val accessor = be as AbstractFurnaceBlockEntityAccessor
+        val config = JobConfigManager.get("furnace_fueler")
+        val bt = (config.burnTimeSeconds?.takeIf { it > 0 } ?: 200) * 20
+        val clamped = bt.coerceAtMost(20000)
+        accessor.setBurnTime(clamped)
+        accessor.setFuelTime(clamped)
+        world.setBlockState(pos, world.getBlockState(pos).with(AbstractFurnaceBlock.LIT, true))
+        be.markDirty()
     }
 
     // ── G8: Brewing Stand Fueler ─────────────────────────────────────
-    object BrewingStandFueler : Worker {
-        override val name = "brewing_stand_fueler"
-        override val priority = WorkerPriority.TYPE
-        override val targetCategory = BlockCategory.BREWING_STAND
+    val BrewingStandFueler = EnvironmentalJob(
+        name = "brewing_stand_fueler",
+        targetCategory = BlockCategory.BREWING_STAND,
+        qualifyingMoves = setOf("dragonbreath"),
+        priority = WorkerPriority.TYPE,
+        particle = ParticleTypes.FLAME,
+        defaultCooldownSeconds = 80,
+        defaultAddedFuel = 10,
+        findTarget = ::findReadyBrewingStand,
+        action = ::addBrewingFuel,
+    )
 
-        private val config get() = JobConfigManager.get(name)
-        private val qualifyingMoves = setOf("dragonbreath")
-        private val lastGenTime = mutableMapOf<UUID, Long>()
-
-        init {
-            JobConfigManager.registerDefault("environmental", name, JobConfig(
-                enabled = true,
-                cooldownSeconds = 80,
-                qualifyingMoves = qualifyingMoves.toList(),
-                addedFuel = 10,
-            ))
-        }
-
-        override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean {
-            if (!config.enabled) return false
-            val eff = config.qualifyingMoves.ifEmpty { qualifyingMoves }.map { it.lowercase() }.toSet()
-            return moves.any { it in eff }
-        }
-
-        override fun isAvailable(context: JobContext, pokemonId: UUID): Boolean {
-            val world = context.world
-            val origin = context.origin
-            return findReadyBrewingStand(world, origin) != null
-        }
-
-        override fun tick(context: JobContext, pokemonEntity: PokemonEntity) {
-            val world = context.world
-            val origin = context.origin
-            val pid = pokemonEntity.pokemon.uuid
-            val now = world.time
-            val last = lastGenTime[pid] ?: 0L
-            val baseCd = (config.cooldownSeconds.takeIf { it > 0 } ?: 80) * 20L
-            val cd = WorkSpeedBoostManager.adjustCooldown(baseCd, origin, now)
-            if (now - last < cd) return
-
-            val stand = findReadyBrewingStand(world, origin) ?: return
-            val current = CobbleCrewNavigationUtils.getTarget(pid, world)
-            if (current == null) {
-                if (!CobbleCrewNavigationUtils.isTargeted(stand, world)) {
-                    CobbleCrewNavigationUtils.claimTarget(pid, stand, world)
-                    CobbleCrewNavigationUtils.navigateTo(pokemonEntity, stand)
-                }
-                return
+    private fun findReadyBrewingStand(world: World, origin: BlockPos): BlockPos? =
+        CobbleCrewCacheManager.getTargets(origin, BlockCategory.BREWING_STAND)
+            .filter { pos ->
+                val be = world.getBlockEntity(pos) as? BrewingStandBlockEntity ?: return@filter false
+                val accessor = be as BrewingStandBlockEntityAccessor
+                accessor.fuel < BrewingStandBlockEntity.MAX_FUEL_USES
+                    && !CobbleCrewNavigationUtils.isRecentlyExpired(pos, world)
             }
-            CobbleCrewNavigationUtils.navigateTo(pokemonEntity, current)
-            if (WorkerVisualUtils.handleArrival(pokemonEntity, current, world, ParticleTypes.FLAME, 3.0, WorkPhase.ENVIRONMENTAL)) {
-                addFuel(world, current)
-                lastGenTime[pid] = now
-                CobbleCrewNavigationUtils.releaseTarget(pid, world)
-            }
-        }
+            .minByOrNull { it.getSquaredDistance(origin) }
 
-        private fun findReadyBrewingStand(world: World, origin: BlockPos): BlockPos? {
-            val targets = CobbleCrewCacheManager.getTargets(origin, BlockCategory.BREWING_STAND)
-            return targets
-                .filter { pos ->
-                    val be = world.getBlockEntity(pos) as? BrewingStandBlockEntity ?: return@filter false
-                    val accessor = be as BrewingStandBlockEntityAccessor
-                    accessor.fuel < BrewingStandBlockEntity.MAX_FUEL_USES
-                        && !CobbleCrewNavigationUtils.isRecentlyExpired(pos, world)
-                }
-                .minByOrNull { it.getSquaredDistance(origin) }
-        }
-
-        private fun addFuel(world: World, pos: BlockPos) {
-            val be = world.getBlockEntity(pos) as? BrewingStandBlockEntity ?: return
-            val accessor = be as BrewingStandBlockEntityAccessor
-            val added = (accessor.fuel + (config.addedFuel?.takeIf { it > 0 } ?: 10))
-                .coerceAtMost(BrewingStandBlockEntity.MAX_FUEL_USES)
-            accessor.setFuel(added)
-            be.markDirty()
-            world.updateListeners(pos, world.getBlockState(pos), world.getBlockState(pos), Block.NOTIFY_ALL)
-        }
-
-        override fun cleanup(pokemonId: UUID) { lastGenTime.remove(pokemonId) }
+    private fun addBrewingFuel(world: World, pos: BlockPos) {
+        val be = world.getBlockEntity(pos) as? BrewingStandBlockEntity ?: return
+        val accessor = be as BrewingStandBlockEntityAccessor
+        val config = JobConfigManager.get("brewing_stand_fueler")
+        val added = (accessor.fuel + (config.addedFuel?.takeIf { it > 0 } ?: 10))
+            .coerceAtMost(BrewingStandBlockEntity.MAX_FUEL_USES)
+        accessor.setFuel(added)
+        be.markDirty()
+        world.updateListeners(pos, world.getBlockState(pos), world.getBlockState(pos), Block.NOTIFY_ALL)
     }
 
     // ── G9: Fire Douser ──────────────────────────────────────────────
-    object FireDouser : Worker {
-        override val name = "fire_douser"
-        override val priority = WorkerPriority.TYPE
-        override val targetCategory = BlockCategory.FIRE
-
-        private val config get() = JobConfigManager.get(name)
-        private val qualifyingMoves = setOf("waterpulse", "raindance")
-        private val targets = mutableMapOf<UUID, BlockPos>()
-
-        init {
-            JobConfigManager.registerDefault("environmental", name, JobConfig(
-                enabled = true,
-                qualifyingMoves = qualifyingMoves.toList(),
-                radius = 2,
-            ))
-        }
-
-        override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean {
-            if (!config.enabled) return false
-            val eff = config.qualifyingMoves.ifEmpty { qualifyingMoves }.map { it.lowercase() }.toSet()
-            return moves.any { it in eff }
-        }
-
-        override fun isAvailable(context: JobContext, pokemonId: UUID): Boolean {
-            val origin = context.origin
-            return CobbleCrewCacheManager.getTargets(origin, BlockCategory.FIRE).isNotEmpty()
-        }
-
-        override fun tick(context: JobContext, pokemonEntity: PokemonEntity) {
-            val world = context.world
-            val origin = context.origin
-            val pid = pokemonEntity.pokemon.uuid
-            val target = targets[pid]
-            if (target == null) {
-                val found = findFire(world, origin) ?: return
-                if (!CobbleCrewNavigationUtils.isTargeted(found, world)) {
-                    CobbleCrewNavigationUtils.claimTarget(pid, found, world)
-                    targets[pid] = found
-                    CobbleCrewNavigationUtils.navigateTo(pokemonEntity, found)
-                }
-                return
-            }
-            CobbleCrewNavigationUtils.navigateTo(pokemonEntity, target)
-            if (WorkerVisualUtils.handleArrival(pokemonEntity, target, world, ParticleTypes.SMOKE, 3.0, WorkPhase.ENVIRONMENTAL)) {
-                val r = config.radius?.takeIf { it > 0 } ?: 2
-                BlockPos.iterate(target.add(-r, 0, -r), target.add(r, 0, r)).forEach { p ->
-                    if (world.getBlockState(p).block == Blocks.FIRE || world.getBlockState(p).block == Blocks.SOUL_FIRE) {
-                        world.setBlockState(p, Blocks.AIR.defaultState)
-                    }
-                }
-                CobbleCrewNavigationUtils.releaseTarget(pid, world)
-                targets.remove(pid)
-            }
-        }
-
-        private fun findFire(world: World, origin: BlockPos): BlockPos? {
-            val targets = CobbleCrewCacheManager.getTargets(origin, BlockCategory.FIRE)
-            return targets
+    val FireDouser = EnvironmentalJob(
+        name = "fire_douser",
+        targetCategory = BlockCategory.FIRE,
+        qualifyingMoves = setOf("waterpulse", "raindance"),
+        priority = WorkerPriority.TYPE,
+        particle = ParticleTypes.SMOKE,
+        defaultRadius = 2,
+        findTarget = { world, origin ->
+            CobbleCrewCacheManager.getTargets(origin, BlockCategory.FIRE)
                 .filter { !CobbleCrewNavigationUtils.isRecentlyExpired(it, world) }
                 .minByOrNull { it.getSquaredDistance(origin) }
-        }
-
-        override fun hasActiveState(pokemonId: UUID) = pokemonId in targets
-        override fun cleanup(pokemonId: UUID) { targets.remove(pokemonId) }
-    }
+        },
+        action = { world, pos ->
+            val r = JobConfigManager.get("fire_douser").radius?.takeIf { it > 0 } ?: 2
+            BlockPos.iterate(pos.add(-r, 0, -r), pos.add(r, 0, r)).forEach { p ->
+                val block = world.getBlockState(p).block
+                if (block == Blocks.FIRE || block == Blocks.SOUL_FIRE)
+                    world.setBlockState(p, Blocks.AIR.defaultState)
+            }
+        },
+    )
 
     // ── G10: Crop Irrigator ──────────────────────────────────────────
-    object CropIrrigatorWorker : Worker {
-        override val name = "crop_irrigator"
-        override val priority = WorkerPriority.TYPE
-        override val targetCategory = BlockCategory.FARMLAND
-
-        private val config get() = JobConfigManager.get(name)
-        private val qualifyingMoves = setOf("muddywater")
-        private val targets = mutableMapOf<UUID, BlockPos>()
-
-        init {
-            JobConfigManager.registerDefault("environmental", name, JobConfig(
-                enabled = true,
-                qualifyingMoves = qualifyingMoves.toList(),
-                radius = 2,
-            ))
-        }
-
-        override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean {
-            if (!config.enabled) return false
-            val eff = config.qualifyingMoves.ifEmpty { qualifyingMoves }.map { it.lowercase() }.toSet()
-            return moves.any { it in eff }
-        }
-
-        override fun isAvailable(context: JobContext, pokemonId: UUID): Boolean {
-            val world = context.world
-            val origin = context.origin
-            return findDryFarmland(world, origin) != null
-        }
-
-        override fun tick(context: JobContext, pokemonEntity: PokemonEntity) {
-            val world = context.world
-            val origin = context.origin
-            val pid = pokemonEntity.pokemon.uuid
-            val target = targets[pid]
-            if (target == null) {
-                val found = findDryFarmland(world, origin) ?: return
-                if (!CobbleCrewNavigationUtils.isTargeted(found, world)) {
-                    CobbleCrewNavigationUtils.claimTarget(pid, found, world)
-                    targets[pid] = found
-                    CobbleCrewNavigationUtils.navigateTo(pokemonEntity, found)
-                }
-                return
-            }
-            CobbleCrewNavigationUtils.navigateTo(pokemonEntity, target)
-            if (WorkerVisualUtils.handleArrival(pokemonEntity, target, world, ParticleTypes.SPLASH, 3.0, WorkPhase.ENVIRONMENTAL)) {
-                val r = config.radius?.takeIf { it > 0 } ?: 2
-                BlockPos.iterate(target.add(-r, 0, -r), target.add(r, 0, r)).forEach { p ->
-                    val s = world.getBlockState(p)
-                    if (s.block == Blocks.FARMLAND) {
-                        world.setBlockState(p, s.with(FarmlandBlock.MOISTURE, FarmlandBlock.MAX_MOISTURE), Block.NOTIFY_LISTENERS)
-                    }
-                }
-                CobbleCrewNavigationUtils.releaseTarget(pid, world)
-                targets.remove(pid)
-            }
-        }
-
-        private fun findDryFarmland(world: World, origin: BlockPos): BlockPos? {
-            val targets = CobbleCrewCacheManager.getTargets(origin, BlockCategory.FARMLAND)
-            return targets
+    val CropIrrigatorWorker = EnvironmentalJob(
+        name = "crop_irrigator",
+        targetCategory = BlockCategory.FARMLAND,
+        qualifyingMoves = setOf("muddywater"),
+        priority = WorkerPriority.TYPE,
+        particle = ParticleTypes.SPLASH,
+        defaultRadius = 2,
+        findTarget = { world, origin ->
+            CobbleCrewCacheManager.getTargets(origin, BlockCategory.FARMLAND)
                 .filter { pos ->
                     world.getBlockState(pos).block == Blocks.FARMLAND
                         && world.getBlockState(pos).get(FarmlandBlock.MOISTURE) <= 2
                         && !CobbleCrewNavigationUtils.isRecentlyExpired(pos, world)
                 }
                 .minByOrNull { it.getSquaredDistance(origin) }
-        }
-
-        override fun hasActiveState(pokemonId: UUID) = pokemonId in targets
-        override fun cleanup(pokemonId: UUID) { targets.remove(pokemonId) }
-    }
+        },
+        action = { world, pos ->
+            val r = JobConfigManager.get("crop_irrigator").radius?.takeIf { it > 0 } ?: 2
+            BlockPos.iterate(pos.add(-r, 0, -r), pos.add(r, 0, r)).forEach { p ->
+                val s = world.getBlockState(p)
+                if (s.block == Blocks.FARMLAND)
+                    world.setBlockState(p, s.with(FarmlandBlock.MOISTURE, FarmlandBlock.MAX_MOISTURE), Block.NOTIFY_LISTENERS)
+            }
+        },
+        validate = { world, pos ->
+            world.getBlockState(pos).block == Blocks.FARMLAND
+                && world.getBlockState(pos).get(FarmlandBlock.MOISTURE) <= 2
+        },
+    )
 
     // ── G11: Bee Pollinator ──────────────────────────────────────────
-    // Fills non-full beehives with honey over time (counterpart to honey_harvester gathering)
-    object BeePollinator : Worker {
-        override val name = "bee_pollinator"
-        override val priority = WorkerPriority.SPECIES
-        override val targetCategory = BlockCategory.HONEY
-
-        private val config get() = JobConfigManager.get(name)
-        private val qualifyingMoves = setOf("pollenpuff")
-        private val fallbackSpecies = listOf("Combee", "Vespiquen")
-        private val lastGenTime = mutableMapOf<UUID, Long>()
-        private val targets = mutableMapOf<UUID, BlockPos>()
-
-        init {
-            JobConfigManager.registerDefault("environmental", name, JobConfig(
-                enabled = true,
-                cooldownSeconds = 120,
-                qualifyingMoves = qualifyingMoves.toList(),
-                fallbackSpecies = fallbackSpecies,
-            ))
-        }
-
-        override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean {
-            if (!config.enabled) return false
-            val eff = config.qualifyingMoves.ifEmpty { qualifyingMoves }.map { it.lowercase() }.toSet()
-            if (moves.any { it in eff }) return true
-            val sp = config.fallbackSpecies.ifEmpty { fallbackSpecies }
-            return sp.any { it.equals(species, ignoreCase = true) }
-        }
-
-        override fun isAvailable(context: JobContext, pokemonId: UUID): Boolean {
-            val world = context.world
-            val origin = context.origin
-            return findNonFullHive(world, origin) != null
-        }
-
-        override fun tick(context: JobContext, pokemonEntity: PokemonEntity) {
-            val world = context.world
-            val origin = context.origin
-            val pid = pokemonEntity.pokemon.uuid
-            val now = world.time
-            val last = lastGenTime[pid] ?: 0L
-            val baseCd = (config.cooldownSeconds.takeIf { it > 0 } ?: 120) * 20L
-            val cd = WorkSpeedBoostManager.adjustCooldown(baseCd, origin, now)
-            if (now - last < cd) return
-
-            val target = targets[pid]
-            if (target == null) {
-                val found = findNonFullHive(world, origin) ?: return
-                if (!CobbleCrewNavigationUtils.isTargeted(found, world)) {
-                    CobbleCrewNavigationUtils.claimTarget(pid, found, world)
-                    targets[pid] = found
-                    CobbleCrewNavigationUtils.navigateTo(pokemonEntity, found)
-                }
-                return
-            }
-            CobbleCrewNavigationUtils.navigateTo(pokemonEntity, target)
-            if (WorkerVisualUtils.handleArrival(pokemonEntity, target, world, ParticleTypes.WAX_ON, 3.0, WorkPhase.ENVIRONMENTAL)) {
-                val state = world.getBlockState(target)
-                if (state.block is BeehiveBlock) {
-                    val level = state.get(BeehiveBlock.HONEY_LEVEL)
-                    if (level < BeehiveBlock.FULL_HONEY_LEVEL) {
-                        world.setBlockState(target, state.with(BeehiveBlock.HONEY_LEVEL, level + 1), Block.NOTIFY_ALL)
-                    }
-                }
-                lastGenTime[pid] = now
-                CobbleCrewNavigationUtils.releaseTarget(pid, world)
-                targets.remove(pid)
-            }
-        }
-
-        private fun findNonFullHive(world: World, origin: BlockPos): BlockPos? {
-            val hives = CobbleCrewCacheManager.getTargets(origin, BlockCategory.HONEY)
-            return hives
+    val BeePollinator = EnvironmentalJob(
+        name = "bee_pollinator",
+        targetCategory = BlockCategory.HONEY,
+        qualifyingMoves = setOf("pollenpuff"),
+        fallbackSpecies = listOf("Combee", "Vespiquen"),
+        priority = WorkerPriority.SPECIES,
+        particle = ParticleTypes.WAX_ON,
+        defaultCooldownSeconds = 120,
+        findTarget = { world, origin ->
+            CobbleCrewCacheManager.getTargets(origin, BlockCategory.HONEY)
                 .filter { pos ->
                     val s = world.getBlockState(pos)
                     s.block is BeehiveBlock
@@ -840,14 +263,20 @@ object EnvironmentalJobs {
                         && !CobbleCrewNavigationUtils.isRecentlyExpired(pos, world)
                 }
                 .minByOrNull { it.getSquaredDistance(origin) }
-        }
-
-        override fun hasActiveState(pokemonId: UUID) = pokemonId in targets
-        override fun cleanup(pokemonId: UUID) {
-            lastGenTime.remove(pokemonId)
-            targets.remove(pokemonId)
-        }
-    }
+        },
+        action = { world, pos ->
+            val state = world.getBlockState(pos)
+            if (state.block is BeehiveBlock) {
+                val level = state.get(BeehiveBlock.HONEY_LEVEL)
+                if (level < BeehiveBlock.FULL_HONEY_LEVEL)
+                    world.setBlockState(pos, state.with(BeehiveBlock.HONEY_LEVEL, level + 1), Block.NOTIFY_ALL)
+            }
+        },
+        validate = { world, pos ->
+            val s = world.getBlockState(pos)
+            s.block is BeehiveBlock && s.get(BeehiveBlock.HONEY_LEVEL) < BeehiveBlock.FULL_HONEY_LEVEL
+        },
+    )
 
     fun register() {
         WorkerRegistry.registerAll(

@@ -50,12 +50,15 @@ object WorkSpeedBoostManager {
      */
     fun getSpeedMultiplier(origin: BlockPos, worldTime: Long): Double {
         val list = boosts[origin] ?: return 1.0
-        list.removeAll { it.expiryTick < worldTime }
-        if (list.isEmpty()) {
-            boosts.remove(origin)
-            return 1.0
-        }
+        pruneExpired(list, origin, worldTime)
+        if (list.isEmpty()) return 1.0
         return list.fold(1.0) { acc, b -> acc * b.multiplier }.coerceAtLeast(MIN_MULTIPLIER)
+    }
+
+    /** Remove expired boosts from a list, cleaning up the map entry if empty. */
+    private fun pruneExpired(list: MutableList<Boost>, origin: BlockPos, worldTime: Long) {
+        list.removeAll { it.expiryTick < worldTime }
+        if (list.isEmpty()) boosts.remove(origin)
     }
 
     /**
@@ -70,7 +73,7 @@ object WorkSpeedBoostManager {
     /** Get active boost count for an origin (for debug display). */
     fun getActiveBoostCount(origin: BlockPos, worldTime: Long): Int {
         val list = boosts[origin] ?: return 0
-        list.removeAll { it.expiryTick < worldTime }
+        pruneExpired(list, origin, worldTime)
         return list.size
     }
 

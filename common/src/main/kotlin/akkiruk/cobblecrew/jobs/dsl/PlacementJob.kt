@@ -41,24 +41,17 @@ class PlacementJob(
     override val targetCategory: BlockCategory? = null
     override val placeParticle: ParticleEffect = particle
 
-    fun defaultConfig(): JobConfig = JobConfig(
-        enabled = true,
-        qualifyingMoves = qualifyingMoves.toList(),
-        fallbackType = fallbackType,
-        fallbackSpecies = fallbackSpecies,
-    )
-
     init {
-        JobConfigManager.registerDefault(category, name, defaultConfig())
+        JobConfigManager.registerDefault(category, name, JobConfig(
+            enabled = true,
+            qualifyingMoves = qualifyingMoves.toList(),
+            fallbackType = fallbackType,
+            fallbackSpecies = fallbackSpecies,
+        ))
     }
 
-    override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean {
-        if (!config.enabled) return false
-        val effectiveMoves = config.qualifyingMoves.ifEmpty { qualifyingMoves }.map { it.lowercase() }.toSet()
-        if (moves.any { it in effectiveMoves }) return true
-        val sp = config.fallbackSpecies.ifEmpty { fallbackSpecies }
-        return sp.any { it.equals(species, ignoreCase = true) }
-    }
+    override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean =
+        dslEligible(config, qualifyingMoves, fallbackSpecies, moves, species)
 
     override fun itemPredicate(stack: ItemStack): Boolean = itemCheck(stack)
     override fun findPlacementTarget(world: World, origin: BlockPos): BlockPos? = findTarget(world, origin)

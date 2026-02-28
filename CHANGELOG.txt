@@ -1,3 +1,15 @@
+## 3.0.31
+- Fixed ScoutWorker crashing from off-thread world access — structure locating now runs on the server thread
+- Fixed navigateToPlayer() pathfinding every single tick — now throttled to every 10 ticks
+- Fixed unreachable block cache growing without bound — expired entries are now swept periodically
+- Fixed potential item duplication in idle ground pickup — items are now split atomically instead of copied
+- Fixed getTargets() returning raw mutable cache references — workers now get defensive copies, preventing concurrent modification
+- Cached PokemonProfile job eligibility list instead of re-concatenating every call
+- Block breaking in harvesters now fires proper block-break events for mod compatibility (breakBlock instead of setBlockState AIR)
+- Replaced Math.random() with world.random in all combo jobs for deterministic server-side RNG
+- WorkSpeedBoostManager methods are now side-effect-free (expiry pruning extracted to shared helper)
+- Battle handler errors are now logged instead of silently swallowed
+
 ## 3.0.30
 - Reduced idle downtime — Pokémon no longer go lazy for long stretches between jobs
 - Scan cooldown reduced from 60s → 20s (configurable via `scanCooldown`)

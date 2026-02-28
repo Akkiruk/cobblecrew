@@ -9,6 +9,7 @@
 package akkiruk.cobblecrew.jobs
 
 import akkiruk.cobblecrew.enums.WorkPhase
+import akkiruk.cobblecrew.enums.WorkerPriority
 import akkiruk.cobblecrew.interfaces.Worker
 import akkiruk.cobblecrew.utilities.CobbleCrewDebugLogger
 import akkiruk.cobblecrew.utilities.CobbleCrewInventoryUtils
@@ -128,9 +129,9 @@ object WorkerDispatcher {
             }
         }
 
-        // Shuffle and cycle: try each eligible job until one is actually available
-        val shuffled = eligible.shuffled()
-        val job = shuffled.firstOrNull { it.isAvailable(context, pokemonId) }
+        // Priority-ordered selection: check tiers in order (COMBO > MOVE > SPECIES > TYPE).
+        // Within each tier, shuffle for fairness. Stop at first tier with available work.
+        val job = selectBestAvailableJob(profile, context, pokemonId)
 
         if (job == null) {
             activeJobs.remove(pokemonId)
@@ -162,6 +163,22 @@ object WorkerDispatcher {
         CobbleCrewDebugLogger.jobAssigned(pokemonEntity.pokemon.species.name, pokemonId, job.name)
         WorkerVisualUtils.setExcited(pokemonEntity, true)
         job.tick(context, pokemonEntity)
+    }
+
+    /**
+     * Selects the best available job using priority tiers.
+     * COMBO jobs are checked first, then MOVE, SPECIES, TYPE.
+     * Within each tier, candidates are shuffled for fairness.
+     * Stops at the first tier that has an available job.
+     */
+    private fun selectBestAvailableJob(profile: PokemonProfile, context: JobContext, pokemonId: java.util.UUID): Worker? {
+        for (priority in WorkerPriority.entries) {
+            val candidates = profile.getByPriority(priority)
+            if (candidates.isEmpty()) continue
+            val available = candidates.shuffled().firstOrNull { it.isAvailable(context, pokemonId) }
+            if (available != null) return available
+        }
+        return null
     }
 
     private fun handleIdleAnimation(pokemonEntity: PokemonEntity, world: World, pokemonId: UUID) {
@@ -212,8 +229,12 @@ object WorkerDispatcher {
         }
         CobbleCrewNavigationUtils.navigateTo(pokemonEntity, currentTarget)
         if (CobbleCrewNavigationUtils.isPokemonAtPosition(pokemonEntity, currentTarget, 2.0)) {
-            val stack = item.stack.copy()
-            item.discard()
+            if (item.isRemoved || item.stack.isEmpty) {
+                CobbleCrewNavigationUtils.releaseTarget(pid, world)
+                return true
+            }
+            val stack = item.stack.split(item.stack.count)
+            if (item.stack.isEmpty) item.discard()
             idleHeldItems[pid] = listOf(stack)
             CobbleCrewNavigationUtils.releaseTarget(pid, world)
         }

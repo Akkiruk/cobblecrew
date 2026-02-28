@@ -11,6 +11,7 @@ package akkiruk.cobblecrew.jobs.registry
 import akkiruk.cobblecrew.cache.CobbleCrewCacheManager
 import akkiruk.cobblecrew.config.JobConfig
 import akkiruk.cobblecrew.config.JobConfigManager
+import akkiruk.cobblecrew.jobs.dsl.dslEligible
 import akkiruk.cobblecrew.enums.BlockCategory
 import akkiruk.cobblecrew.enums.WorkPhase
 import akkiruk.cobblecrew.enums.WorkerPriority
@@ -167,11 +168,8 @@ object SupportJobs {
             ))
         }
 
-        override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean {
-            if (!config.enabled) return false
-            val eff = config.qualifyingMoves.ifEmpty { qualifyingMoves }.map { it.lowercase() }.toSet()
-            return moves.any { it in eff }
-        }
+        override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean =
+            dslEligible(config, qualifyingMoves, emptyList(), moves, species)
 
         override fun tick(context: JobContext, pokemonEntity: PokemonEntity) {
             val world = context.world
@@ -251,9 +249,15 @@ object SupportJobs {
                     val entryList = RegistryEntryList.of(entry)
                     val cg = world.chunkManager.chunkGenerator
                     val sp = origin.toImmutable()
-                    pendingLookups[selectedId] = CompletableFuture.supplyAsync {
-                        cg.locateStructure(world, entryList, sp, 100, false)
+                    val future = CompletableFuture<com.mojang.datafixers.util.Pair<BlockPos, RegistryEntry<Structure>>?>()
+                    world.server.execute {
+                        try {
+                            future.complete(cg.locateStructure(world, entryList, sp, 100, false))
+                        } catch (e: Exception) {
+                            future.complete(null)
+                        }
                     }
+                    pendingLookups[selectedId] = future
                     return null
                 } else if (!existing.isDone) {
                     return null

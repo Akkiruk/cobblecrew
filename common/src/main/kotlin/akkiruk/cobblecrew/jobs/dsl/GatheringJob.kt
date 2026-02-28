@@ -50,6 +50,7 @@ open class GatheringJob(
     val afterHarvestAction: ((World, BlockPos, BlockState) -> Unit)? = null,
     val tolerance: Double = 3.0,
     val topDownHarvest: Boolean = false,
+    val isCombo: Boolean = false,
 ) : BaseHarvester() {
 
     private val config get() = JobConfigManager.get(name)
@@ -58,24 +59,17 @@ open class GatheringJob(
     override val arrivalTolerance: Double = tolerance
     override val harvestTool: ItemStack = toolOverride
 
-    fun defaultConfig(): JobConfig = JobConfig(
-        enabled = true,
-        qualifyingMoves = qualifyingMoves.toList(),
-        fallbackType = fallbackType,
-        fallbackSpecies = fallbackSpecies,
-    )
-
     init {
-        JobConfigManager.registerDefault(category, name, defaultConfig())
+        JobConfigManager.registerDefault(category, name, JobConfig(
+            enabled = true,
+            qualifyingMoves = qualifyingMoves.toList(),
+            fallbackType = fallbackType,
+            fallbackSpecies = fallbackSpecies,
+        ))
     }
 
-    override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean {
-        if (!config.enabled) return false
-        val effectiveMoves = config.qualifyingMoves.ifEmpty { qualifyingMoves }.map { it.lowercase() }.toSet()
-        if (moves.any { it in effectiveMoves }) return true
-        val sp = config.fallbackSpecies.ifEmpty { fallbackSpecies }
-        return sp.any { it.equals(species, ignoreCase = true) }
-    }
+    override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean =
+        dslEligible(config, qualifyingMoves, fallbackSpecies, moves, species, isCombo)
 
     override fun isTargetReady(world: World, pos: BlockPos): Boolean {
         return readyCheck?.invoke(world, pos) ?: true

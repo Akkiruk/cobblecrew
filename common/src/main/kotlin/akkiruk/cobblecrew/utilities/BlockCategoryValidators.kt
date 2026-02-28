@@ -14,8 +14,6 @@ import com.cobblemon.mod.common.block.ApricornBlock
 import com.cobblemon.mod.common.block.BerryBlock
 import com.cobblemon.mod.common.block.MintBlock
 import net.minecraft.block.*
-import net.minecraft.util.math.BlockPos
-import net.minecraft.world.World
 
 /**
  * Maps each BlockCategory to a block validator lambda.
@@ -63,111 +61,88 @@ object BlockCategoryValidators {
         Blocks.PEONY, Blocks.PITCHER_PLANT,
     )
 
-    val validators: Map<BlockCategory, (World, BlockPos) -> Boolean> = mapOf(
+    val validators: Map<BlockCategory, (Block, BlockState) -> Boolean> = mapOf(
         // Cobblemon growables
-        BlockCategory.APRICORN to { world, pos -> world.getBlockState(pos).block is ApricornBlock },
-        BlockCategory.BERRY to { world, pos -> world.getBlockState(pos).block is BerryBlock },
-        BlockCategory.MINT to { world, pos -> world.getBlockState(pos).block is MintBlock },
-        BlockCategory.TUMBLESTONE to { world, pos -> world.getBlockState(pos).block in TUMBLESTONE_BLOCKS },
-        BlockCategory.AMETHYST to { world, pos -> world.getBlockState(pos).block == Blocks.AMETHYST_CLUSTER },
+        BlockCategory.APRICORN to { block, _ -> block is ApricornBlock },
+        BlockCategory.BERRY to { block, _ -> block is BerryBlock },
+        BlockCategory.MINT to { block, _ -> block is MintBlock },
+        BlockCategory.TUMBLESTONE to { block, _ -> block in TUMBLESTONE_BLOCKS },
+        BlockCategory.AMETHYST to { block, _ -> block == Blocks.AMETHYST_CLUSTER },
 
         // Vanilla growables
-        BlockCategory.NETHERWART to { world, pos -> world.getBlockState(pos).block is NetherWartBlock },
-        BlockCategory.CROP_GRAIN to { world, pos -> world.getBlockState(pos).block in CobbleCrewCropUtils.validCropBlocks },
-        BlockCategory.CROP_ROOT to { world, pos ->
-            val block = world.getBlockState(pos).block
+        BlockCategory.NETHERWART to { block, _ -> block is NetherWartBlock },
+        BlockCategory.CROP_GRAIN to { block, _ -> block in CobbleCrewCropUtils.validCropBlocks },
+        BlockCategory.CROP_ROOT to { block, _ ->
             block == Blocks.CARROTS || block == Blocks.POTATOES || block == Blocks.BEETROOTS
         },
 
-        BlockCategory.SWEET_BERRY to { world, pos -> world.getBlockState(pos).block == Blocks.SWEET_BERRY_BUSH },
-        BlockCategory.PUMPKIN_MELON to { world, pos ->
-            val block = world.getBlockState(pos).block
-            block == Blocks.PUMPKIN || block == Blocks.MELON
-        },
-        BlockCategory.COCOA to { world, pos -> world.getBlockState(pos).block == Blocks.COCOA },
-        BlockCategory.CHORUS to { world, pos -> world.getBlockState(pos).block == Blocks.CHORUS_PLANT || world.getBlockState(pos).block == Blocks.CHORUS_FLOWER },
-        BlockCategory.CAVE_VINE to { world, pos -> world.getBlockState(pos).block is CaveVines },
-        BlockCategory.DRIPLEAF to { world, pos -> world.getBlockState(pos).block == Blocks.BIG_DRIPLEAF },
+        BlockCategory.SWEET_BERRY to { block, _ -> block == Blocks.SWEET_BERRY_BUSH },
+        BlockCategory.PUMPKIN_MELON to { block, _ -> block == Blocks.PUMPKIN || block == Blocks.MELON },
+        BlockCategory.COCOA to { block, _ -> block == Blocks.COCOA },
+        BlockCategory.CHORUS to { block, _ -> block == Blocks.CHORUS_PLANT || block == Blocks.CHORUS_FLOWER },
+        BlockCategory.CAVE_VINE to { block, _ -> block is CaveVines },
+        BlockCategory.DRIPLEAF to { block, _ -> block == Blocks.BIG_DRIPLEAF },
 
         // Wood / plant structures
-        BlockCategory.LOG_OVERWORLD to { world, pos -> world.getBlockState(pos).block in OVERWORLD_LOGS },
-        BlockCategory.LOG_TROPICAL to { world, pos -> world.getBlockState(pos).block in TROPICAL_LOGS },
-        BlockCategory.LOG_NETHER to { world, pos -> world.getBlockState(pos).block in NETHER_LOGS },
-        BlockCategory.BAMBOO to { world, pos -> world.getBlockState(pos).block == Blocks.BAMBOO },
-        BlockCategory.SUGAR_CANE to { world, pos -> world.getBlockState(pos).block == Blocks.SUGAR_CANE },
-        BlockCategory.CACTUS to { world, pos -> world.getBlockState(pos).block == Blocks.CACTUS },
-        BlockCategory.VINE to { world, pos -> world.getBlockState(pos).block == Blocks.VINE },
+        BlockCategory.LOG_OVERWORLD to { block, _ -> block in OVERWORLD_LOGS },
+        BlockCategory.LOG_TROPICAL to { block, _ -> block in TROPICAL_LOGS },
+        BlockCategory.LOG_NETHER to { block, _ -> block in NETHER_LOGS },
+        BlockCategory.BAMBOO to { block, _ -> block == Blocks.BAMBOO },
+        BlockCategory.SUGAR_CANE to { block, _ -> block == Blocks.SUGAR_CANE },
+        BlockCategory.CACTUS to { block, _ -> block == Blocks.CACTUS },
+        BlockCategory.VINE to { block, _ -> block == Blocks.VINE },
 
         // Stone / earth
-        BlockCategory.STONE to { world, pos -> world.getBlockState(pos).block in STONE_BLOCKS },
-        BlockCategory.IGNEOUS to { world, pos -> world.getBlockState(pos).block in IGNEOUS_BLOCKS },
-        BlockCategory.DEEPSLATE to { world, pos -> world.getBlockState(pos).block in DEEPSLATE_BLOCKS },
-        BlockCategory.DIRT to { world, pos -> world.getBlockState(pos).block in DIRT_BLOCKS },
-        BlockCategory.SAND to { world, pos -> world.getBlockState(pos).block in SAND_BLOCKS },
-        BlockCategory.CLAY to { world, pos -> world.getBlockState(pos).block == Blocks.CLAY },
-        BlockCategory.ORE to { world, pos -> world.getBlockState(pos).block in ORE_BLOCKS },
+        BlockCategory.STONE to { block, _ -> block in STONE_BLOCKS },
+        BlockCategory.IGNEOUS to { block, _ -> block in IGNEOUS_BLOCKS },
+        BlockCategory.DEEPSLATE to { block, _ -> block in DEEPSLATE_BLOCKS },
+        BlockCategory.DIRT to { block, _ -> block in DIRT_BLOCKS },
+        BlockCategory.SAND to { block, _ -> block in SAND_BLOCKS },
+        BlockCategory.CLAY to { block, _ -> block == Blocks.CLAY },
+        BlockCategory.ORE to { block, _ -> block in ORE_BLOCKS },
 
         // Minerals & special
-        BlockCategory.ICE to { world, pos -> world.getBlockState(pos).block == Blocks.ICE || world.getBlockState(pos).block == Blocks.PACKED_ICE },
-        BlockCategory.SCULK to { world, pos ->
-            val block = world.getBlockState(pos).block
-            block == Blocks.SCULK || block == Blocks.SCULK_VEIN
-        },
-        BlockCategory.SNOW_BLOCK to { world, pos -> world.getBlockState(pos).block == Blocks.SNOW_BLOCK },
+        BlockCategory.ICE to { block, _ -> block == Blocks.ICE || block == Blocks.PACKED_ICE },
+        BlockCategory.SCULK to { block, _ -> block == Blocks.SCULK || block == Blocks.SCULK_VEIN },
+        BlockCategory.SNOW_BLOCK to { block, _ -> block == Blocks.SNOW_BLOCK },
 
         // Nature
-        BlockCategory.MUSHROOM to { world, pos -> world.getBlockState(pos).block in MUSHROOM_BLOCKS },
-        BlockCategory.FLOWER to { world, pos -> world.getBlockState(pos).block in SMALL_FLOWER_BLOCKS || world.getBlockState(pos).block in TALL_FLOWER_BLOCKS },
-        BlockCategory.MOSS to { world, pos ->
-            val block = world.getBlockState(pos).block
+        BlockCategory.MUSHROOM to { block, _ -> block in MUSHROOM_BLOCKS },
+        BlockCategory.FLOWER to { block, _ -> block in SMALL_FLOWER_BLOCKS || block in TALL_FLOWER_BLOCKS },
+        BlockCategory.MOSS to { block, _ ->
             block == Blocks.MOSS_BLOCK || block == Blocks.MOSS_CARPET || block == Blocks.AZALEA || block == Blocks.FLOWERING_AZALEA
         },
-        BlockCategory.LEAVES to { world, pos -> world.getBlockState(pos).block is LeavesBlock },
-        BlockCategory.VEGETATION to { world, pos -> world.getBlockState(pos).block in VEGETATION_BLOCKS },
+        BlockCategory.LEAVES to { block, _ -> block is LeavesBlock },
+        BlockCategory.VEGETATION to { block, _ -> block in VEGETATION_BLOCKS },
 
         // Honey
-        BlockCategory.HONEY to { world, pos -> world.getBlockState(pos).block is BeehiveBlock },
+        BlockCategory.HONEY to { block, _ -> block is BeehiveBlock },
 
         // Fire
-        BlockCategory.FIRE to { world, pos ->
-            val block = world.getBlockState(pos).block
-            block == Blocks.FIRE || block == Blocks.SOUL_FIRE
-        },
+        BlockCategory.FIRE to { block, _ -> block == Blocks.FIRE || block == Blocks.SOUL_FIRE },
 
         // Fluids (source blocks only — flowing would be too noisy)
-        BlockCategory.WATER to { world, pos ->
-            world.getBlockState(pos).fluidState.isOf(net.minecraft.fluid.Fluids.WATER)
-        },
-        BlockCategory.LAVA to { world, pos ->
-            world.getBlockState(pos).fluidState.isOf(net.minecraft.fluid.Fluids.LAVA)
-        },
+        BlockCategory.WATER to { _, state -> state.fluidState.isOf(net.minecraft.fluid.Fluids.WATER) },
+        BlockCategory.LAVA to { _, state -> state.fluidState.isOf(net.minecraft.fluid.Fluids.LAVA) },
 
         // Growable (crops + saplings — Growth Accelerator)
-        BlockCategory.GROWABLE to { world, pos ->
-            val block = world.getBlockState(pos).block
-            block is CropBlock || block is SaplingBlock
-        },
+        BlockCategory.GROWABLE to { block, _ -> block is CropBlock || block is SaplingBlock },
 
         // Farmland (irrigation)
-        BlockCategory.FARMLAND to { world, pos -> world.getBlockState(pos).block == Blocks.FARMLAND },
+        BlockCategory.FARMLAND to { block, _ -> block == Blocks.FARMLAND },
 
         // Functional blocks
-        BlockCategory.FURNACE to { world, pos -> world.getBlockState(pos).block is AbstractFurnaceBlock },
-        BlockCategory.BREWING_STAND to { world, pos -> world.getBlockState(pos).block is BrewingStandBlock },
-        BlockCategory.CAULDRON to { world, pos -> world.getBlockState(pos).isOf(Blocks.CAULDRON) },
-        BlockCategory.SUSPICIOUS to { world, pos ->
-            val block = world.getBlockState(pos).block
-            block == Blocks.SUSPICIOUS_SAND || block == Blocks.SUSPICIOUS_GRAVEL
-        },
+        BlockCategory.FURNACE to { block, _ -> block is AbstractFurnaceBlock },
+        BlockCategory.BREWING_STAND to { block, _ -> block is BrewingStandBlock },
+        BlockCategory.CAULDRON to { _, state -> state.isOf(Blocks.CAULDRON) },
+        BlockCategory.SUSPICIOUS to { block, _ -> block == Blocks.SUSPICIOUS_SAND || block == Blocks.SUSPICIOUS_GRAVEL },
 
         // Aquatic (pending)
-        BlockCategory.KELP to { world, pos -> world.getBlockState(pos).block == Blocks.KELP || world.getBlockState(pos).block == Blocks.KELP_PLANT },
-        BlockCategory.LILY_PAD to { world, pos -> world.getBlockState(pos).block == Blocks.LILY_PAD },
-        BlockCategory.SEA_PICKLE to { world, pos -> world.getBlockState(pos).block == Blocks.SEA_PICKLE },
+        BlockCategory.KELP to { block, _ -> block == Blocks.KELP || block == Blocks.KELP_PLANT },
+        BlockCategory.LILY_PAD to { block, _ -> block == Blocks.LILY_PAD },
+        BlockCategory.SEA_PICKLE to { block, _ -> block == Blocks.SEA_PICKLE },
 
         // Container
-        BlockCategory.CONTAINER to { world, pos ->
-            CobbleCrewInventoryUtils.blockValidator(world, pos)
-        },
+        BlockCategory.CONTAINER to { block, _ -> CobbleCrewInventoryUtils.isValidInventoryBlock(block) },
     )
 }

@@ -102,17 +102,10 @@ object DeferredBlockScanner {
             val chunkPos = ChunkPos(pos)
             if (!world.isChunkLoaded(chunkPos.x, chunkPos.z)) return@repeat
 
-            val immutablePos = pos.toImmutable()
+            val state = world.getBlockState(pos)
+            if (state.isAir) return@repeat
 
-            for ((category, validator) in categoryValidators) {
-                if (category !in needed) continue
-                if (validator(world, pos)) {
-                    // Exposed-face filter for underground blocks
-                    if (category.requiresExposedFace && !hasExposedFace(world, pos)) continue
-
-                    scanJob.staged.getOrPut(category) { mutableSetOf() }.add(immutablePos)
-                }
-            }
+            classifyBlock(world, pos, state.block, state, needed, categoryValidators, scanJob.staged)
         }
     }
 
@@ -131,6 +124,30 @@ object DeferredBlockScanner {
     fun clearScan(key: CacheKey) {
         activeScans.remove(key)
         lastScanCompletion.remove(key)
+    }
+
+    /**
+     * Classifies a single block position into matching categories.
+     * Shared by both deferred (pasture) and eager (party) scanners.
+     * Block state is fetched ONCE by the caller and passed in.
+     */
+    fun classifyBlock(
+        world: World,
+        pos: BlockPos,
+        block: net.minecraft.block.Block,
+        state: net.minecraft.block.BlockState,
+        needed: Set<BlockCategory>,
+        validators: Map<BlockCategory, (net.minecraft.block.Block, net.minecraft.block.BlockState) -> Boolean>,
+        staged: MutableMap<BlockCategory, MutableSet<BlockPos>>,
+    ) {
+        val immutablePos = pos.toImmutable()
+        for ((category, validator) in validators) {
+            if (category !in needed) continue
+            if (validator(block, state)) {
+                if (category.requiresExposedFace && !hasExposedFace(world, pos)) continue
+                staged.getOrPut(category) { mutableSetOf() }.add(immutablePos)
+            }
+        }
     }
 
     fun hasExposedFace(world: World, pos: BlockPos): Boolean {

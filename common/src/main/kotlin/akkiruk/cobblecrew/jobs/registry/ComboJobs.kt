@@ -8,7 +8,6 @@
 
 package akkiruk.cobblecrew.jobs.registry
 
-import akkiruk.cobblecrew.config.JobConfig
 import akkiruk.cobblecrew.config.JobConfigManager
 import akkiruk.cobblecrew.enums.BlockCategory
 import akkiruk.cobblecrew.enums.WorkerPriority
@@ -17,9 +16,8 @@ import akkiruk.cobblecrew.jobs.dsl.GatheringJob
 import akkiruk.cobblecrew.jobs.dsl.ProductionJob
 import akkiruk.cobblecrew.jobs.dsl.ProcessingJob
 import akkiruk.cobblecrew.jobs.dsl.SupportJob
-import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
-import net.minecraft.block.Block
-import net.minecraft.block.Blocks
+import akkiruk.cobblecrew.jobs.dsl.dslEligible
+import akkiruk.cobblecrew.utilities.floodFillHarvest
 import net.minecraft.entity.effect.StatusEffectCategory
 import net.minecraft.entity.effect.StatusEffectInstance
 import net.minecraft.entity.effect.StatusEffects
@@ -32,66 +30,33 @@ import net.minecraft.loot.context.LootContextParameters
 import net.minecraft.particle.ParticleTypes
 import net.minecraft.registry.RegistryKeys
 import net.minecraft.server.world.ServerWorld
-import net.minecraft.util.math.Direction
 
 /**
  * Combo jobs — require ALL listed moves. COMBO priority (highest).
- *
- * Uses the DSL classes with overridden isEligible to require ALL moves
- * instead of ANY. Each combo wraps a DSL job via anonymous subclass.
+ * Uses `isCombo = true` on DSL classes for ALL-move eligibility.
  */
 object ComboJobs {
 
-    // Helper: ALL-moves eligibility check for combos
-    private fun comboEligible(
-        requiredMoves: Set<String>,
-        config: JobConfig,
-        moves: Set<String>,
-        types: Set<String>,
-        species: String,
-    ): Boolean {
-        if (!config.enabled) return false
-        val eff = config.qualifyingMoves.ifEmpty { requiredMoves }.map { it.lowercase() }.toSet()
-        return eff.all { it in moves }
-    }
-
-    // Helper: PokemonEntity-based combo eligibility (for BaseHarvester's shouldRun)
-    private fun comboEligibleEntity(
-        requiredMoves: Set<String>,
-        config: JobConfig,
-        pokemonEntity: PokemonEntity,
-    ): Boolean {
-        val active = pokemonEntity.pokemon.moveSet.getMoves().map { it.name.lowercase() }
-        val benchedMvs = pokemonEntity.pokemon.benchedMoves.map { it.moveTemplate.name.lowercase() }
-        val moves = (active + benchedMvs).toSet()
-        val types = pokemonEntity.pokemon.types.map { it.name.uppercase() }.toSet()
-        val species = pokemonEntity.pokemon.species.translatedName.string.lowercase()
-        return comboEligible(requiredMoves, config, moves, types, species)
-    }
-
     // ── CM1: Demolisher ──────────────────────────────────────────────
-    // cut + rocksmash → heavy-duty stone miner for Fighting/Normal types
-    val DEMOLISHER = object : GatheringJob(
+    val DEMOLISHER = GatheringJob(
         name = "demolisher",
         category = "combo",
-        targetCategory = BlockCategory.STONE, // targets stone as representative
+        targetCategory = BlockCategory.STONE,
         qualifyingMoves = setOf("cut", "rocksmash"),
         particle = ParticleTypes.EXPLOSION,
         priority = WorkerPriority.COMBO,
-    ) {
-        override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String) =
-            comboEligible(qualifyingMoves, JobConfigManager.get(name), moves, types, species)
-    }
+        isCombo = true,
+    )
 
     // ── CM11: Fortune Miner ──────────────────────────────────────────
-    // powergem + dig → mining with Fortune III loot table drops
-    val FORTUNE_MINER = object : GatheringJob(
+    val FORTUNE_MINER = GatheringJob(
         name = "fortune_miner",
         category = "combo",
         targetCategory = BlockCategory.ORE,
         qualifyingMoves = setOf("powergem", "dig"),
         particle = ParticleTypes.ENCHANT,
         priority = WorkerPriority.COMBO,
+        isCombo = true,
         harvestOverride = { world, pos, _ ->
             val state = world.getBlockState(pos)
             val sw = world as ServerWorld
@@ -103,16 +68,13 @@ object ComboJobs {
                 .add(LootContextParameters.BLOCK_STATE, state)
                 .add(LootContextParameters.TOOL, fortunePick)
             val drops = state.getDroppedStacks(lootBuilder)
-            world.setBlockState(pos, Blocks.AIR.defaultState)
+            world.breakBlock(pos, false)
             drops
         },
-    ) {
-        override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String) =
-            comboEligible(qualifyingMoves, JobConfigManager.get(name), moves, types, species)
-    }
+    )
 
     // ── CM12: Silk Touch Extractor ───────────────────────────────────
-    // psychic + any gathering move → drops the block itself (silk touch)
+    // Special: psychic + any gathering move (custom eligibility)
     val SILK_TOUCH_EXTRACTOR = object : GatheringJob(
         name = "silk_touch_extractor",
         category = "combo",
@@ -123,7 +85,7 @@ object ComboJobs {
         harvestOverride = { world, pos, _ ->
             val state = world.getBlockState(pos)
             val item = state.block.asItem()
-            world.setBlockState(pos, Blocks.AIR.defaultState)
+            world.breakBlock(pos, false)
             if (item != Items.AIR) listOf(ItemStack(item)) else emptyList()
         },
     ) {
@@ -136,105 +98,41 @@ object ComboJobs {
     }
 
     // ── CM13: Vein Miner ─────────────────────────────────────────────
-    // earthquake + dig → breaks target + connected same-type ore blocks (up to 16)
-    val VEIN_MINER = object : GatheringJob(
+    val VEIN_MINER = GatheringJob(
         name = "vein_miner",
         category = "combo",
         targetCategory = BlockCategory.ORE,
         qualifyingMoves = setOf("earthquake", "dig"),
         particle = ParticleTypes.EXPLOSION,
         priority = WorkerPriority.COMBO,
-        harvestOverride = { world, pos, _ ->
-            val targetBlock = world.getBlockState(pos).block
-            val visited = mutableSetOf(pos)
-            val frontier = mutableListOf(pos)
-            val allDrops = mutableListOf<ItemStack>()
-            val pickaxe = ItemStack(Items.DIAMOND_PICKAXE)
-            var broken = 0
-            while (frontier.isNotEmpty() && broken < 16) {
-                val current = frontier.removeFirst()
-                if (world.getBlockState(current).block != targetBlock) continue
-                val state = world.getBlockState(current)
-                val lootBuilder = LootContextParameterSet.Builder(world as ServerWorld)
-                    .add(LootContextParameters.ORIGIN, current.toCenterPos())
-                    .add(LootContextParameters.BLOCK_STATE, state)
-                    .add(LootContextParameters.TOOL, pickaxe)
-                allDrops.addAll(state.getDroppedStacks(lootBuilder))
-                world.setBlockState(current, Blocks.AIR.defaultState)
-                broken++
-                for (dir in Direction.entries) {
-                    val neighbor = current.offset(dir)
-                    if (neighbor !in visited) {
-                        visited.add(neighbor)
-                        if (world.getBlockState(neighbor).block == targetBlock) {
-                            frontier.add(neighbor)
-                        }
-                    }
-                }
-            }
-            allDrops
-        },
-    ) {
-        override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String) =
-            comboEligible(qualifyingMoves, JobConfigManager.get(name), moves, types, species)
-    }
+        isCombo = true,
+        harvestOverride = { world, pos, _ -> floodFillHarvest(world, pos, 16, ItemStack(Items.DIAMOND_PICKAXE)) },
+    )
 
     // ── CM14: Tree Feller ────────────────────────────────────────────
-    // cut + headbutt → breaks entire tree (all connected logs) at once
-    val TREE_FELLER = object : GatheringJob(
+    val TREE_FELLER = GatheringJob(
         name = "tree_feller",
         category = "combo",
         targetCategory = BlockCategory.LOG_OVERWORLD,
         qualifyingMoves = setOf("cut", "headbutt"),
         particle = ParticleTypes.CAMPFIRE_COSY_SMOKE,
         priority = WorkerPriority.COMBO,
-        harvestOverride = { world, pos, _ ->
-            val targetBlock = world.getBlockState(pos).block
-            val visited = mutableSetOf(pos)
-            val frontier = mutableListOf(pos)
-            val allDrops = mutableListOf<ItemStack>()
-            val axe = ItemStack(Items.DIAMOND_AXE)
-            var broken = 0
-            while (frontier.isNotEmpty() && broken < 64) {
-                val current = frontier.removeFirst()
-                if (world.getBlockState(current).block != targetBlock) continue
-                val state = world.getBlockState(current)
-                val lootBuilder = LootContextParameterSet.Builder(world as ServerWorld)
-                    .add(LootContextParameters.ORIGIN, current.toCenterPos())
-                    .add(LootContextParameters.BLOCK_STATE, state)
-                    .add(LootContextParameters.TOOL, axe)
-                allDrops.addAll(state.getDroppedStacks(lootBuilder))
-                world.setBlockState(current, Blocks.AIR.defaultState)
-                broken++
-                for (dir in Direction.entries) {
-                    val neighbor = current.offset(dir)
-                    if (neighbor !in visited) {
-                        visited.add(neighbor)
-                        if (world.getBlockState(neighbor).block == targetBlock) {
-                            frontier.add(neighbor)
-                        }
-                    }
-                }
-            }
-            allDrops
-        },
-    ) {
-        override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String) =
-            comboEligible(qualifyingMoves, JobConfigManager.get(name), moves, types, species)
-    }
+        isCombo = true,
+        harvestOverride = { world, pos, _ -> floodFillHarvest(world, pos, 64, ItemStack(Items.DIAMOND_AXE)) },
+    )
 
     // ── CM17: Fossil Hunter ──────────────────────────────────────────
-    // dig + rocksmash → fossil/mineral-weighted loot from stone
-    val FOSSIL_HUNTER = object : GatheringJob(
+    val FOSSIL_HUNTER = GatheringJob(
         name = "fossil_hunter",
         category = "combo",
         targetCategory = BlockCategory.STONE,
         qualifyingMoves = setOf("dig", "rocksmash"),
         particle = ParticleTypes.CRIT,
         priority = WorkerPriority.COMBO,
+        isCombo = true,
         harvestOverride = { world, pos, _ ->
-            world.setBlockState(pos, Blocks.AIR.defaultState)
-            val roll = Math.random()
+            world.breakBlock(pos, false)
+            val roll = world.random.nextDouble()
             when {
                 roll < 0.03 -> listOf(ItemStack(Items.DIAMOND))
                 roll < 0.10 -> listOf(ItemStack(Items.GOLD_INGOT, 2))
@@ -244,23 +142,20 @@ object ComboJobs {
                 else -> listOf(ItemStack(Items.FLINT, 2))
             }
         },
-    ) {
-        override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String) =
-            comboEligible(qualifyingMoves, JobConfigManager.get(name), moves, types, species)
-    }
+    )
 
     // ── CM18: Gem Vein Finder ────────────────────────────────────────
-    // powergem + ancientpower → gem-weighted loot from stone
-    val GEM_VEIN_FINDER = object : GatheringJob(
+    val GEM_VEIN_FINDER = GatheringJob(
         name = "gem_vein_finder",
         category = "combo",
         targetCategory = BlockCategory.STONE,
         qualifyingMoves = setOf("powergem", "ancientpower"),
         particle = ParticleTypes.ENCHANT,
         priority = WorkerPriority.COMBO,
+        isCombo = true,
         harvestOverride = { world, pos, _ ->
-            world.setBlockState(pos, Blocks.AIR.defaultState)
-            val roll = Math.random()
+            world.breakBlock(pos, false)
+            val roll = world.random.nextDouble()
             when {
                 roll < 0.05 -> listOf(ItemStack(Items.DIAMOND))
                 roll < 0.15 -> listOf(ItemStack(Items.EMERALD, 2))
@@ -269,97 +164,84 @@ object ComboJobs {
                 else -> listOf(ItemStack(Items.QUARTZ, 3))
             }
         },
-    ) {
-        override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String) =
-            comboEligible(qualifyingMoves, JobConfigManager.get(name), moves, types, species)
-    }
+    )
 
     // ── CM3: String Crafter ──────────────────────────────────────────
-    // cut + stringshot → arrows, leads, or fishing rods (cycles)
-    val STRING_CRAFTER = object : ProductionJob(
+    val STRING_CRAFTER = ProductionJob(
         name = "string_crafter",
         category = "combo",
         qualifyingMoves = setOf("cut", "stringshot"),
         defaultCooldownSeconds = 120,
         particle = ParticleTypes.HAPPY_VILLAGER,
         priority = WorkerPriority.COMBO,
-        output = { _, _ ->
-            when ((Math.random() * 3).toInt()) {
+        isCombo = true,
+        output = { world, _ ->
+            when (world.random.nextInt(3)) {
                 0 -> listOf(ItemStack(Items.ARROW, 3))
                 1 -> listOf(ItemStack(Items.LEAD))
                 else -> listOf(ItemStack(Items.FISHING_ROD))
             }
         },
-    ) {
-        override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String) =
-            comboEligible(qualifyingMoves, JobConfigManager.get(name), moves, types, species)
-    }
+    )
 
     // ── CM6: Book Binder ─────────────────────────────────────────────
-    val BOOK_BINDER = object : ProductionJob(
+    val BOOK_BINDER = ProductionJob(
         name = "book_binder",
         category = "combo",
         qualifyingMoves = setOf("cut", "psychic"),
         defaultCooldownSeconds = 180,
         particle = ParticleTypes.ENCHANT,
         priority = WorkerPriority.COMBO,
+        isCombo = true,
         output = { _, _ -> listOf(ItemStack(Items.BOOK)) },
-    ) {
-        override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String) =
-            comboEligible(qualifyingMoves, JobConfigManager.get(name), moves, types, species)
-    }
+    )
 
     // ── CM7: Candle Maker ────────────────────────────────────────────
-    val CANDLE_MAKER = object : ProductionJob(
+    val CANDLE_MAKER = ProductionJob(
         name = "candle_maker",
         category = "combo",
         qualifyingMoves = setOf("willowisp", "stringshot"),
         defaultCooldownSeconds = 120,
         particle = ParticleTypes.FLAME,
         priority = WorkerPriority.COMBO,
+        isCombo = true,
         output = { _, _ -> listOf(ItemStack(Items.CANDLE)) },
-    ) {
-        override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String) =
-            comboEligible(qualifyingMoves, JobConfigManager.get(name), moves, types, species)
-    }
+    )
 
     // ── CM8: Chain Forger ────────────────────────────────────────────
-    val CHAIN_FORGER = object : ProductionJob(
+    val CHAIN_FORGER = ProductionJob(
         name = "chain_forger",
         category = "combo",
         qualifyingMoves = setOf("ironhead", "firespin"),
         defaultCooldownSeconds = 120,
         particle = ParticleTypes.LAVA,
         priority = WorkerPriority.COMBO,
+        isCombo = true,
         output = { _, _ -> listOf(ItemStack(Items.CHAIN)) },
-    ) {
-        override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String) =
-            comboEligible(qualifyingMoves, JobConfigManager.get(name), moves, types, species)
-    }
+    )
 
     // ── CM9: Lantern Builder ─────────────────────────────────────────
-    val LANTERN_BUILDER = object : ProductionJob(
+    val LANTERN_BUILDER = ProductionJob(
         name = "lantern_builder",
         category = "combo",
         qualifyingMoves = setOf("flashcannon", "ironhead"),
         defaultCooldownSeconds = 180,
         particle = ParticleTypes.END_ROD,
         priority = WorkerPriority.COMBO,
+        isCombo = true,
         output = { _, _ -> listOf(ItemStack(Items.LANTERN)) },
-    ) {
-        override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String) =
-            comboEligible(qualifyingMoves, JobConfigManager.get(name), moves, types, species)
-    }
+    )
 
     // ── CM10: Banner Creator ─────────────────────────────────────────
-    val BANNER_CREATOR = object : ProductionJob(
+    val BANNER_CREATOR = ProductionJob(
         name = "banner_creator",
         category = "combo",
         qualifyingMoves = setOf("cut", "sketch"),
         defaultCooldownSeconds = 240,
         particle = ParticleTypes.HAPPY_VILLAGER,
         priority = WorkerPriority.COMBO,
-        output = { _, _ ->
+        isCombo = true,
+        output = { world, _ ->
             val banners = listOf(
                 Items.WHITE_BANNER, Items.ORANGE_BANNER, Items.MAGENTA_BANNER,
                 Items.LIGHT_BLUE_BANNER, Items.YELLOW_BANNER, Items.LIME_BANNER,
@@ -367,23 +249,21 @@ object ComboJobs {
                 Items.CYAN_BANNER, Items.PURPLE_BANNER, Items.BLUE_BANNER,
                 Items.BROWN_BANNER, Items.GREEN_BANNER, Items.RED_BANNER, Items.BLACK_BANNER,
             )
-            listOf(ItemStack(banners[(Math.random() * banners.size).toInt()]))
+            listOf(ItemStack(banners[world.random.nextInt(banners.size)]))
         },
-    ) {
-        override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String) =
-            comboEligible(qualifyingMoves, JobConfigManager.get(name), moves, types, species)
-    }
+    )
 
     // ── CM15: Deep Sea Trawler ───────────────────────────────────────
-    val DEEP_SEA_TRAWLER = object : ProductionJob(
+    val DEEP_SEA_TRAWLER = ProductionJob(
         name = "deep_sea_trawler",
         category = "combo",
         qualifyingMoves = setOf("dive", "whirlpool"),
         defaultCooldownSeconds = 300,
         particle = ParticleTypes.BUBBLE,
         priority = WorkerPriority.COMBO,
-        output = { _, _ ->
-            val roll = Math.random()
+        isCombo = true,
+        output = { world, _ ->
+            val roll = world.random.nextDouble()
             when {
                 roll < 0.03 -> listOf(ItemStack(Items.HEART_OF_THE_SEA))
                 roll < 0.25 -> listOf(ItemStack(Items.NAUTILUS_SHELL))
@@ -391,21 +271,19 @@ object ComboJobs {
                 else -> listOf(ItemStack(Items.PRISMARINE_SHARD, 3))
             }
         },
-    ) {
-        override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String) =
-            comboEligible(qualifyingMoves, JobConfigManager.get(name), moves, types, species)
-    }
+    )
 
     // ── CM16: Magma Diver ────────────────────────────────────────────
-    val MAGMA_DIVER = object : ProductionJob(
+    val MAGMA_DIVER = ProductionJob(
         name = "magma_diver",
         category = "combo",
         qualifyingMoves = setOf("dive", "lavaplume"),
         defaultCooldownSeconds = 300,
         particle = ParticleTypes.LAVA,
         priority = WorkerPriority.COMBO,
-        output = { _, _ ->
-            val roll = Math.random()
+        isCombo = true,
+        output = { world, _ ->
+            val roll = world.random.nextDouble()
             when {
                 roll < 0.03 -> listOf(ItemStack(Items.BLAZE_ROD, 2))
                 roll < 0.15 -> listOf(ItemStack(Items.MAGMA_CREAM, 3))
@@ -413,21 +291,18 @@ object ComboJobs {
                 else -> listOf(ItemStack(Items.OBSIDIAN))
             }
         },
-    ) {
-        override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String) =
-            comboEligible(qualifyingMoves, JobConfigManager.get(name), moves, types, species)
-    }
+    )
 
     private val RAW_MATERIALS = setOf(Items.RAW_IRON, Items.RAW_GOLD, Items.RAW_COPPER)
 
-    // ── C11: Blast Furnace (combo processing) ────────────────────────
-    // overheat + ironhead → smelt raw ores into ingots at 2x rate
-    val BLAST_FURNACE = object : ProcessingJob(
+    // ── C11: Blast Furnace ───────────────────────────────────────────
+    val BLAST_FURNACE = ProcessingJob(
         name = "blast_furnace",
         category = "combo",
         qualifyingMoves = setOf("overheat", "ironhead"),
         particle = ParticleTypes.LAVA,
         priority = WorkerPriority.COMBO,
+        isCombo = true,
         inputCheck = { stack -> stack.item in RAW_MATERIALS },
         transformFn = { input ->
             val ingot = when (input.item) {
@@ -438,13 +313,9 @@ object ComboJobs {
             }
             if (ingot != null) listOf(ItemStack(ingot, input.count * 2)) else emptyList()
         },
-    ) {
-        override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String) =
-            comboEligible(qualifyingMoves, JobConfigManager.get(name), moves, types, species)
-    }
+    )
 
-    // ── F11: Full Restore (combo support) ────────────────────────────
-    // healbell + aromatherapy → Regeneration II + clears all harmful effects
+    // ── F11: Full Restore (custom applyEffect) ──────────────────────
     val FULL_RESTORE = object : SupportJob(
         name = "full_restore",
         category = "combo",
@@ -455,10 +326,8 @@ object ComboJobs {
         effectAmplifier = 1,
         priority = WorkerPriority.COMBO,
         workBoostPercent = 10,
+        isCombo = true,
     ) {
-        override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String) =
-            comboEligible(qualifyingMoves, JobConfigManager.get(name), moves, types, species)
-
         override fun applyEffect(player: PlayerEntity) {
             player.statusEffects
                 .filter { it.effectType.value().category == StatusEffectCategory.HARMFUL }
@@ -469,22 +338,19 @@ object ComboJobs {
         }
     }
 
-    // ── F12: Aura Master (combo support) ─────────────────────────────
-    // calmmind + helpinghand → Speed + Strength + Haste + Resistance
+    // ── F12: Aura Master (custom applyEffect) ───────────────────────
     val AURA_MASTER = object : SupportJob(
         name = "aura_master",
         category = "combo",
         qualifyingMoves = setOf("calmmind", "helpinghand"),
         particle = ParticleTypes.ENCHANT,
-        statusEffect = StatusEffects.SPEED, // primary; all 4 applied via override
+        statusEffect = StatusEffects.SPEED,
         defaultDurationSeconds = 30,
         effectAmplifier = 0,
         priority = WorkerPriority.COMBO,
         workBoostPercent = 20,
+        isCombo = true,
     ) {
-        override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String) =
-            comboEligible(qualifyingMoves, JobConfigManager.get(name), moves, types, species)
-
         override fun applyEffect(player: PlayerEntity) {
             listOf(StatusEffects.SPEED, StatusEffects.STRENGTH, StatusEffects.HASTE, StatusEffects.RESISTANCE)
                 .forEach { effect ->
@@ -497,15 +363,11 @@ object ComboJobs {
 
     fun register() {
         WorkerRegistry.registerAll(
-            // Gathering combos
             DEMOLISHER, FORTUNE_MINER, SILK_TOUCH_EXTRACTOR, VEIN_MINER,
             TREE_FELLER, FOSSIL_HUNTER, GEM_VEIN_FINDER,
-            // Production combos
             STRING_CRAFTER, BOOK_BINDER, CANDLE_MAKER, CHAIN_FORGER,
             LANTERN_BUILDER, BANNER_CREATOR, DEEP_SEA_TRAWLER, MAGMA_DIVER,
-            // Processing combo
             BLAST_FURNACE,
-            // Support combos
             FULL_RESTORE, AURA_MASTER,
         )
     }

@@ -34,6 +34,7 @@ open class ProductionJob(
     override val priority: WorkerPriority = WorkerPriority.MOVE,
     val particle: ParticleEffect = ParticleTypes.HAPPY_VILLAGER,
     val output: (World, PokemonEntity) -> List<ItemStack>,
+    val isCombo: Boolean = false,
 ) : BaseProducer() {
 
     private val config get() = JobConfigManager.get(name)
@@ -42,25 +43,18 @@ open class ProductionJob(
     override val productionParticle: ParticleEffect = particle
     override val cooldownTicks: Long get() = (config.cooldownSeconds.takeIf { it > 0 } ?: defaultCooldownSeconds) * 20L
 
-    fun defaultConfig(): JobConfig = JobConfig(
-        enabled = true,
-        cooldownSeconds = defaultCooldownSeconds,
-        qualifyingMoves = qualifyingMoves.toList(),
-        fallbackType = fallbackType,
-        fallbackSpecies = fallbackSpecies,
-    )
-
     init {
-        JobConfigManager.registerDefault(category, name, defaultConfig())
+        JobConfigManager.registerDefault(category, name, JobConfig(
+            enabled = true,
+            cooldownSeconds = defaultCooldownSeconds,
+            qualifyingMoves = qualifyingMoves.toList(),
+            fallbackType = fallbackType,
+            fallbackSpecies = fallbackSpecies,
+        ))
     }
 
-    override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean {
-        if (!config.enabled) return false
-        val effectiveMoves = config.qualifyingMoves.ifEmpty { qualifyingMoves }.map { it.lowercase() }.toSet()
-        if (moves.any { it in effectiveMoves }) return true
-        val sp = config.fallbackSpecies.ifEmpty { fallbackSpecies }
-        return sp.any { it.equals(species, ignoreCase = true) }
-    }
+    override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean =
+        dslEligible(config, qualifyingMoves, fallbackSpecies, moves, species, isCombo)
 
     override fun produce(world: World, origin: BlockPos, pokemonEntity: PokemonEntity): List<ItemStack> {
         return output(world, pokemonEntity)

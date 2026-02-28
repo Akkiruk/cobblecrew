@@ -120,6 +120,11 @@ object CobbleCrewInventoryUtils {
     }
 
     /**
+     * Fast block-identity check for the scanner (no world/pos needed).
+     */
+    fun isValidInventoryBlock(block: net.minecraft.block.Block): Boolean = block in validInventoryBlocks
+
+    /**
      * Finds closest inventory that has space for at least one of the given items.
      * If no items are specified, returns any valid container.
      */

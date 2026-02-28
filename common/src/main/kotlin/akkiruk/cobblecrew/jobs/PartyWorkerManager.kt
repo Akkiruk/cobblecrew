@@ -74,7 +74,9 @@ object PartyWorkerManager {
         CobblemonEvents.BATTLE_STARTED_PRE.subscribe { event ->
             try {
                 onBattleStartPre(event)
-            } catch (_: Exception) {}
+            } catch (e: Exception) {
+                CobbleCrew.LOGGER.debug("[CobbleCrew] Error in BATTLE_STARTED_PRE handler", e)
+            }
         }
 
         CobblemonEvents.BATTLE_VICTORY.subscribe { event ->
@@ -295,13 +297,12 @@ object PartyWorkerManager {
 
                 for (y in minY..maxY) {
                     val pos = BlockPos(x, y, z)
-                    for ((category, validator) in categoryValidators) {
-                        if (category !in needed) continue
-                        if (validator(world, pos)) {
-                            if (category.requiresExposedFace && !DeferredBlockScanner.hasExposedFace(world, pos)) continue
-                            staged.getOrPut(category) { mutableSetOf() }.add(pos.toImmutable())
-                        }
-                    }
+                    val state = world.getBlockState(pos)
+                    if (state.isAir) continue
+                    DeferredBlockScanner.classifyBlock(
+                        world, pos, state.block, state,
+                        needed, categoryValidators, staged
+                    )
                 }
             }
         }
