@@ -144,6 +144,7 @@ abstract class BaseHarvester : Worker {
             return
         }
 
+        CobbleCrewNavigationUtils.renewClaim(pokemonId, world)
         CobbleCrewNavigationUtils.navigateTo(pokemonEntity, currentTarget)
 
         if (WorkerVisualUtils.handleArrival(pokemonEntity, currentTarget, world, arrivalParticle, arrivalTolerance, WorkPhase.HARVESTING)) {

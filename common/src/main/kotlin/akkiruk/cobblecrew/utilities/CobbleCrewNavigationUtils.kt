@@ -126,6 +126,15 @@ object CobbleCrewNavigationUtils {
     }
 
     /**
+     * Refreshes the claim timer so it won't expire while the Pokémon is actively working.
+     */
+    fun renewClaim(pokemonId: UUID, world: World) {
+        val target = pokemonToTarget[pokemonId] ?: return
+        val existing = targetedBlocks[target] ?: return
+        targetedBlocks[target] = existing.copy(claimTick = world.time)
+    }
+
+    /**
      * Releases the target for a given Pokémon, making it available for others.
      */
     fun releaseTarget(pokemonId: UUID, world: World) {
