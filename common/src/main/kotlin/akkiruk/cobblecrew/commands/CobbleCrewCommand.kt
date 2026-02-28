@@ -225,6 +225,9 @@ object CobbleCrewCommand {
                     .then(literal("status").executes(::runPartyStatus))
                     .then(literal("toggle").executes(::runPartyToggle))
                 )
+
+                // ── moves (analyze all species learnsets) ──
+                .then(literal("moves").requires(requiresOp()).executes(::runMoveAnalysis))
         )
     }
 
@@ -243,6 +246,7 @@ object CobbleCrewCommand {
         s.sendFeedback({ bullet("/cobblecrew cache", Formatting.YELLOW).append(info(" — View/clear block scan caches")) }, false)
         s.sendFeedback({ bullet("/cobblecrew profiles", Formatting.YELLOW).append(info(" — View/invalidate Pokémon profiles")) }, false)
         s.sendFeedback({ bullet("/cobblecrew party", Formatting.YELLOW).append(info(" — View party worker status, toggle on/off")) }, false)
+        s.sendFeedback({ bullet("/cobblecrew moves", Formatting.YELLOW).append(info(" — Analyze all species moves (uploads to mclo.gs)")) }, false)
         return 1
     }
 
@@ -876,6 +880,168 @@ object CobbleCrewCommand {
     // ══════════════════════════════════════════
     //  UTILITIES
     // ══════════════════════════════════════════
+
+    // ══════════════════════════════════════════
+    //  MOVES ANALYSIS
+    // ══════════════════════════════════════════
+
+    private fun runMoveAnalysis(ctx: CommandContext<ServerCommandSource>): Int {
+        val source = ctx.source
+        source.sendFeedback({ info("[CobbleCrew] Analyzing all species learnsets — this may take a moment...") }, false)
+
+        CompletableFuture.runAsync {
+            try {
+                val report = buildMoveReport()
+                val url = uploadToMclogs(report)
+                source.server.execute {
+                    if (url != null) {
+                        val clickable = Text.literal(url).setStyle(
+                            Style.EMPTY
+                                .withColor(Formatting.AQUA)
+                                .withUnderline(true)
+                                .withClickEvent(ClickEvent(ClickEvent.Action.OPEN_URL, url))
+                                .withHoverEvent(HoverEvent(HoverEvent.Action.SHOW_TEXT, Text.literal("Click to open")))
+                        )
+                        source.sendFeedback({
+                            success("Move analysis uploaded: ").append(clickable)
+                        }, false)
+                    } else {
+                        source.sendFeedback({ error("Upload failed — report saved to server log instead.") }, false)
+                        CobbleCrew.LOGGER.info(report)
+                    }
+                }
+            } catch (e: Exception) {
+                CobbleCrew.LOGGER.error("[CobbleCrew] Move analysis failed", e)
+                source.server.execute {
+                    source.sendFeedback({ error("Move analysis failed: ${e.message}") }, false)
+                }
+            }
+        }
+        return 1
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun buildMoveReport(): String {
+        val sb = StringBuilder()
+        sb.appendLine("═══ CobbleCrew Move Analysis ═══")
+        sb.appendLine()
+
+        // 1. Collect job -> moves mapping from WorkerRegistry
+        val jobMoves = mutableMapOf<String, Set<String>>()  // job name -> moves
+        val moveToJobs = mutableMapOf<String, MutableList<String>>()  // move -> jobs using it
+        for (worker in WorkerRegistry.workers) {
+            val moves = try {
+                val field = worker.javaClass.getDeclaredField("qualifyingMoves")
+                field.isAccessible = true
+                (field.get(worker) as? Set<*>)?.filterIsInstance<String>()?.map { it.lowercase() }?.toSet()
+            } catch (_: Exception) { null }
+            if (moves != null && moves.isNotEmpty()) {
+                jobMoves[worker.name] = moves
+                for (m in moves) {
+                    moveToJobs.getOrPut(m) { mutableListOf() }.add(worker.name)
+                }
+            }
+        }
+
+        // 2. Iterate all implemented species via reflection
+        val moveSpecies = mutableMapOf<String, MutableSet<String>>()  // move -> species names
+        var speciesCount = 0
+
+        try {
+            val psClass = Class.forName("com.cobblemon.mod.common.api.pokemon.PokemonSpecies")
+            val instance = psClass.kotlin.objectInstance ?: throw Exception("No PokemonSpecies instance")
+
+            // getImplemented() -> List<Species>
+            val getImpl = psClass.getMethod("getImplemented")
+            val implemented = getImpl.invoke(instance) as? List<*> ?: emptyList<Any>()
+
+            for (species in implemented) {
+                if (species == null) continue
+                speciesCount++
+                val speciesName = try {
+                    species.javaClass.getMethod("getName").invoke(species) as? String ?: "unknown"
+                } catch (_: Exception) { "unknown" }
+
+                // Get Learnset: species.getMoves()
+                val learnset = try {
+                    species.javaClass.getMethod("getMoves").invoke(species) ?: continue
+                } catch (_: Exception) { continue }
+
+                // Collect all move templates from different learn methods
+                val allTemplates = mutableSetOf<Any>()
+                for (getter in listOf("getTmMoves", "getTutorMoves", "getEggMoves", "getEvolutionMoves", "getFormChangeMoves")) {
+                    try {
+                        val result = learnset.javaClass.getMethod(getter).invoke(learnset)
+                        when (result) {
+                            is Collection<*> -> result.filterNotNull().forEach { allTemplates.add(it) }
+                        }
+                    } catch (_: Exception) {}
+                }
+                // Level-up moves: Map<Int, List<MoveTemplate>>
+                try {
+                    val levelMoves = learnset.javaClass.getMethod("getLevelUpMoves").invoke(learnset)
+                    if (levelMoves is Map<*, *>) {
+                        for ((_, templates) in levelMoves) {
+                            if (templates is Collection<*>) {
+                                templates.filterNotNull().forEach { allTemplates.add(it) }
+                            }
+                        }
+                    }
+                } catch (_: Exception) {}
+
+                // Extract names
+                for (template in allTemplates) {
+                    val moveName = try {
+                        (template.javaClass.getMethod("getName").invoke(template) as? String)?.lowercase()
+                    } catch (_: Exception) { null }
+                    if (moveName != null) {
+                        moveSpecies.getOrPut(moveName) { mutableSetOf() }.add(speciesName)
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            sb.appendLine("ERROR: Could not access Cobblemon species registry: ${e.message}")
+            sb.appendLine()
+            return sb.toString()
+        }
+
+        // 3. Build the report
+        val sorted = moveSpecies.entries.sortedByDescending { it.value.size }
+
+        sb.appendLine("Species analyzed: $speciesCount")
+        sb.appendLine("Total learnable moves: ${sorted.size}")
+        sb.appendLine("Total CobbleCrew jobs: ${jobMoves.size}")
+        sb.appendLine()
+
+        // Conflicts
+        val conflicts = moveToJobs.filter { it.value.size > 1 }
+        if (conflicts.isNotEmpty()) {
+            sb.appendLine("=== MOVE CONFLICTS (used by multiple jobs) ===")
+            for ((move, jobs) in conflicts.entries.sortedBy { it.key }) {
+                val count = moveSpecies[move]?.size ?: 0
+                sb.appendLine("  $move ($count species) -> ${jobs.joinToString(", ")}")
+            }
+            sb.appendLine()
+        }
+
+        // Job moves summary
+        sb.appendLine("=== MOVES USED BY COBBLECREW JOBS ===")
+        for ((move, jobs) in moveToJobs.entries.sortedBy { it.key }) {
+            val count = moveSpecies[move]?.size ?: 0
+            sb.appendLine("  $move ($count species) -> ${jobs.joinToString(", ")}")
+        }
+        sb.appendLine()
+
+        // All moves sorted by species count
+        sb.appendLine("=== ALL MOVES BY SPECIES COUNT ===")
+        sb.appendLine("(* = used by a CobbleCrew job)")
+        for ((move, species) in sorted) {
+            val marker = if (move in moveToJobs) " *" else ""
+            sb.appendLine("  $move: ${species.size}$marker")
+        }
+
+        return sb.toString()
+    }
 
     private fun saveConfig() {
         try {

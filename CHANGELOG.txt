@@ -1,3 +1,7 @@
+## 3.0.35
+- Added /cobblecrew moves command — analyzes all species learnsets and uploads move report to mclo.gs
+- Shows every learnable move, how many species can learn it, and which CobbleCrew job uses it
+
 ## 3.0.34
 - Every job now requires exactly one unique move — no move is shared across multiple jobs
 - Combo jobs each require exactly two unique moves (both must be known)
