@@ -19,16 +19,14 @@ import net.minecraft.item.ItemStack
 import net.minecraft.particle.ParticleEffect
 import net.minecraft.particle.ParticleTypes
 import net.minecraft.util.math.BlockPos
-import net.minecraft.util.math.Direction
 import net.minecraft.world.World
 
 /**
  * DSL-style gathering job. Most gathering jobs are 5-8 lines:
  * ```
- * val OVERWORLD_LOGGER = GatheringJob(
- *     name = "overworld_logger",
- *     category = "gathering",
- *     targetCategory = BlockCategory.LOG_OVERWORLD,
+ * val LOGGER = GatheringJob(
+ *     name = "logger",
+ *     targetCategory = BlockCategory.LOG,
  *     qualifyingMoves = setOf("cut", "furycutter"),
  *     particle = ParticleTypes.CAMPFIRE_COSY_SMOKE,
  * )
@@ -49,7 +47,6 @@ open class GatheringJob(
     val readyCheck: ((World, BlockPos) -> Boolean)? = null,
     val afterHarvestAction: ((World, BlockPos, BlockState) -> Unit)? = null,
     val tolerance: Double = 3.0,
-    val topDownHarvest: Boolean = false,
     val isCombo: Boolean = false,
 ) : BaseHarvester() {
 
@@ -87,39 +84,5 @@ open class GatheringJob(
                     ?: w.setBlockState(pos, net.minecraft.block.Blocks.AIR.defaultState)
             }
         }
-    }
-
-    /**
-     * For top-down harvesting: BFS from [targetPos] to find all connected blocks of the
-     * same type, then return the one farthest away (by BFS depth). Removing the farthest
-     * node keeps the tree connected — no floating pieces even with arches or branches.
-     */
-    override fun resolveHarvestPos(world: World, targetPos: BlockPos): BlockPos {
-        if (!topDownHarvest) return targetPos
-
-        val targetBlock = world.getBlockState(targetPos).block
-        val visited = mutableSetOf(targetPos)
-        val queue = ArrayDeque<BlockPos>()
-        queue.add(targetPos)
-        var farthest = targetPos
-
-        while (queue.isNotEmpty() && visited.size < MAX_CONNECTED_SCAN) {
-            val current = queue.removeFirst()
-            // Last node dequeued in BFS = farthest from root
-            farthest = current
-            for (dir in Direction.entries) {
-                val neighbor = current.offset(dir)
-                if (neighbor in visited) continue
-                if (world.getBlockState(neighbor).block == targetBlock) {
-                    visited.add(neighbor)
-                    queue.add(neighbor)
-                }
-            }
-        }
-        return farthest
-    }
-
-    companion object {
-        private const val MAX_CONNECTED_SCAN = 128
     }
 }

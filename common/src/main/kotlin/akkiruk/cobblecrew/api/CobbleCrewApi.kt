@@ -33,9 +33,7 @@ object CobbleCrewApi {
 
     private val descriptions = mapOf(
         // Gathering
-        "overworld_logger" to "Chops overworld logs and deposits them in chests.",
-        "jungle_chopper" to "Chops tropical/jungle logs and deposits them in chests.",
-        "fungi_harvester" to "Harvests nether fungus stems and deposits them in chests.",
+        "logger" to "Fells entire trees and deposits logs in chests. Works on all log types.",
         "bamboo_chopper" to "Chops bamboo stalks and deposits them in chests.",
         "sugar_cane_cutter" to "Cuts sugar cane tops and deposits them in chests.",
         "cactus_pruner" to "Prunes cactus tops and deposits them in chests.",
@@ -155,7 +153,7 @@ object CobbleCrewApi {
         "fortune_miner" to "Mines with doubled drops. Requires Power Gem + Dig.",
         "silk_touch_extractor" to "Mines with silk touch. Requires Psychic + a gathering move.",
         "vein_miner" to "Breaks connected same-type blocks. Requires Earthquake + Dig.",
-        "tree_feller" to "Fells entire trees at once. Requires Cut + Headbutt.",
+        "tree_feller" to "Fells entire trees and strips leaves for bonus loot. Requires Cut + Headbutt.",
         "fossil_hunter" to "Mines fossil-weighted loot. Requires Dig + Rock Smash.",
         "gem_vein_finder" to "Mines gem-weighted loot. Requires Dig + Power Gem.",
         "string_crafter" to "Crafts arrows, leads, or fishing rods. Requires Cut + String Shot.",

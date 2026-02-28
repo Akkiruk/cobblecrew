@@ -8,11 +8,13 @@
 
 package akkiruk.cobblecrew.jobs.registry
 
+import akkiruk.cobblecrew.cache.CobbleCrewCacheManager
 import akkiruk.cobblecrew.config.JobConfigManager
 import akkiruk.cobblecrew.enums.BlockCategory
 import akkiruk.cobblecrew.jobs.WorkerRegistry
 import akkiruk.cobblecrew.jobs.dsl.GatheringJob
 import akkiruk.cobblecrew.utilities.CobbleCrewCropUtils
+import akkiruk.cobblecrew.utilities.treeHarvest
 import com.cobblemon.mod.common.CobblemonBlocks
 import com.cobblemon.mod.common.block.ApricornBlock
 import com.cobblemon.mod.common.block.BerryBlock
@@ -41,28 +43,18 @@ object GatheringJobs {
 
     // ── Wood ────────────────────────────────────────────────────────────
 
-    val OVERWORLD_LOGGER = GatheringJob(
-        name = "overworld_logger",
-        targetCategory = BlockCategory.LOG_OVERWORLD,
-        qualifyingMoves = setOf("cut", "furycutter"),
+    val LOGGER = GatheringJob(
+        name = "logger",
+        targetCategory = BlockCategory.LOG,
+        qualifyingMoves = setOf("cut", "furycutter", "xscissor", "shadowclaw"),
         particle = ParticleTypes.CAMPFIRE_COSY_SMOKE,
-        topDownHarvest = true,
-    )
-
-    val JUNGLE_CHOPPER = GatheringJob(
-        name = "jungle_chopper",
-        targetCategory = BlockCategory.LOG_TROPICAL,
-        qualifyingMoves = setOf("xscissor"),
-        particle = ParticleTypes.CAMPFIRE_COSY_SMOKE,
-        topDownHarvest = true,
-    )
-
-    val FUNGI_HARVESTER = GatheringJob(
-        name = "fungi_harvester",
-        targetCategory = BlockCategory.LOG_NETHER,
-        qualifyingMoves = setOf("shadowclaw"),
-        particle = ParticleTypes.SOUL,
-        topDownHarvest = true,
+        harvestOverride = { world, pos, _ ->
+            val result = treeHarvest(world, pos, maxLogs = 128, tool = ItemStack(Items.DIAMOND_AXE))
+            result.brokenPositions.forEach { broken ->
+                CobbleCrewCacheManager.removeTargetGlobal(BlockCategory.LOG, broken)
+            }
+            result.drops
+        },
     )
 
     val BAMBOO_CHOPPER = GatheringJob(
@@ -466,9 +458,7 @@ object GatheringJobs {
     fun register() {
         WorkerRegistry.registerAll(
             // Wood
-            OVERWORLD_LOGGER,
-            JUNGLE_CHOPPER,
-            FUNGI_HARVESTER,
+            LOGGER,
             BAMBOO_CHOPPER,
             SUGAR_CANE_CUTTER,
             CACTUS_PRUNER,

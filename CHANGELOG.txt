@@ -1,3 +1,13 @@
+## 3.0.32
+- Reworked tree chopping: merged 3 separate logging jobs (overworld_logger, jungle_chopper, fungi_harvester) into one universal "logger" job
+- Logger now fells entire trees in one pass instead of one block at a time — dramatically faster
+- Logger uses tag-based detection (minecraft:logs) so it works on all log types including modded
+- Any of Cut, Fury Cutter, X-Scissor, or Shadow Claw qualifies a Pokémon for logging
+- Tree Feller combo (Cut + Headbutt) now also strips leaves for bonus loot (saplings, sticks, apples)
+- Tree Feller now works on all log types, not just overworld logs
+- Removed broken top-down one-block-at-a-time tree harvesting
+- All broken log positions are purged from cache immediately, preventing other Pokémon from targeting the same tree
+
 ## 3.0.31
 - Fixed ScoutWorker crashing from off-thread world access — structure locating now runs on the server thread
 - Fixed navigateToPlayer() pathfinding every single tick — now throttled to every 10 ticks

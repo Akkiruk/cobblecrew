@@ -8,9 +8,11 @@
 
 package akkiruk.cobblecrew.utilities
 
+import net.minecraft.block.LeavesBlock
 import net.minecraft.item.ItemStack
 import net.minecraft.loot.context.LootContextParameterSet
 import net.minecraft.loot.context.LootContextParameters
+import net.minecraft.registry.tag.BlockTags
 import net.minecraft.server.world.ServerWorld
 import net.minecraft.util.math.BlockPos
 import net.minecraft.util.math.Direction
@@ -51,3 +53,98 @@ fun floodFillHarvest(world: World, pos: BlockPos, maxBlocks: Int, tool: ItemStac
     }
     return allDrops
 }
+
+/**
+ * Harvests an entire tree from any log in the structure.
+ *
+ * BFS through all connected blocks matching the `minecraft:logs` tag,
+ * breaks them all, and collects loot-table drops. Returns all drops
+ * plus the set of all block positions that were broken (for cache purging).
+ *
+ * When [includeLeaves] is true, also breaks connected leaf blocks adjacent
+ * to any log in the tree, collecting their loot (saplings, sticks, apples).
+ */
+fun treeHarvest(
+    world: World,
+    startPos: BlockPos,
+    maxLogs: Int = 128,
+    tool: ItemStack = ItemStack.EMPTY,
+    includeLeaves: Boolean = false,
+): TreeHarvestResult {
+    val sw = world as ServerWorld
+    val visited = mutableSetOf(startPos)
+    val frontier = ArrayDeque<BlockPos>()
+    frontier.add(startPos)
+    val allDrops = mutableListOf<ItemStack>()
+    val brokenPositions = mutableSetOf<BlockPos>()
+    val leafPositions = mutableSetOf<BlockPos>()
+    var logsBroken = 0
+
+    // Phase 1: BFS through connected logs
+    while (frontier.isNotEmpty() && logsBroken < maxLogs) {
+        val current = frontier.removeFirst()
+        val state = world.getBlockState(current)
+        if (!state.isIn(BlockTags.LOGS)) continue
+
+        val lootBuilder = LootContextParameterSet.Builder(sw)
+            .add(LootContextParameters.ORIGIN, current.toCenterPos())
+            .add(LootContextParameters.BLOCK_STATE, state)
+            .add(LootContextParameters.TOOL, tool)
+        allDrops.addAll(state.getDroppedStacks(lootBuilder))
+        world.breakBlock(current, false)
+        brokenPositions.add(current)
+        logsBroken++
+
+        for (dir in Direction.entries) {
+            val neighbor = current.offset(dir)
+            if (neighbor in visited) continue
+            visited.add(neighbor)
+            val neighborState = world.getBlockState(neighbor)
+            if (neighborState.isIn(BlockTags.LOGS)) {
+                frontier.add(neighbor)
+            } else if (includeLeaves && neighborState.block is LeavesBlock) {
+                leafPositions.add(neighbor)
+            }
+        }
+    }
+
+    // Phase 2: break collected leaves (only if includeLeaves)
+    if (includeLeaves && leafPositions.isNotEmpty()) {
+        // BFS outward from found leaf positions to get the full canopy
+        val leafFrontier = ArrayDeque(leafPositions)
+        val leafVisited = mutableSetOf<BlockPos>().also { it.addAll(leafPositions); it.addAll(visited) }
+        var leavesBroken = 0
+        val maxLeaves = 256
+
+        while (leafFrontier.isNotEmpty() && leavesBroken < maxLeaves) {
+            val current = leafFrontier.removeFirst()
+            val state = world.getBlockState(current)
+            if (state.block !is LeavesBlock) continue
+
+            val lootBuilder = LootContextParameterSet.Builder(sw)
+                .add(LootContextParameters.ORIGIN, current.toCenterPos())
+                .add(LootContextParameters.BLOCK_STATE, state)
+                .add(LootContextParameters.TOOL, tool)
+            allDrops.addAll(state.getDroppedStacks(lootBuilder))
+            world.breakBlock(current, false)
+            brokenPositions.add(current)
+            leavesBroken++
+
+            for (dir in Direction.entries) {
+                val neighbor = current.offset(dir)
+                if (neighbor in leafVisited) continue
+                leafVisited.add(neighbor)
+                if (world.getBlockState(neighbor).block is LeavesBlock) {
+                    leafFrontier.add(neighbor)
+                }
+            }
+        }
+    }
+
+    return TreeHarvestResult(allDrops, brokenPositions)
+}
+
+data class TreeHarvestResult(
+    val drops: List<ItemStack>,
+    val brokenPositions: Set<BlockPos>,
+)

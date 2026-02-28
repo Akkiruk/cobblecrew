@@ -8,6 +8,7 @@
 
 package akkiruk.cobblecrew.jobs.registry
 
+import akkiruk.cobblecrew.cache.CobbleCrewCacheManager
 import akkiruk.cobblecrew.config.JobConfigManager
 import akkiruk.cobblecrew.enums.BlockCategory
 import akkiruk.cobblecrew.enums.WorkerPriority
@@ -18,6 +19,7 @@ import akkiruk.cobblecrew.jobs.dsl.ProcessingJob
 import akkiruk.cobblecrew.jobs.dsl.SupportJob
 import akkiruk.cobblecrew.jobs.dsl.dslEligible
 import akkiruk.cobblecrew.utilities.floodFillHarvest
+import akkiruk.cobblecrew.utilities.treeHarvest
 import net.minecraft.entity.effect.StatusEffectCategory
 import net.minecraft.entity.effect.StatusEffectInstance
 import net.minecraft.entity.effect.StatusEffects
@@ -110,15 +112,22 @@ object ComboJobs {
     )
 
     // ── CM14: Tree Feller ────────────────────────────────────────────
+    // Fells entire tree + strips leaves for bonus loot (saplings, sticks, apples)
     val TREE_FELLER = GatheringJob(
         name = "tree_feller",
         category = "combo",
-        targetCategory = BlockCategory.LOG_OVERWORLD,
+        targetCategory = BlockCategory.LOG,
         qualifyingMoves = setOf("cut", "headbutt"),
         particle = ParticleTypes.CAMPFIRE_COSY_SMOKE,
         priority = WorkerPriority.COMBO,
         isCombo = true,
-        harvestOverride = { world, pos, _ -> floodFillHarvest(world, pos, 64, ItemStack(Items.DIAMOND_AXE)) },
+        harvestOverride = { world, pos, _ ->
+            val result = treeHarvest(world, pos, maxLogs = 128, tool = ItemStack(Items.DIAMOND_AXE), includeLeaves = true)
+            result.brokenPositions.forEach { broken ->
+                CobbleCrewCacheManager.removeTargetGlobal(BlockCategory.LOG, broken)
+            }
+            result.drops
+        },
     )
 
     // ── CM17: Fossil Hunter ──────────────────────────────────────────

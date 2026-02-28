@@ -14,6 +14,7 @@ import com.cobblemon.mod.common.block.ApricornBlock
 import com.cobblemon.mod.common.block.BerryBlock
 import com.cobblemon.mod.common.block.MintBlock
 import net.minecraft.block.*
+import net.minecraft.registry.tag.BlockTags
 
 /**
  * Maps each BlockCategory to a block validator lambda.
@@ -27,9 +28,6 @@ object BlockCategoryValidators {
         CobblemonBlocks.SKY_TUMBLESTONE_CLUSTER,
     )
 
-    private val OVERWORLD_LOGS = setOf(Blocks.OAK_LOG, Blocks.SPRUCE_LOG, Blocks.BIRCH_LOG)
-    private val TROPICAL_LOGS = setOf(Blocks.JUNGLE_LOG, Blocks.CHERRY_LOG, Blocks.ACACIA_LOG, Blocks.DARK_OAK_LOG, Blocks.MANGROVE_LOG)
-    private val NETHER_LOGS = setOf(Blocks.CRIMSON_STEM, Blocks.WARPED_STEM)
     private val STONE_BLOCKS = setOf(Blocks.STONE, Blocks.COBBLESTONE, Blocks.MOSSY_COBBLESTONE)
     private val IGNEOUS_BLOCKS = setOf(Blocks.GRANITE, Blocks.ANDESITE, Blocks.DIORITE)
     private val DEEPSLATE_BLOCKS = setOf(Blocks.DEEPSLATE, Blocks.COBBLED_DEEPSLATE, Blocks.TUFF, Blocks.CALCITE)
@@ -83,10 +81,8 @@ object BlockCategoryValidators {
         BlockCategory.CAVE_VINE to { block, _ -> block is CaveVines },
         BlockCategory.DRIPLEAF to { block, _ -> block == Blocks.BIG_DRIPLEAF },
 
-        // Wood / plant structures
-        BlockCategory.LOG_OVERWORLD to { block, _ -> block in OVERWORLD_LOGS },
-        BlockCategory.LOG_TROPICAL to { block, _ -> block in TROPICAL_LOGS },
-        BlockCategory.LOG_NETHER to { block, _ -> block in NETHER_LOGS },
+        // Wood / plant structures (tag-based: covers all vanilla + modded logs)
+        BlockCategory.LOG to { _, state -> state.isIn(BlockTags.LOGS) },
         BlockCategory.BAMBOO to { block, _ -> block == Blocks.BAMBOO },
         BlockCategory.SUGAR_CANE to { block, _ -> block == Blocks.SUGAR_CANE },
         BlockCategory.CACTUS to { block, _ -> block == Blocks.CACTUS },

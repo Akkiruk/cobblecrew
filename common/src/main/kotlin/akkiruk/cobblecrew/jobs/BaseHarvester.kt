@@ -52,12 +52,6 @@ abstract class BaseHarvester : Worker {
     /** Additional readiness check beyond blockValidator (e.g. crop maturity). */
     open fun isTargetReady(world: World, pos: BlockPos): Boolean = true
 
-    /**
-     * Resolves the actual block to harvest once the Pokémon arrives at [targetPos].
-     * Override to redirect harvesting (e.g. top-down tree felling).
-     */
-    protected open fun resolveHarvestPos(world: World, targetPos: BlockPos): BlockPos = targetPos
-
     override fun isAvailable(context: JobContext, pokemonId: UUID): Boolean {
         val cat = targetCategory ?: return false
         val targets = CobbleCrewCacheManager.getTargets(context.origin, cat)
@@ -154,12 +148,10 @@ abstract class BaseHarvester : Worker {
         CobbleCrewNavigationUtils.navigateTo(pokemonEntity, currentTarget)
 
         if (WorkerVisualUtils.handleArrival(pokemonEntity, currentTarget, world, arrivalParticle, arrivalTolerance, WorkPhase.HARVESTING)) {
-            val harvestPos = resolveHarvestPos(world, currentTarget)
-            harvest(world, harvestPos, pokemonEntity)
+            harvest(world, currentTarget, pokemonEntity)
             CobbleCrewNavigationUtils.releaseTarget(pokemonId, world)
-            // Remove actually-harvested block from cache (may differ from navigation target)
             targetCategory?.let { cat ->
-                CobbleCrewCacheManager.removeTarget(context.cacheKey, cat, harvestPos)
+                CobbleCrewCacheManager.removeTarget(context.cacheKey, cat, currentTarget)
             }
         }
     }
