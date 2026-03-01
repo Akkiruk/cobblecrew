@@ -133,6 +133,11 @@ object WorkerDispatcher {
         // Within each tier, shuffle for fairness. Stop at first tier with available work.
         val job = selectBestAvailableJob(profile, context, pokemonId)
 
+        // Clean up old job if switching away
+        if (current != null && job != current) {
+            current.cleanup(pokemonId)
+        }
+
         if (job == null) {
             activeJobs.remove(pokemonId)
             WorkerVisualUtils.setExcited(pokemonEntity, false)
@@ -274,11 +279,13 @@ object WorkerDispatcher {
         idleFailedDeposits.remove(pokemonId)
         WorkerVisualUtils.cleanup(pokemonId)
         CobbleCrewNavigationUtils.cleanupPokemon(pokemonId, world)
+        CobbleCrewInventoryUtils.cleanupPokemon(pokemonId)
         CobbleCrewDebugLogger.pokemonCleanedUp(species, pokemonId)
     }
 
     /** Invalidate all cached profiles (e.g. on config reload). */
     fun invalidateProfiles() {
+        resetAllAssignments()
         profiles.clear()
         CobbleCrewDebugLogger.profileInvalidated()
     }

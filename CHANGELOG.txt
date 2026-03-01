@@ -1,3 +1,12 @@
+## 3.0.37
+- Fixed memory leak: recalling Pokémon from pastures now properly cleans up all worker state (jobs, navigation claims, inventory tracking, visual effects)
+- Fixed memory leak: breaking a pasture block now cleans up all tethered Pokémon state before removing the cache
+- Fixed job switching not cleaning up the outgoing job's internal state (held items, phases, scan caches)
+- Fixed config reload (invalidateProfiles) not resetting active job assignments, causing orphaned worker state
+- Fixed mob claims using infinite timeout — now uses 30s finite timeout to prevent permanent leaks if a defender is recalled mid-combat
+- Added InventoryUtils cleanup to the central cleanupPokemon path (depositArrival, retryTimers, depositWarning maps)
+- Added double-init guard to WorkerRegistry
+
 ## 3.0.36
 - Reworked 39 move-job pairings for better thematic fit
 - Every non-combo job now has 70+ eligible species (was as low as 0-5 for some jobs)

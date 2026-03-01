@@ -89,7 +89,7 @@ abstract class BaseDefender : Worker {
             .minByOrNull { it.squaredDistanceTo(pokemonEntity.pos) }
             ?: return
 
-        CobbleCrewNavigationUtils.claimMobTarget(pokemonId, target.id)
+        CobbleCrewNavigationUtils.claimMobTarget(pokemonId, target.id, world)
         WorkerAnimationUtils.playImmediate(pokemonEntity, WorkPhase.HOSTILE_SPOTTED, world)
         CobbleCrewDebugLogger.defenseTargetFound(pokemonEntity, name, target.id)
     }

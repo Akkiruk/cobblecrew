@@ -25,12 +25,18 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 
 @Mixin(PokemonPastureBlockEntity.class)
 public class PokemonPastureBlockEntityMixin {
 	/** Tick Pokémon dispatch every N ticks instead of every tick. */
 	private static final int POKEMON_TICK_INTERVAL = 5;
+
+	/** Track tethered UUIDs so we can detect recalled Pokémon. */
+	private Set<UUID> previousTetheredIds = new HashSet<>();
 
 	@Inject(at = @At("TAIL"), method = "TICKER$lambda$0")
 	private static void init(World world, BlockPos blockPos, BlockState blockState, PokemonPastureBlockEntity pastureBlock, CallbackInfo ci) {
@@ -52,6 +58,22 @@ public class PokemonPastureBlockEntityMixin {
 		CobbleCrewInventoryUtils.INSTANCE.tickAnimations(world);
 
 		List<PokemonPastureBlockEntity.Tethering> tetheredPokemon = pastureBlock.getTetheredPokemon();
+
+		// Detect recalled Pokémon: any UUID present last tick but absent now
+		PokemonPastureBlockEntityMixin self = (PokemonPastureBlockEntityMixin)(Object)pastureBlock;
+		Set<UUID> currentIds = new HashSet<>();
+		for (PokemonPastureBlockEntity.Tethering t : tetheredPokemon) {
+			if (t != null) {
+				try { currentIds.add(t.getPokemon().getUuid()); } catch (Exception ignored) {}
+			}
+		}
+		for (UUID prevId : self.previousTetheredIds) {
+			if (!currentIds.contains(prevId)) {
+				WorkerDispatcher.INSTANCE.cleanupPokemon(prevId, world);
+			}
+		}
+		self.previousTetheredIds = currentIds;
+
         for (PokemonPastureBlockEntity.Tethering tethering : tetheredPokemon) {
             if (tethering == null) continue;
 
@@ -84,6 +106,16 @@ public class PokemonPastureBlockEntityMixin {
 		PokemonPastureBlockEntity self = (PokemonPastureBlockEntity)(Object)this;
 		World world = self.getWorld();
 		if (world != null && !world.isClient) {
+			// Cleanup all tethered Pokémon before removing the pasture cache
+			for (PokemonPastureBlockEntity.Tethering tethering : self.getTetheredPokemon()) {
+				if (tethering == null) continue;
+				try {
+					UUID pid = tethering.getPokemon().getUuid();
+					WorkerDispatcher.INSTANCE.cleanupPokemon(pid, world);
+				} catch (Exception e) {
+					CobbleCrew.LOGGER.error("[CobbleCrew] - Failed to cleanup Pokémon on pasture break", e);
+				}
+			}
 			CobbleCrewCacheManager.INSTANCE.removePasture(self.getPos());
 		}
 	}

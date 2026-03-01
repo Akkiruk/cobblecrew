@@ -233,7 +233,6 @@ object CobbleCrewNavigationUtils {
         val expired = mutableListOf<UUID>()
 
         for ((pokemonId, claim) in pokemonToClaim) {
-            if (claim.timeoutTicks == Long.MAX_VALUE) continue // unlimited (mob claims)
             if (now - claim.claimTick > claim.timeoutTicks) {
                 expired.add(pokemonId)
                 // Track block claim failures for escalating blacklist
@@ -314,10 +313,12 @@ object CobbleCrewNavigationUtils {
 
     // --- Mob targeting (delegates to unified claim system) ---
 
-    fun claimMobTarget(pokemonId: UUID, entityId: Int) {
+    private const val MOB_CLAIM_TIMEOUT = 600L // 30s — generous but finite to prevent permanent leaks
+
+    fun claimMobTarget(pokemonId: UUID, entityId: Int, world: World) {
         releaseInternal(pokemonId, null)
         val target = Target.Mob(entityId)
-        pokemonToClaim[pokemonId] = Claim(pokemonId, target, 0L, Long.MAX_VALUE)
+        pokemonToClaim[pokemonId] = Claim(pokemonId, target, world.time, MOB_CLAIM_TIMEOUT)
         targetToPokemon[target] = pokemonId
         CobbleCrewDebugLogger.mobTargetClaimed(null, pokemonId, entityId)
     }

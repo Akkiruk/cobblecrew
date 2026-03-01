@@ -28,7 +28,15 @@ object WorkerRegistry {
         _workers.addAll(workers)
     }
 
+    private var initialized = false
+
     fun init() {
+        if (initialized) {
+            CobbleCrew.LOGGER.warn("[CobbleCrew] WorkerRegistry.init() called again — skipping")
+            return
+        }
+        initialized = true
+
         GatheringJobs.register()
         ProductionJobs.register()
         ProcessingJobs.register()
