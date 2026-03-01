@@ -152,7 +152,7 @@ object GatheringJobs {
     val GLOWBERRY_PICKER = GatheringJob(
         name = "glowberry_picker",
         targetCategory = BlockCategory.CAVE_VINE,
-        qualifyingMoves = setOf("pluck"),
+        qualifyingMoves = setOf("naturalgift"),
         particle = ParticleTypes.GLOW,
         readyCheck = { world, pos ->
             val state = world.getBlockState(pos)
@@ -328,7 +328,7 @@ object GatheringJobs {
     val BERRY_HARVESTER = GatheringJob(
         name = "berry_harvester",
         targetCategory = BlockCategory.BERRY,
-        qualifyingMoves = setOf("naturalgift"),
+        qualifyingMoves = setOf("pluck"),
         fallbackSpecies = listOf("Tropius"),
         particle = ParticleTypes.HAPPY_VILLAGER,
         readyCheck = { world, pos ->

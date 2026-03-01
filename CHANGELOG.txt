@@ -1,3 +1,6 @@
+## 3.0.38
+- Swapped berry job moves: pluck is now the main berry_harvester move, naturalgift moved to glowberry_picker
+
 ## 3.0.37
 - Fixed memory leak: recalling Pokémon from pastures now properly cleans up all worker state (jobs, navigation claims, inventory tracking, visual effects)
 - Fixed memory leak: breaking a pasture block now cleans up all tethered Pokémon state before removing the cache
