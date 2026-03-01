@@ -1,3 +1,10 @@
+## 3.0.40
+- Fixed Pokémon constantly re-pathing to pasture every 5 ticks — now only re-paths every 2 seconds with returning state tracking
+- Increased arrival radius from 3 to 5 blocks so Pokémon reliably count as "home"
+- Idle Pokémon now wander randomly within 4 blocks of the pasture instead of standing still forever
+- Fixed tryIdlePickup causing stuck loops: added 3s scan cooldown, 5s stale claim timeout, and proper item-exists validation
+- Pickup scans now filter out removed items and only trigger new scans on cooldown
+
 ## 3.0.39
 - Fixed Pokémon idling excessively at pastures by overhauling competing delay systems
 - Reduced scan cooldown from 20s to 8s — regrown targets are found much faster
