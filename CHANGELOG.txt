@@ -1,3 +1,12 @@
+## 3.0.39
+- Fixed Pokémon idling excessively at pastures by overhauling competing delay systems
+- Reduced scan cooldown from 20s to 8s — regrown targets are found much faster
+- Successful harvests no longer blacklist the position (cache removal is sufficient)
+- Job stickiness now breaks early when the sticky job has no available targets
+- Fixed escalating blacklist being dead code (queue cleanup was evicting fail counts prematurely)
+- Reduced target grace period from 10s to 3s and short blacklist from 10s to 5s
+- Pokémon cleanup on recall no longer blacklists abandoned positions
+
 ## 3.0.38
 - Swapped berry job moves: pluck is now the main berry_harvester move, naturalgift moved to glowberry_picker
 

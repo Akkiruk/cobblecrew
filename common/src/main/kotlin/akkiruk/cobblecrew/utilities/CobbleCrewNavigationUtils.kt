@@ -162,25 +162,29 @@ object CobbleCrewNavigationUtils {
 
     /**
      * Releases any claim held by this Pokémon.
-     * Block claims are tracked in the recently-expired set for blacklisting.
+     * @param blacklist if true, adds the position to the recently-expired blacklist.
+     *                  Pass false for clean harvests (cache removal is sufficient).
      */
-    fun releaseTarget(pokemonId: UUID, world: World) = releaseInternal(pokemonId, world)
+    fun releaseTarget(pokemonId: UUID, world: World, blacklist: Boolean = true) = releaseInternal(pokemonId, world, blacklist)
 
     /**
      * Releases the player target for a given Pokémon.
      */
-    fun releasePlayerTarget(pokemonId: UUID) = releaseInternal(pokemonId, null)
+    fun releasePlayerTarget(pokemonId: UUID) = releaseInternal(pokemonId, null, false)
 
-    private fun releaseInternal(pokemonId: UUID, world: World?) {
+    private fun releaseInternal(pokemonId: UUID, world: World?, blacklist: Boolean = true) {
         val claim = pokemonToClaim.remove(pokemonId) ?: return
         targetToPokemon.remove(claim.target)
 
-        // Track recently expired block targets for blacklist
         if (claim.target is Target.Block && world != null) {
             val pos = claim.target.pos
-            val expired = ExpiredTarget(pos, world.time)
-            recentlyExpiredTargets[pos] = expired
-            expiredQueue.add(expired)
+            // Only blacklist on failed claims (timeout, pathfind failure).
+            // Successful harvests rely on cache removal — no need to blacklist.
+            if (blacklist) {
+                val expired = ExpiredTarget(pos, world.time)
+                recentlyExpiredTargets[pos] = expired
+                expiredQueue.add(expired)
+            }
             CobbleCrewDebugLogger.targetReleased(null, pokemonId, pos)
         } else if (claim.target is Target.Player) {
             CobbleCrewDebugLogger.playerTargetReleased(pokemonId)
@@ -246,15 +250,26 @@ object CobbleCrewNavigationUtils {
 
         expired.forEach { releaseInternal(it, world) }
 
-        // Clean expired target queue
+        // Clean expired target queue — preserve fail counts for escalating blacklist
         while (expiredQueue.isNotEmpty() && now - expiredQueue.peek().expiryTick > EXPIRED_TARGET_TIMEOUT_TICKS) {
-            val removed = expiredQueue.poll().pos
-            recentlyExpiredTargets.remove(removed)
-            blockFailCounts.remove(removed)
+            val polled = expiredQueue.poll()
+            val pos = polled.pos
+            // Only remove map entry if it hasn't been overwritten by a newer release
+            val current = recentlyExpiredTargets[pos]
+            if (current != null && current.expiryTick <= polled.expiryTick) {
+                recentlyExpiredTargets.remove(pos)
+            }
+            // Don't clear fail counts — let the escalating blacklist work.
+            // Fail counts reset naturally when the blacklist duration expires in isRecentlyExpired().
         }
 
         // Periodic sweep of unreachableCache (prevents unbounded growth)
         unreachableCache.values.removeAll { expiry -> now >= expiry }
+
+        // Sweep orphaned fail counts (position no longer in expired map)
+        if (blockFailCounts.size > recentlyExpiredTargets.size * 2 + 10) {
+            blockFailCounts.keys.retainAll(recentlyExpiredTargets.keys)
+        }
     }
 
     /**
@@ -306,7 +321,7 @@ object CobbleCrewNavigationUtils {
      * Removes all state associated with a Pokémon.
      */
     fun cleanupPokemon(pokemonId: UUID, world: World) {
-        releaseInternal(pokemonId, world)
+        releaseInternal(pokemonId, world, blacklist = false)
         lastPathfindTick.remove(pokemonId)
         unreachableCache.keys.removeAll { it.first == pokemonId }
     }

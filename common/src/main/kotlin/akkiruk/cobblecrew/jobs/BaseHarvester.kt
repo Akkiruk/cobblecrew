@@ -149,7 +149,8 @@ abstract class BaseHarvester : Worker {
 
         if (WorkerVisualUtils.handleArrival(pokemonEntity, currentTarget, world, arrivalParticle, arrivalTolerance, WorkPhase.HARVESTING)) {
             harvest(world, currentTarget, pokemonEntity)
-            CobbleCrewNavigationUtils.releaseTarget(pokemonId, world)
+            // Clean harvest — skip blacklist, cache removal is sufficient
+            CobbleCrewNavigationUtils.releaseTarget(pokemonId, world, blacklist = false)
             targetCategory?.let { cat ->
                 CobbleCrewCacheManager.removeTarget(context.cacheKey, cat, currentTarget)
             }

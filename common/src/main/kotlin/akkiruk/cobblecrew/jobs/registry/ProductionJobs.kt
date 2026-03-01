@@ -333,7 +333,7 @@ object ProductionJobs {
             CobbleCrewNavigationUtils.navigateTo(pokemonEntity, target)
             if (WorkerVisualUtils.handleArrival(pokemonEntity, target, world, ParticleTypes.COMPOSTER, 3.0, WorkPhase.HARVESTING)) {
                 generateLoot(world, target, pokemonEntity)
-                CobbleCrewNavigationUtils.releaseTarget(pid, world)
+                CobbleCrewNavigationUtils.releaseTarget(pid, world, blacklist = false)
                 targets.remove(pid)
             }
         }

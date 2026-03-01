@@ -111,11 +111,14 @@ object WorkerDispatcher {
         // Stick with current job while it has work or stickiness hasn't expired
         if (current != null && current in eligible) {
             val assignedAt = jobAssignedTick[pokemonId] ?: 0L
-            if (current.hasActiveState(pokemonId)
+            val hasRealWork = current.hasActiveState(pokemonId)
                 || CobbleCrewNavigationUtils.getTarget(pokemonId, world) != null
                 || CobbleCrewNavigationUtils.getPlayerTarget(pokemonId, world) != null
-                || now - assignedAt < JOB_STICKINESS_TICKS
-            ) {
+            // Break stickiness early if the job has no available targets
+            val stickyAndAvailable = !hasRealWork
+                && now - assignedAt < JOB_STICKINESS_TICKS
+                && current.isAvailable(context, pokemonId)
+            if (hasRealWork || stickyAndAvailable) {
                 val reason = when {
                     current.hasActiveState(pokemonId) -> "activeState"
                     CobbleCrewNavigationUtils.getTarget(pokemonId, world) != null -> "hasTarget"
@@ -241,7 +244,7 @@ object WorkerDispatcher {
             val stack = item.stack.split(item.stack.count)
             if (item.stack.isEmpty) item.discard()
             idleHeldItems[pid] = listOf(stack)
-            CobbleCrewNavigationUtils.releaseTarget(pid, world)
+            CobbleCrewNavigationUtils.releaseTarget(pid, world, blacklist = false)
         }
         return true
     }

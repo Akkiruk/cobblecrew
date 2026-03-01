@@ -86,7 +86,7 @@ object LogisticsJobs {
             CobbleCrewNavigationUtils.navigateTo(pokemonEntity, target)
             if (WorkerVisualUtils.handleArrival(pokemonEntity, target, world, ParticleTypes.ELECTRIC_SPARK, 3.0, WorkPhase.PROCESSING)) {
                 consolidateNuggets(world, target)
-                CobbleCrewNavigationUtils.releaseTarget(pid, world)
+                CobbleCrewNavigationUtils.releaseTarget(pid, world, blacklist = false)
                 targets.remove(pid)
             }
         }
@@ -179,7 +179,7 @@ object LogisticsJobs {
                 val stack = item.stack.copy()
                 item.discard()
                 heldItems[pid] = listOf(stack)
-                CobbleCrewNavigationUtils.releaseTarget(pid, world)
+                CobbleCrewNavigationUtils.releaseTarget(pid, world, blacklist = false)
             }
         }
 

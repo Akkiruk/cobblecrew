@@ -226,7 +226,7 @@ object SupportJobs {
                     heldItems[pid] = listOf(map ?: singleItem)
                     lastGenTime[pid] = world.time
                 }
-                CobbleCrewNavigationUtils.releaseTarget(pid, world)
+                CobbleCrewNavigationUtils.releaseTarget(pid, world, blacklist = false)
             }
         }
 

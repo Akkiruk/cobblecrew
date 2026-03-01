@@ -125,7 +125,7 @@ open class EnvironmentalJob(
         if (WorkerVisualUtils.handleArrival(pokemonEntity, target, world, particle, 3.0, WorkPhase.ENVIRONMENTAL)) {
             action(world, target)
             if (defaultCooldownSeconds > 0) lastActionTime[pid] = now
-            CobbleCrewNavigationUtils.releaseTarget(pid, world)
+            CobbleCrewNavigationUtils.releaseTarget(pid, world, blacklist = false)
             targets.remove(pid)
         }
     }
