@@ -54,7 +54,7 @@ object PlacementJobs {
 
     val TREE_PLANTER = PlacementJob(
         name = "tree_planter",
-        qualifyingMoves = setOf("ingrain"),
+        qualifyingMoves = setOf("seedbomb"),
         particle = ParticleTypes.HAPPY_VILLAGER,
         itemCheck = { stack -> (stack.item as? BlockItem)?.block is SaplingBlock },
         findTarget = { world, origin ->

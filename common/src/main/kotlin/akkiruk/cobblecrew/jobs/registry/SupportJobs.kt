@@ -56,7 +56,7 @@ object SupportJobs {
 
     val HEALER = SupportJob(
         name = "healer",
-        qualifyingMoves = setOf("healpulse"),
+        qualifyingMoves = setOf("drainingkiss"),
         fallbackSpecies = listOf("Chansey", "Blissey", "Happiny", "Audino"),
         particle = ParticleTypes.HEART,
         statusEffect = StatusEffects.REGENERATION,
@@ -78,7 +78,7 @@ object SupportJobs {
 
     val STRENGTH_BOOSTER = SupportJob(
         name = "strength_booster",
-        qualifyingMoves = setOf("howl"),
+        qualifyingMoves = setOf("swordsdance"),
         particle = ParticleTypes.CRIT,
         statusEffect = StatusEffects.STRENGTH,
         defaultDurationSeconds = 30,
@@ -98,7 +98,7 @@ object SupportJobs {
 
     val HASTE_PROVIDER = SupportJob(
         name = "haste_provider",
-        qualifyingMoves = setOf("focusenergy"),
+        qualifyingMoves = setOf("honeclaws"),
         particle = ParticleTypes.ENCHANT,
         statusEffect = StatusEffects.HASTE,
         defaultDurationSeconds = 30,
@@ -117,7 +117,7 @@ object SupportJobs {
 
     val NIGHT_VISION_PROVIDER = SupportJob(
         name = "night_vision_provider",
-        qualifyingMoves = setOf("miracleeye"),
+        qualifyingMoves = setOf("laserfocus"),
         particle = ParticleTypes.END_ROD,
         statusEffect = StatusEffects.NIGHT_VISION,
         defaultDurationSeconds = 60,
@@ -126,7 +126,7 @@ object SupportJobs {
 
     val WATER_BREATHER = SupportJob(
         name = "water_breather",
-        qualifyingMoves = setOf("aquaring"),
+        qualifyingMoves = setOf("brine"),
         particle = ParticleTypes.BUBBLE,
         statusEffect = StatusEffects.WATER_BREATHING,
         defaultDurationSeconds = 60,
@@ -135,7 +135,7 @@ object SupportJobs {
 
     val HUNGER_RESTORER = SupportJob(
         name = "hunger_restorer",
-        qualifyingMoves = setOf("swallow"),
+        qualifyingMoves = setOf("yawn"),
         particle = ParticleTypes.HAPPY_VILLAGER,
         statusEffect = StatusEffects.SATURATION,
         defaultDurationSeconds = 10,

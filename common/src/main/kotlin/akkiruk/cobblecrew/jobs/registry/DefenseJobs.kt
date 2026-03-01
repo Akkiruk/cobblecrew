@@ -35,7 +35,7 @@ object DefenseJobs {
 
     val SENTRY = DefenseJob(
         name = "sentry",
-        qualifyingMoves = setOf("detect"),
+        qualifyingMoves = setOf("wideguard"),
         particle = ParticleTypes.ELECTRIC_SPARK,
         phase = WorkPhase.DEBUFFING,
         effectFn = { _, _, target ->
@@ -76,7 +76,7 @@ object DefenseJobs {
 
     val FIRE_TRAP = DefenseJob(
         name = "fire_trap",
-        qualifyingMoves = setOf("flamewheel"),
+        qualifyingMoves = setOf("firefang"),
         particle = ParticleTypes.FLAME,
         effectFn = { _, _, target ->
             target.setOnFireFor(5f)
@@ -95,7 +95,7 @@ object DefenseJobs {
 
     val ICE_TRAP = DefenseJob(
         name = "ice_trap",
-        qualifyingMoves = setOf("freezedry"),
+        qualifyingMoves = setOf("chillingwater"),
         particle = ParticleTypes.SNOWFLAKE,
         phase = WorkPhase.DEBUFFING,
         effectFn = { _, _, target ->

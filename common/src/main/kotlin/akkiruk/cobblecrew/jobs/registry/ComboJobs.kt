@@ -149,7 +149,7 @@ object ComboJobs {
         name = "gem_vein_finder",
         category = "combo",
         targetCategory = BlockCategory.STONE,
-        qualifyingMoves = setOf("flashcannon", "glare"),
+        qualifyingMoves = setOf("flashcannon", "foresight"),
         particle = ParticleTypes.ENCHANT,
         priority = WorkerPriority.COMBO,
         isCombo = true,
@@ -212,7 +212,7 @@ object ComboJobs {
     val CHAIN_FORGER = ProductionJob(
         name = "chain_forger",
         category = "combo",
-        qualifyingMoves = setOf("scorchingsands", "bodypress"),
+        qualifyingMoves = setOf("metalclaw", "bodypress"),
         defaultCooldownSeconds = 120,
         particle = ParticleTypes.LAVA,
         priority = WorkerPriority.COMBO,
@@ -224,7 +224,7 @@ object ComboJobs {
     val LANTERN_BUILDER = ProductionJob(
         name = "lantern_builder",
         category = "combo",
-        qualifyingMoves = setOf("sunnyday", "icefang"),
+        qualifyingMoves = setOf("sunnyday", "irontail"),
         defaultCooldownSeconds = 180,
         particle = ParticleTypes.END_ROD,
         priority = WorkerPriority.COMBO,
@@ -236,7 +236,7 @@ object ComboJobs {
     val BANNER_CREATOR = ProductionJob(
         name = "banner_creator",
         category = "combo",
-        qualifyingMoves = setOf("leechseed", "whirlwind"),
+        qualifyingMoves = setOf("dazzlinggleam", "tailwhip"),
         defaultCooldownSeconds = 240,
         particle = ParticleTypes.HAPPY_VILLAGER,
         priority = WorkerPriority.COMBO,
@@ -277,7 +277,7 @@ object ComboJobs {
     val MAGMA_DIVER = ProductionJob(
         name = "magma_diver",
         category = "combo",
-        qualifyingMoves = setOf("overheat", "nightshade"),
+        qualifyingMoves = setOf("overheat", "darkpulse"),
         defaultCooldownSeconds = 300,
         particle = ParticleTypes.LAVA,
         priority = WorkerPriority.COMBO,
@@ -299,7 +299,7 @@ object ComboJobs {
     val BLAST_FURNACE = ProcessingJob(
         name = "blast_furnace",
         category = "combo",
-        qualifyingMoves = setOf("scald", "avalanche"),
+        qualifyingMoves = setOf("scald", "firepunch"),
         particle = ParticleTypes.LAVA,
         priority = WorkerPriority.COMBO,
         isCombo = true,

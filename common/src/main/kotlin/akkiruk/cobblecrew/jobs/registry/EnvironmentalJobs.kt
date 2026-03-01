@@ -118,7 +118,7 @@ object EnvironmentalJobs {
         validate = { _, _ -> true },
     )
 
-    val LavaCauldronFiller = cauldronFiller("lava_cauldron_filler", "lavaplume", ParticleTypes.LAVA, CobbleCrewCauldronUtils.CauldronFluid.LAVA)
+    val LavaCauldronFiller = cauldronFiller("lava_cauldron_filler", "flareblitz", ParticleTypes.LAVA, CobbleCrewCauldronUtils.CauldronFluid.LAVA)
     val WaterCauldronFiller = cauldronFiller("water_cauldron_filler", "surf", ParticleTypes.SPLASH, CobbleCrewCauldronUtils.CauldronFluid.WATER)
     val SnowCauldronFiller = cauldronFiller("snow_cauldron_filler", "blizzard", ParticleTypes.SNOWFLAKE, CobbleCrewCauldronUtils.CauldronFluid.POWDER_SNOW)
 
@@ -161,7 +161,7 @@ object EnvironmentalJobs {
     val BrewingStandFueler = EnvironmentalJob(
         name = "brewing_stand_fueler",
         targetCategory = BlockCategory.BREWING_STAND,
-        qualifyingMoves = setOf("dragonbreath"),
+        qualifyingMoves = setOf("flamecharge"),
         priority = WorkerPriority.TYPE,
         particle = ParticleTypes.FLAME,
         defaultCooldownSeconds = 80,
@@ -249,7 +249,7 @@ object EnvironmentalJobs {
     val BeePollinator = EnvironmentalJob(
         name = "bee_pollinator",
         targetCategory = BlockCategory.HONEY,
-        qualifyingMoves = setOf("pollenpuff"),
+        qualifyingMoves = setOf("signalbeam"),
         fallbackSpecies = listOf("Combee", "Vespiquen"),
         priority = WorkerPriority.SPECIES,
         particle = ParticleTypes.WAX_ON,

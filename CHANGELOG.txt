@@ -1,3 +1,9 @@
+## 3.0.36
+- Reworked 39 move-job pairings for better thematic fit
+- Every non-combo job now has 70+ eligible species (was as low as 0-5 for some jobs)
+- Zero moves are shared across jobs — every move is exclusive to one job
+- Notable changes: crop_harvester (harvest→trailblaze), charcoal_burner (burnup→incinerate), bone_grinder (bonemerang→superpower), tree_planter (ingrain→seedbomb), healer (healpulse→drainingkiss), strength_booster (howl→swordsdance)
+
 ## 3.0.35
 - Added /cobblecrew moves command — analyzes all species learnsets and uploads move report to mclo.gs
 - Shows every learnable move, how many species can learn it, and which CobbleCrew job uses it

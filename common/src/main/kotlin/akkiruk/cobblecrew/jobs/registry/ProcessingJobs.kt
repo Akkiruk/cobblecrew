@@ -39,7 +39,7 @@ object ProcessingJobs {
 
     val FOOD_COOKER = ProcessingJob(
         name = "food_cooker",
-        qualifyingMoves = setOf("flamecharge"),
+        qualifyingMoves = setOf("ember"),
         particle = ParticleTypes.FLAME,
         inputCheck = { stack ->
             stack.item in setOf(
@@ -82,7 +82,7 @@ object ProcessingJobs {
 
     val CHARCOAL_BURNER = ProcessingJob(
         name = "charcoal_burner",
-        qualifyingMoves = setOf("burnup"),
+        qualifyingMoves = setOf("incinerate"),
         particle = ParticleTypes.CAMPFIRE_COSY_SMOKE,
         inputCheck = { stack ->
             stack.item in setOf(
@@ -108,7 +108,7 @@ object ProcessingJobs {
 
     val BONE_GRINDER = ProcessingJob(
         name = "bone_grinder",
-        qualifyingMoves = setOf("bonemerang"),
+        qualifyingMoves = setOf("superpower"),
         particle = ParticleTypes.CRIT,
         inputCheck = { it.item == Items.BONE },
         transformFn = { input -> listOf(ItemStack(Items.BONE_MEAL, input.count * 3)) },
@@ -116,7 +116,7 @@ object ProcessingJobs {
 
     val FLINT_KNAPPER = ProcessingJob(
         name = "flint_knapper",
-        qualifyingMoves = setOf("karatechop"),
+        qualifyingMoves = setOf("pound"),
         particle = ParticleTypes.CRIT,
         inputCheck = { it.item == Items.GRAVEL },
         transformFn = { input -> listOf(ItemStack(Items.FLINT, input.count)) },
@@ -124,7 +124,7 @@ object ProcessingJobs {
 
     val PIGMENT_PRESSER = ProcessingJob(
         name = "pigment_presser",
-        qualifyingMoves = setOf("hammerarm"),
+        qualifyingMoves = setOf("rollout"),
         particle = ParticleTypes.COMPOSTER,
         inputCheck = { stack ->
             stack.item in setOf(
@@ -164,7 +164,7 @@ object ProcessingJobs {
 
     val COMPOSTER = object : ProcessingJob(
         name = "composter",
-        qualifyingMoves = setOf("stockpile"),
+        qualifyingMoves = setOf("recycle"),
         particle = ParticleTypes.COMPOSTER,
         inputCheck = { stack ->
             stack.item in setOf(
