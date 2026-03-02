@@ -100,7 +100,15 @@ $fileContent = [System.IO.File]::ReadAllBytes($jarFile.FullName)
 Invoke-ExarotonApi -Method PUT -Uri "files/data/mods/$($jarFile.Name)/" -ConfigType "application/octet-stream" -Body $fileContent | Out-Null
 Write-Host "Upload complete." -ForegroundColor Green
 
-# 7. Restart Server
-Write-Host "Restarting server..." -ForegroundColor Cyan
-Invoke-ExarotonApi -Method GET -Uri "restart/" | Out-Null
-Write-Host "Server restart triggered." -ForegroundColor Green
+# 7. Restart or Start Server
+Write-Host "Starting/restarting server..." -ForegroundColor Cyan
+$serverStatus = Invoke-ExarotonApi -Method GET -Uri ""
+if ($serverStatus.data.status -eq 0) {
+    # Server is offline — start it
+    Invoke-ExarotonApi -Method GET -Uri "start/" | Out-Null
+    Write-Host "Server start triggered." -ForegroundColor Green
+} else {
+    # Server is online — restart it
+    Invoke-ExarotonApi -Method GET -Uri "restart/" | Out-Null
+    Write-Host "Server restart triggered." -ForegroundColor Green
+}
