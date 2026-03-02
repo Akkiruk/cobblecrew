@@ -1,3 +1,8 @@
+## 3.0.42
+- Growth accelerator now skips mature crops — no longer wastes time on fully-grown plants
+- Fixed hearty grains harvest: properly removes upper half and resets lower half to age 0
+- Fixed hearty grains dupe bug when targeting the lower half of a two-block-tall crop
+
 ## 3.0.41
 - Added job importance system — jobs are now prioritized by urgency within each eligibility tier
 - Defense and healing jobs are CRITICAL (handled first when hostiles/damage present)

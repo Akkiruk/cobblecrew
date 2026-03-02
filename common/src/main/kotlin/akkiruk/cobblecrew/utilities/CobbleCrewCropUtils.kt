@@ -87,10 +87,29 @@ object CobbleCrewCropUtils {
         val isMushroomColony = blockId in FarmersDelightBlocks.MUSHROOMS
 
         if (block == CobblemonBlocks.HEARTY_GRAINS) {
+            val abovePos = blockPos.up()
+            val aboveState = world.getBlockState(abovePos)
             val belowPos = blockPos.down()
             val belowState = world.getBlockState(belowPos)
+
             if (belowState.block == CobblemonBlocks.HEARTY_GRAINS) {
+                // Targeted the upper half — remove it and reset lower half to age 0
                 world.setBlockState(blockPos, Blocks.AIR.defaultState, Block.NOTIFY_LISTENERS)
+                world.setBlockState(
+                    belowPos,
+                    CobblemonBlocks.HEARTY_GRAINS.defaultState,
+                    Block.NOTIFY_ALL,
+                )
+            } else {
+                // Targeted the lower half — remove upper half if present, reset lower to age 0
+                if (aboveState.block == CobblemonBlocks.HEARTY_GRAINS) {
+                    world.setBlockState(abovePos, Blocks.AIR.defaultState, Block.NOTIFY_LISTENERS)
+                }
+                world.setBlockState(
+                    blockPos,
+                    CobblemonBlocks.HEARTY_GRAINS.defaultState,
+                    Block.NOTIFY_ALL,
+                )
             }
             return drops
         }

@@ -18,6 +18,7 @@ import akkiruk.cobblecrew.jobs.dsl.EnvironmentalJob
 import akkiruk.cobblecrew.mixin.AbstractFurnaceBlockEntityAccessor
 import akkiruk.cobblecrew.mixin.BrewingStandBlockEntityAccessor
 import akkiruk.cobblecrew.utilities.CobbleCrewCauldronUtils
+import akkiruk.cobblecrew.utilities.CobbleCrewCropUtils
 import akkiruk.cobblecrew.utilities.CobbleCrewNavigationUtils
 import net.minecraft.block.*
 import net.minecraft.block.entity.AbstractFurnaceBlockEntity
@@ -90,12 +91,14 @@ object EnvironmentalJobs {
         findTarget = { world, origin ->
             CobbleCrewCacheManager.getTargets(origin, BlockCategory.GROWABLE)
                 .filter { !CobbleCrewNavigationUtils.isTargeted(it, world) }
+                .filter { !CobbleCrewCropUtils.isMatureCrop(world, it) }
                 .minByOrNull { it.getSquaredDistance(origin) }
         },
         action = { world, pos ->
             val sw = world as? ServerWorld ?: return@EnvironmentalJob
             val state = world.getBlockState(pos)
-            if (state.block is CropBlock || state.block is SaplingBlock) {
+            val block = state.block
+            if ((block is CropBlock || block is SaplingBlock) && !CobbleCrewCropUtils.isMatureCrop(world, pos)) {
                 repeat(3) { state.randomTick(sw, pos, sw.random) }
             }
         },
