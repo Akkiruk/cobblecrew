@@ -11,6 +11,7 @@ package akkiruk.cobblecrew.jobs.dsl
 import akkiruk.cobblecrew.config.JobConfig
 import akkiruk.cobblecrew.config.JobConfigManager
 import akkiruk.cobblecrew.enums.BlockCategory
+import akkiruk.cobblecrew.enums.JobImportance
 import akkiruk.cobblecrew.enums.WorkerPriority
 import akkiruk.cobblecrew.jobs.BaseSupport
 import net.minecraft.entity.effect.StatusEffect
@@ -29,6 +30,7 @@ open class SupportJob(
     val fallbackType: String = "",
     val fallbackSpecies: List<String> = emptyList(),
     override val priority: WorkerPriority = WorkerPriority.MOVE,
+    override val importance: JobImportance = JobImportance.STANDARD,
     val particle: ParticleEffect = ParticleTypes.HEART,
     override val statusEffect: RegistryEntry<StatusEffect>,
     val defaultDurationSeconds: Int = 20,

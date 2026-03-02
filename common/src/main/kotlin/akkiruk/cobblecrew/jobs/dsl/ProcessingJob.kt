@@ -11,6 +11,7 @@ package akkiruk.cobblecrew.jobs.dsl
 import akkiruk.cobblecrew.config.JobConfig
 import akkiruk.cobblecrew.config.JobConfigManager
 import akkiruk.cobblecrew.enums.BlockCategory
+import akkiruk.cobblecrew.enums.JobImportance
 import akkiruk.cobblecrew.enums.WorkerPriority
 import akkiruk.cobblecrew.jobs.BaseProcessor
 import net.minecraft.item.ItemStack
@@ -28,6 +29,7 @@ open class ProcessingJob(
     val fallbackType: String = "",
     val fallbackSpecies: List<String> = emptyList(),
     override val priority: WorkerPriority = WorkerPriority.MOVE,
+    override val importance: JobImportance = JobImportance.STANDARD,
     val particle: ParticleEffect = ParticleTypes.SMOKE,
     val inputCheck: (ItemStack) -> Boolean,
     val transformFn: (ItemStack) -> List<ItemStack>,

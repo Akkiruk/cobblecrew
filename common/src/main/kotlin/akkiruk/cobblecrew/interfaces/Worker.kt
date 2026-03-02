@@ -9,6 +9,7 @@
 package akkiruk.cobblecrew.interfaces
 
 import akkiruk.cobblecrew.enums.BlockCategory
+import akkiruk.cobblecrew.enums.JobImportance
 import akkiruk.cobblecrew.enums.WorkerPriority
 import akkiruk.cobblecrew.jobs.JobContext
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
@@ -26,6 +27,9 @@ interface Worker {
 
     /** Priority tier for eligibility sorting. */
     val priority: WorkerPriority get() = WorkerPriority.TYPE
+
+    /** How urgently this job should run within its eligibility tier. */
+    val importance: JobImportance get() = JobImportance.STANDARD
 
     /**
      * Static eligibility check — called once during profile build.

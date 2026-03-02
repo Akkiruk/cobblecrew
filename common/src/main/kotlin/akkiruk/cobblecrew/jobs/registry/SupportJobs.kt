@@ -13,6 +13,7 @@ import akkiruk.cobblecrew.config.JobConfig
 import akkiruk.cobblecrew.config.JobConfigManager
 import akkiruk.cobblecrew.jobs.dsl.dslEligible
 import akkiruk.cobblecrew.enums.BlockCategory
+import akkiruk.cobblecrew.enums.JobImportance
 import akkiruk.cobblecrew.enums.WorkPhase
 import akkiruk.cobblecrew.enums.WorkerPriority
 import akkiruk.cobblecrew.interfaces.Worker
@@ -58,6 +59,7 @@ object SupportJobs {
         name = "healer",
         qualifyingMoves = setOf("drainingkiss"),
         fallbackSpecies = listOf("Chansey", "Blissey", "Happiny", "Audino"),
+        importance = JobImportance.CRITICAL,
         particle = ParticleTypes.HEART,
         statusEffect = StatusEffects.REGENERATION,
         defaultDurationSeconds = 30,
@@ -109,6 +111,7 @@ object SupportJobs {
     val JUMP_BOOSTER = SupportJob(
         name = "jump_booster",
         qualifyingMoves = setOf("bounce"),
+        importance = JobImportance.LOW,
         particle = ParticleTypes.CLOUD,
         statusEffect = StatusEffects.JUMP_BOOST,
         defaultDurationSeconds = 30,
@@ -118,6 +121,7 @@ object SupportJobs {
     val NIGHT_VISION_PROVIDER = SupportJob(
         name = "night_vision_provider",
         qualifyingMoves = setOf("laserfocus"),
+        importance = JobImportance.LOW,
         particle = ParticleTypes.END_ROD,
         statusEffect = StatusEffects.NIGHT_VISION,
         defaultDurationSeconds = 60,
@@ -127,6 +131,7 @@ object SupportJobs {
     val WATER_BREATHER = SupportJob(
         name = "water_breather",
         qualifyingMoves = setOf("brine"),
+        importance = JobImportance.LOW,
         particle = ParticleTypes.BUBBLE,
         statusEffect = StatusEffects.WATER_BREATHING,
         defaultDurationSeconds = 60,

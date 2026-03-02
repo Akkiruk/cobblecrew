@@ -148,7 +148,7 @@ object WorkerDispatcher {
         }
 
         // Priority-ordered selection: check tiers in order (COMBO > MOVE > SPECIES > TYPE).
-        // Within each tier, shuffle for fairness. Stop at first tier with available work.
+        // Within each tier, sort by importance (CRITICAL > HIGH > STANDARD > LOW > BACKGROUND).
         val job = selectBestAvailableJob(profile, context, pokemonId)
 
         // Clean up old job if switching away
@@ -189,14 +189,22 @@ object WorkerDispatcher {
     /**
      * Selects the best available job using priority tiers.
      * COMBO jobs are checked first, then MOVE, SPECIES, TYPE.
-     * Within each tier, candidates are shuffled for fairness.
+     * Within each tier, candidates are sorted by [JobImportance]
+     * (CRITICAL > HIGH > STANDARD > LOW > BACKGROUND).
+     * Same-importance jobs are shuffled for fairness.
      * Stops at the first tier that has an available job.
      */
     private fun selectBestAvailableJob(profile: PokemonProfile, context: JobContext, pokemonId: java.util.UUID): Worker? {
         for (priority in WorkerPriority.entries) {
             val candidates = profile.getByPriority(priority)
             if (candidates.isEmpty()) continue
-            val available = candidates.shuffled().firstOrNull { it.isAvailable(context, pokemonId) }
+            // Group by importance, iterate from highest (CRITICAL) to lowest (BACKGROUND),
+            // shuffle within each group for fairness
+            val sorted = candidates
+                .groupBy { it.importance }
+                .toSortedMap()
+                .flatMap { (_, workers) -> workers.shuffled() }
+            val available = sorted.firstOrNull { it.isAvailable(context, pokemonId) }
             if (available != null) return available
         }
         return null

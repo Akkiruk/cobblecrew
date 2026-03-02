@@ -12,6 +12,7 @@ import akkiruk.cobblecrew.config.JobConfig
 import akkiruk.cobblecrew.config.JobConfigManager
 import akkiruk.cobblecrew.jobs.dsl.dslEligible
 import akkiruk.cobblecrew.enums.BlockCategory
+import akkiruk.cobblecrew.enums.JobImportance
 import akkiruk.cobblecrew.enums.WorkPhase
 import akkiruk.cobblecrew.enums.WorkerPriority
 import akkiruk.cobblecrew.interfaces.Worker
@@ -42,6 +43,7 @@ object LogisticsJobs {
     object Magnetizer : Worker {
         override val name = "magnetizer"
         override val priority = WorkerPriority.MOVE
+        override val importance = JobImportance.BACKGROUND
         override val targetCategory: BlockCategory? = null
 
         private val config get() = JobConfigManager.get(name)
@@ -126,6 +128,7 @@ object LogisticsJobs {
     object GroundItemCollector : Worker {
         override val name = "ground_item_collector"
         override val priority = WorkerPriority.TYPE
+        override val importance = JobImportance.HIGH
         override val targetCategory: BlockCategory? = null
 
         private val config get() = JobConfigManager.get(name)

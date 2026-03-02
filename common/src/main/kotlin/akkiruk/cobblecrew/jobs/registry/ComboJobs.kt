@@ -10,6 +10,7 @@ package akkiruk.cobblecrew.jobs.registry
 
 import akkiruk.cobblecrew.cache.CobbleCrewCacheManager
 import akkiruk.cobblecrew.enums.BlockCategory
+import akkiruk.cobblecrew.enums.JobImportance
 import akkiruk.cobblecrew.enums.WorkerPriority
 import akkiruk.cobblecrew.jobs.WorkerRegistry
 import akkiruk.cobblecrew.jobs.dsl.GatheringJob
@@ -320,6 +321,7 @@ object ComboJobs {
         name = "full_restore",
         category = "combo",
         qualifyingMoves = setOf("healbell", "lifedew"),
+        importance = JobImportance.CRITICAL,
         particle = ParticleTypes.HEART,
         statusEffect = StatusEffects.REGENERATION,
         defaultDurationSeconds = 30,

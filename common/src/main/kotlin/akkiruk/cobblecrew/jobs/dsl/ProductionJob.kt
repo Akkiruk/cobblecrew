@@ -11,6 +11,7 @@ package akkiruk.cobblecrew.jobs.dsl
 import akkiruk.cobblecrew.config.JobConfig
 import akkiruk.cobblecrew.config.JobConfigManager
 import akkiruk.cobblecrew.enums.BlockCategory
+import akkiruk.cobblecrew.enums.JobImportance
 import akkiruk.cobblecrew.enums.WorkerPriority
 import akkiruk.cobblecrew.jobs.BaseProducer
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
@@ -32,6 +33,7 @@ open class ProductionJob(
     val fallbackSpecies: List<String> = emptyList(),
     val defaultCooldownSeconds: Int = 120,
     override val priority: WorkerPriority = WorkerPriority.MOVE,
+    override val importance: JobImportance = JobImportance.STANDARD,
     val particle: ParticleEffect = ParticleTypes.HAPPY_VILLAGER,
     val output: (World, PokemonEntity) -> List<ItemStack>,
     val isCombo: Boolean = false,

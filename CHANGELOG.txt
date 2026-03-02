@@ -1,3 +1,15 @@
+## 3.0.41
+- Added job importance system — jobs are now prioritized by urgency within each eligibility tier
+- Defense and healing jobs are CRITICAL (handled first when hostiles/damage present)
+- Harvesting and gathering jobs are HIGH priority (time-sensitive resources)
+- Processing, production, and combat buffs are STANDARD priority
+- Placement, growth, and environmental jobs are LOW priority (maintenance)
+- Logistics cleanup (magnetizer) is BACKGROUND priority
+- Fire dousing is CRITICAL, furnace/brewing fueling is STANDARD (enables processing chain)
+- Ground item collector is HIGH (items despawn)
+- Utility support buffs (jump, night vision, water breathing) are LOW priority
+- Same-importance jobs still shuffle for fairness within each tier
+
 ## 3.0.40
 - Fixed Pokémon constantly re-pathing to pasture every 5 ticks — now only re-paths every 2 seconds with returning state tracking
 - Increased arrival radius from 3 to 5 blocks so Pokémon reliably count as "home"

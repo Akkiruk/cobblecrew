@@ -11,6 +11,7 @@ package akkiruk.cobblecrew.jobs.dsl
 import akkiruk.cobblecrew.config.JobConfig
 import akkiruk.cobblecrew.config.JobConfigManager
 import akkiruk.cobblecrew.enums.BlockCategory
+import akkiruk.cobblecrew.enums.JobImportance
 import akkiruk.cobblecrew.enums.WorkerPriority
 import akkiruk.cobblecrew.jobs.BaseHarvester
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
@@ -42,6 +43,7 @@ open class GatheringJob(
     val fallbackSpecies: List<String> = emptyList(),
     val particle: ParticleEffect = ParticleTypes.CAMPFIRE_COSY_SMOKE,
     override val priority: WorkerPriority = WorkerPriority.TYPE,
+    override val importance: JobImportance = JobImportance.HIGH,
     val harvestOverride: ((World, BlockPos, PokemonEntity) -> List<ItemStack>)? = null,
     val toolOverride: ItemStack = ItemStack.EMPTY,
     val readyCheck: ((World, BlockPos) -> Boolean)? = null,

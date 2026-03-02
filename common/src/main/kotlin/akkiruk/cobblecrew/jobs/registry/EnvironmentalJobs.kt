@@ -11,6 +11,7 @@ package akkiruk.cobblecrew.jobs.registry
 import akkiruk.cobblecrew.cache.CobbleCrewCacheManager
 import akkiruk.cobblecrew.config.JobConfigManager
 import akkiruk.cobblecrew.enums.BlockCategory
+import akkiruk.cobblecrew.enums.JobImportance
 import akkiruk.cobblecrew.enums.WorkerPriority
 import akkiruk.cobblecrew.jobs.WorkerRegistry
 import akkiruk.cobblecrew.jobs.dsl.EnvironmentalJob
@@ -128,6 +129,7 @@ object EnvironmentalJobs {
         targetCategory = BlockCategory.FURNACE,
         qualifyingMoves = setOf("fireblast"),
         priority = WorkerPriority.TYPE,
+        importance = JobImportance.STANDARD,
         particle = ParticleTypes.FLAME,
         defaultCooldownSeconds = 80,
         defaultBurnTimeSeconds = 200,
@@ -163,6 +165,7 @@ object EnvironmentalJobs {
         targetCategory = BlockCategory.BREWING_STAND,
         qualifyingMoves = setOf("flamecharge"),
         priority = WorkerPriority.TYPE,
+        importance = JobImportance.STANDARD,
         particle = ParticleTypes.FLAME,
         defaultCooldownSeconds = 80,
         defaultAddedFuel = 10,
@@ -197,6 +200,7 @@ object EnvironmentalJobs {
         targetCategory = BlockCategory.FIRE,
         qualifyingMoves = setOf("waterpulse"),
         priority = WorkerPriority.TYPE,
+        importance = JobImportance.CRITICAL,
         particle = ParticleTypes.SMOKE,
         defaultRadius = 2,
         findTarget = { world, origin ->

@@ -12,6 +12,7 @@ import akkiruk.cobblecrew.cache.CobbleCrewCacheManager
 import akkiruk.cobblecrew.config.JobConfig
 import akkiruk.cobblecrew.config.JobConfigManager
 import akkiruk.cobblecrew.enums.BlockCategory
+import akkiruk.cobblecrew.enums.JobImportance
 import akkiruk.cobblecrew.enums.WorkPhase
 import akkiruk.cobblecrew.enums.WorkerPriority
 import akkiruk.cobblecrew.interfaces.Worker
@@ -55,6 +56,7 @@ open class EnvironmentalJob(
     val qualifyingMoves: Set<String> = emptySet(),
     val fallbackSpecies: List<String> = emptyList(),
     override val priority: WorkerPriority = WorkerPriority.MOVE,
+    override val importance: JobImportance = JobImportance.LOW,
     val particle: ParticleEffect = ParticleTypes.HAPPY_VILLAGER,
     val defaultCooldownSeconds: Int = 0,
     val defaultRadius: Int? = null,
