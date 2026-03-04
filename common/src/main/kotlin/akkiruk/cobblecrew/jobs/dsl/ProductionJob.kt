@@ -9,7 +9,6 @@
 package akkiruk.cobblecrew.jobs.dsl
 
 import akkiruk.cobblecrew.config.JobConfig
-import akkiruk.cobblecrew.config.JobConfigManager
 import akkiruk.cobblecrew.enums.BlockCategory
 import akkiruk.cobblecrew.enums.JobImportance
 import akkiruk.cobblecrew.enums.WorkPhase
@@ -31,7 +30,7 @@ import net.minecraft.world.World
  */
 open class ProductionJob(
     override val name: String,
-    val category: String = "production",
+    override val category: String = "production",
     val qualifyingMoves: Set<String> = emptySet(),
     val typeGatedMoves: Map<String, String> = emptyMap(),
     val fallbackSpecies: List<String> = emptyList(),
@@ -47,16 +46,15 @@ open class ProductionJob(
     override val targetCategory: BlockCategory? = null
     override val requiresTarget: Boolean = false
     override val workPhase: WorkPhase = WorkPhase.PRODUCING
-    override val config: JobConfig get() = JobConfigManager.get(name)
 
-    init {
-        JobConfigManager.registerDefault(category, name, JobConfig(
-            enabled = true,
-            cooldownSeconds = defaultCooldownSeconds,
-            qualifyingMoves = qualifyingMoves.toList(),
-            fallbackSpecies = fallbackSpecies,
-        ))
-    }
+    override fun buildDefaultConfig() = JobConfig(
+        enabled = true,
+        cooldownSeconds = defaultCooldownSeconds,
+        qualifyingMoves = qualifyingMoves.toList(),
+        fallbackSpecies = fallbackSpecies,
+    )
+
+    init { registerConfig() }
 
     override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean =
         dslEligible(config, qualifyingMoves, fallbackSpecies, moves, species, isCombo)

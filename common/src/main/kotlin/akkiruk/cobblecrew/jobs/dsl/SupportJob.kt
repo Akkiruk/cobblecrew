@@ -10,7 +10,6 @@ package akkiruk.cobblecrew.jobs.dsl
 
 import akkiruk.cobblecrew.config.CobbleCrewConfigHolder
 import akkiruk.cobblecrew.config.JobConfig
-import akkiruk.cobblecrew.config.JobConfigManager
 import akkiruk.cobblecrew.enums.BlockCategory
 import akkiruk.cobblecrew.enums.JobImportance
 import akkiruk.cobblecrew.enums.WorkPhase
@@ -39,7 +38,7 @@ import java.util.UUID
  */
 open class SupportJob(
     override val name: String,
-    val category: String = "support",
+    override val category: String = "support",
     val qualifyingMoves: Set<String> = emptySet(),
     val typeGatedMoves: Map<String, String> = emptyMap(),
     val fallbackSpecies: List<String> = emptyList(),
@@ -60,20 +59,19 @@ open class SupportJob(
     override val targetCategory: BlockCategory? = null
     override val workPhase: WorkPhase = WorkPhase.HEALING
     override val producesItems: Boolean = false
-    override val config: JobConfig get() = JobConfigManager.get(name)
 
     protected val effectDurationTicks: Int get() =
         (config.effectDurationSeconds ?: defaultDurationSeconds) * 20
 
-    init {
-        JobConfigManager.registerDefault(category, name, JobConfig(
-            enabled = true,
-            qualifyingMoves = qualifyingMoves.toList(),
-            fallbackSpecies = fallbackSpecies,
-            effectDurationSeconds = defaultDurationSeconds,
-            effectAmplifier = effectAmplifier,
-        ))
-    }
+    override fun buildDefaultConfig() = JobConfig(
+        enabled = true,
+        qualifyingMoves = qualifyingMoves.toList(),
+        fallbackSpecies = fallbackSpecies,
+        effectDurationSeconds = defaultDurationSeconds,
+        effectAmplifier = effectAmplifier,
+    )
+
+    init { registerConfig() }
 
     override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean =
         dslEligible(config, qualifyingMoves, fallbackSpecies, moves, species, isCombo)

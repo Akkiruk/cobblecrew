@@ -9,7 +9,6 @@
 package akkiruk.cobblecrew.jobs.dsl
 
 import akkiruk.cobblecrew.config.JobConfig
-import akkiruk.cobblecrew.config.JobConfigManager
 import akkiruk.cobblecrew.enums.BlockCategory
 import akkiruk.cobblecrew.enums.JobImportance
 import akkiruk.cobblecrew.enums.WorkPhase
@@ -37,7 +36,7 @@ import net.minecraft.world.World
  */
 class PlacementJob(
     override val name: String,
-    val category: String = "placement",
+    override val category: String = "placement",
     val qualifyingMoves: Set<String> = emptySet(),
     val typeGatedMoves: Map<String, String> = emptyMap(),
     val fallbackSpecies: List<String> = emptyList(),
@@ -56,15 +55,14 @@ class PlacementJob(
     override val targetCategory: BlockCategory? = null
     override val workPhase: WorkPhase = WorkPhase.PLACING
     override val producesItems: Boolean = false
-    override val config: JobConfig get() = JobConfigManager.get(name)
 
-    init {
-        JobConfigManager.registerDefault(category, name, JobConfig(
-            enabled = true,
-            qualifyingMoves = qualifyingMoves.toList(),
-            fallbackSpecies = fallbackSpecies,
-        ))
-    }
+    override fun buildDefaultConfig() = JobConfig(
+        enabled = true,
+        qualifyingMoves = qualifyingMoves.toList(),
+        fallbackSpecies = fallbackSpecies,
+    )
+
+    init { registerConfig() }
 
     override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean =
         dslEligible(config, qualifyingMoves, fallbackSpecies, moves, species)

@@ -9,7 +9,6 @@
 package akkiruk.cobblecrew.jobs.dsl
 
 import akkiruk.cobblecrew.config.JobConfig
-import akkiruk.cobblecrew.config.JobConfigManager
 import akkiruk.cobblecrew.enums.BlockCategory
 import akkiruk.cobblecrew.enums.JobImportance
 import akkiruk.cobblecrew.enums.WorkPhase
@@ -35,7 +34,7 @@ import net.minecraft.world.World
  */
 open class EnvironmentalJob(
     override val name: String,
-    val category: String = "environmental",
+    override val category: String = "environmental",
     override val targetCategory: BlockCategory,
     override val additionalScanCategories: Set<BlockCategory> = emptySet(),
     val qualifyingMoves: Set<String> = emptySet(),
@@ -59,19 +58,18 @@ open class EnvironmentalJob(
     override val arrivalParticle: ParticleEffect = particle
     override val workPhase: WorkPhase = WorkPhase.ENVIRONMENTAL
     override val producesItems: Boolean = false
-    override val config: JobConfig get() = JobConfigManager.get(name)
 
-    init {
-        JobConfigManager.registerDefault(category, name, JobConfig(
-            enabled = true,
-            qualifyingMoves = qualifyingMoves.toList(),
-            fallbackSpecies = fallbackSpecies,
-            cooldownSeconds = if (defaultCooldownSeconds > 0) defaultCooldownSeconds else 30,
-            radius = defaultRadius,
-            burnTimeSeconds = defaultBurnTimeSeconds,
-            addedFuel = defaultAddedFuel,
-        ))
-    }
+    override fun buildDefaultConfig() = JobConfig(
+        enabled = true,
+        qualifyingMoves = qualifyingMoves.toList(),
+        fallbackSpecies = fallbackSpecies,
+        cooldownSeconds = if (defaultCooldownSeconds > 0) defaultCooldownSeconds else 30,
+        radius = defaultRadius,
+        burnTimeSeconds = defaultBurnTimeSeconds,
+        addedFuel = defaultAddedFuel,
+    )
+
+    init { registerConfig() }
 
     override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean =
         dslEligible(config, qualifyingMoves, fallbackSpecies, moves, species)

@@ -9,7 +9,6 @@
 package akkiruk.cobblecrew.jobs.registry
 
 import akkiruk.cobblecrew.config.JobConfig
-import akkiruk.cobblecrew.config.JobConfigManager
 import akkiruk.cobblecrew.jobs.dsl.dslEligible
 import akkiruk.cobblecrew.enums.BlockCategory
 import akkiruk.cobblecrew.enums.JobImportance
@@ -44,6 +43,7 @@ object LogisticsJobs {
     // Consolidates 9 nuggets → 1 ingot within containers
     object Magnetizer : BaseJob() {
         override val name = "magnetizer"
+        override val category = "logistics"
         override val priority = WorkerPriority.MOVE
         override val importance = JobImportance.BACKGROUND
         override val targetCategory: BlockCategory? = null
@@ -51,7 +51,6 @@ object LogisticsJobs {
         override val producesItems = false
         override val arrivalParticle: ParticleEffect = ParticleTypes.ELECTRIC_SPARK
         override val workPhase: WorkPhase = WorkPhase.PROCESSING
-        override val config get() = JobConfigManager.get(name)
 
         private val qualifyingMoves = setOf("magnetrise")
         private val fallbackSpecies = listOf("Magnemite", "Magneton", "Magnezone")
@@ -61,13 +60,13 @@ object LogisticsJobs {
             Items.GOLD_NUGGET to Items.GOLD_INGOT,
         )
 
-        init {
-            JobConfigManager.registerDefault("logistics", name, JobConfig(
-                enabled = true,
-                qualifyingMoves = qualifyingMoves.toList(),
-                fallbackSpecies = fallbackSpecies,
-            ))
-        }
+        override fun buildDefaultConfig() = JobConfig(
+            enabled = true,
+            qualifyingMoves = qualifyingMoves.toList(),
+            fallbackSpecies = fallbackSpecies,
+        )
+
+        init { registerConfig() }
 
         override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String) =
             dslEligible(config, qualifyingMoves, fallbackSpecies, moves, species)
@@ -124,23 +123,23 @@ object LogisticsJobs {
     // Picks up items from the ground and deposits in containers
     object GroundItemCollector : BaseJob() {
         override val name = "ground_item_collector"
+        override val category = "logistics"
         override val priority = WorkerPriority.TYPE
         override val importance = JobImportance.HIGH
         override val targetCategory: BlockCategory? = null
         override val requiresTarget = true
         override val arrivalParticle: ParticleEffect = ParticleTypes.ENCHANT
         override val workPhase: WorkPhase = WorkPhase.HARVESTING
-        override val config get() = JobConfigManager.get(name)
 
         private val qualifyingMoves = setOf("telekinesis")
 
-        init {
-            JobConfigManager.registerDefault("logistics", name, JobConfig(
-                enabled = true,
-                qualifyingMoves = qualifyingMoves.toList(),
-                radius = 8,
-            ))
-        }
+        override fun buildDefaultConfig() = JobConfig(
+            enabled = true,
+            qualifyingMoves = qualifyingMoves.toList(),
+            radius = 8,
+        )
+
+        init { registerConfig() }
 
         override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String) =
             dslEligible(config, qualifyingMoves, emptyList(), moves, species)

@@ -49,6 +49,7 @@ abstract class BaseJob : Worker {
 
     // --- Identity (set by DSL constructors) ---
     abstract override val name: String
+    abstract val category: String
     abstract val arrivalParticle: ParticleEffect
     open val arrivalTolerance: Double = 3.0
     open val workPhase: WorkPhase = WorkPhase.HARVESTING
@@ -59,8 +60,19 @@ abstract class BaseJob : Worker {
     /** If true, skips NAVIGATING/ARRIVING and goes straight to WORKING (production jobs). */
     open val requiresTarget: Boolean = true
 
-    /** Config access — DSL classes can override for custom config lazy getter. */
+    /** Config access — reads from JobConfigManager by name. */
     open val config: JobConfig get() = JobConfigManager.get(name)
+
+    /**
+     * Build the default [JobConfig] for this job. Override to add type-specific
+     * fields (cooldown, effect duration, etc.).
+     */
+    protected open fun buildDefaultConfig(): JobConfig = JobConfig(enabled = true)
+
+    /** Call from subclass init {} to register the default config. */
+    protected fun registerConfig() {
+        JobConfigManager.registerDefault(category, name, buildDefaultConfig())
+    }
 
     // ---- Lifecycle hooks (the ONLY things DSL classes override) ----
 

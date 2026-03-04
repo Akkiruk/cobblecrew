@@ -9,7 +9,6 @@
 package akkiruk.cobblecrew.jobs.dsl
 
 import akkiruk.cobblecrew.config.JobConfig
-import akkiruk.cobblecrew.config.JobConfigManager
 import akkiruk.cobblecrew.enums.BlockCategory
 import akkiruk.cobblecrew.enums.JobImportance
 import akkiruk.cobblecrew.enums.WorkPhase
@@ -40,7 +39,7 @@ import net.minecraft.world.World
  */
 open class GatheringJob(
     override val name: String,
-    val category: String = "gathering",
+    override val category: String = "gathering",
     override val targetCategory: BlockCategory,
     val qualifyingMoves: Set<String> = emptySet(),
     val typeGatedMoves: Map<String, String> = emptyMap(),
@@ -59,15 +58,14 @@ open class GatheringJob(
     override val arrivalParticle: ParticleEffect = particle
     override val arrivalTolerance: Double = tolerance
     override val workPhase: WorkPhase = WorkPhase.HARVESTING
-    override val config: JobConfig get() = JobConfigManager.get(name)
 
-    init {
-        JobConfigManager.registerDefault(category, name, JobConfig(
-            enabled = true,
-            qualifyingMoves = qualifyingMoves.toList(),
-            fallbackSpecies = fallbackSpecies,
-        ))
-    }
+    override fun buildDefaultConfig() = JobConfig(
+        enabled = true,
+        qualifyingMoves = qualifyingMoves.toList(),
+        fallbackSpecies = fallbackSpecies,
+    )
+
+    init { registerConfig() }
 
     override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean =
         dslEligible(config, qualifyingMoves, fallbackSpecies, moves, species, isCombo)

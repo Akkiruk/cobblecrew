@@ -9,7 +9,6 @@
 package akkiruk.cobblecrew.jobs.registry
 
 import akkiruk.cobblecrew.config.JobConfig
-import akkiruk.cobblecrew.config.JobConfigManager
 import akkiruk.cobblecrew.jobs.dsl.dslEligible
 import akkiruk.cobblecrew.enums.BlockCategory
 import akkiruk.cobblecrew.enums.WorkPhase
@@ -79,18 +78,19 @@ object ProductionJobs {
     // ── Loot-based Workers ───────────────────────────────────────────
 
     object FishingLooter : LootProducer("fishing_looter", 120) {
+        override val category = "production"
         override val priority = WorkerPriority.MOVE
         private val qualifyingMoves = setOf("dive")
 
-        init {
-            JobConfigManager.registerDefault("production", name, JobConfig(
-                enabled = true,
-                cooldownSeconds = 120,
-                qualifyingMoves = qualifyingMoves.toList(),
-                treasureChance = 10,
-                requiresWater = true,
-            ))
-        }
+        override fun buildDefaultConfig() = JobConfig(
+            enabled = true,
+            cooldownSeconds = 120,
+            qualifyingMoves = qualifyingMoves.toList(),
+            treasureChance = 10,
+            requiresWater = true,
+        )
+
+        init { registerConfig() }
 
         override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String) =
             dslEligible(config, qualifyingMoves, emptyList(), moves, species)
@@ -115,16 +115,17 @@ object ProductionJobs {
     }
 
     object PickupLooter : LootProducer("pickup_looter", 120) {
+        override val category = "production"
         override val priority = WorkerPriority.MOVE
 
-        init {
-            JobConfigManager.registerDefault("production", name, JobConfig(
-                enabled = true,
-                cooldownSeconds = 120,
-                requiredAbility = "pickup",
-                lootTables = listOf("cobblemon:gameplay/pickup"),
-            ))
-        }
+        override fun buildDefaultConfig() = JobConfig(
+            enabled = true,
+            cooldownSeconds = 120,
+            requiredAbility = "pickup",
+            lootTables = listOf("cobblemon:gameplay/pickup"),
+        )
+
+        init { registerConfig() }
 
         override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean {
             if (!config.enabled) return false
@@ -148,18 +149,19 @@ object ProductionJobs {
     }
 
     object DiveCollector : LootProducer("dive_collector", 210) {
+        override val category = "production"
         override val priority = WorkerPriority.MOVE
         private val qualifyingMoves = setOf("waterfall")
 
-        init {
-            JobConfigManager.registerDefault("production", name, JobConfig(
-                enabled = true,
-                cooldownSeconds = 210,
-                qualifyingMoves = qualifyingMoves.toList(),
-                requiresWater = true,
-                lootTables = listOf("cobblemon:gameplay/pickup"),
-            ))
-        }
+        override fun buildDefaultConfig() = JobConfig(
+            enabled = true,
+            cooldownSeconds = 210,
+            qualifyingMoves = qualifyingMoves.toList(),
+            requiresWater = true,
+            lootTables = listOf("cobblemon:gameplay/pickup"),
+        )
+
+        init { registerConfig() }
 
         override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String) =
             dslEligible(config, qualifyingMoves, emptyList(), moves, species)
@@ -184,22 +186,22 @@ object ProductionJobs {
 
     object DigSiteExcavator : BaseJob() {
         override val name = "dig_site_excavator"
+        override val category = "production"
         override val priority = WorkerPriority.TYPE
         override val targetCategory = BlockCategory.SUSPICIOUS
         override val arrivalParticle: ParticleEffect = ParticleTypes.COMPOSTER
         override val workPhase: WorkPhase = WorkPhase.HARVESTING
-        override val config get() = JobConfigManager.get(name)
 
         private val qualifyingMoves = setOf("dig")
 
-        init {
-            JobConfigManager.registerDefault("production", name, JobConfig(
-                enabled = true,
-                cooldownSeconds = 120,
-                qualifyingMoves = qualifyingMoves.toList(),
-                lootTables = listOf("cobblemon:gameplay/pickup"),
-            ))
-        }
+        override fun buildDefaultConfig() = JobConfig(
+            enabled = true,
+            cooldownSeconds = 120,
+            qualifyingMoves = qualifyingMoves.toList(),
+            lootTables = listOf("cobblemon:gameplay/pickup"),
+        )
+
+        init { registerConfig() }
 
         override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String) =
             dslEligible(config, qualifyingMoves, emptyList(), moves, species)

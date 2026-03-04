@@ -10,7 +10,6 @@ package akkiruk.cobblecrew.jobs.registry
 
 import akkiruk.cobblecrew.cache.CobbleCrewCacheManager
 import akkiruk.cobblecrew.config.JobConfig
-import akkiruk.cobblecrew.config.JobConfigManager
 import akkiruk.cobblecrew.jobs.dsl.dslEligible
 import akkiruk.cobblecrew.enums.BlockCategory
 import akkiruk.cobblecrew.enums.JobImportance
@@ -153,28 +152,28 @@ object SupportJobs {
     // Picks up blank Maps, converts to structure-locating filled maps
     object ScoutWorker : BaseJob() {
         override val name = "scout"
+        override val category = "support"
         override val priority = WorkerPriority.MOVE
         override val targetCategory: BlockCategory? = null
         override val requiresTarget = true
         override val arrivalParticle: ParticleEffect = ParticleTypes.END_ROD
         override val workPhase: WorkPhase = WorkPhase.HARVESTING
-        override val config get() = JobConfigManager.get(name)
 
         private val qualifyingMoves = setOf("fly")
 
         // Shared async structure lookup cache (per structure ID, not per Pokémon)
         private val pendingLookups = mutableMapOf<Identifier, CompletableFuture<com.mojang.datafixers.util.Pair<BlockPos, RegistryEntry<Structure>>?>>()
 
-        init {
-            JobConfigManager.registerDefault("support", name, JobConfig(
-                enabled = true,
-                cooldownSeconds = 600,
-                qualifyingMoves = qualifyingMoves.toList(),
-                structureTags = listOf("minecraft:village", "minecraft:shipwreck"),
-                useAllStructures = false,
-                mapNameIsHidden = false,
-            ))
-        }
+        override fun buildDefaultConfig() = JobConfig(
+            enabled = true,
+            cooldownSeconds = 600,
+            qualifyingMoves = qualifyingMoves.toList(),
+            structureTags = listOf("minecraft:village", "minecraft:shipwreck"),
+            useAllStructures = false,
+            mapNameIsHidden = false,
+        )
+
+        init { registerConfig() }
 
         override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String) =
             dslEligible(config, qualifyingMoves, emptyList(), moves, species)

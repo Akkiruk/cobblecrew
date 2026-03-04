@@ -10,7 +10,6 @@ package akkiruk.cobblecrew.jobs.dsl
 
 import akkiruk.cobblecrew.config.CobbleCrewConfigHolder
 import akkiruk.cobblecrew.config.JobConfig
-import akkiruk.cobblecrew.config.JobConfigManager
 import akkiruk.cobblecrew.enums.BlockCategory
 import akkiruk.cobblecrew.enums.JobImportance
 import akkiruk.cobblecrew.enums.WorkPhase
@@ -37,7 +36,7 @@ import java.util.UUID
  */
 open class DefenseJob(
     override val name: String,
-    val category: String = "defense",
+    override val category: String = "defense",
     val qualifyingMoves: Set<String> = emptySet(),
     val typeGatedMoves: Map<String, String> = emptyMap(),
     val fallbackSpecies: List<String> = emptyList(),
@@ -56,15 +55,14 @@ open class DefenseJob(
     override val arrivalTolerance: Double = 2.0
     override val workPhase: WorkPhase = phase
     override val producesItems: Boolean = false
-    override val config: JobConfig get() = JobConfigManager.get(name)
 
-    init {
-        JobConfigManager.registerDefault(category, name, JobConfig(
-            enabled = true,
-            qualifyingMoves = qualifyingMoves.toList(),
-            fallbackSpecies = fallbackSpecies,
-        ))
-    }
+    override fun buildDefaultConfig() = JobConfig(
+        enabled = true,
+        qualifyingMoves = qualifyingMoves.toList(),
+        fallbackSpecies = fallbackSpecies,
+    )
+
+    init { registerConfig() }
 
     override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean =
         dslEligible(config, qualifyingMoves, fallbackSpecies, moves, species, isCombo)
