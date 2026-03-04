@@ -1,3 +1,19 @@
+## 4.0.0 — V4 Architecture Refactor
+- Complete internal rewrite: unified BaseJob state machine replaces 7 separate base classes
+- PokemonWorkerState: all per-Pokémon state in one data class (no more scattered UUID maps)
+- StateManager: central state registry with profile caching
+- ClaimManager: unified target claiming, navigation, and blacklisting
+- DepositHelper: shared container-deposit logic for all jobs
+- 7 DSL job classes (GatheringJob, ProductionJob, etc.) now thin constructors on BaseJob
+- All hand-coded singletons migrated to BaseJob lifecycle
+- Config auto-registration: BaseJob.registerConfig() replaces per-job init blocks
+- PastureWorkerManager: extracted pasture tick/recall logic from mixin (thin Java shim)
+- CobbleCrewCacheManager: flattened to BlockPos keys, removed sealed CacheKey
+- HostileScanCache: chunk-granularity cached hostile scans for defense jobs
+- IdleBehaviorHandler: extracted idle logic (wander, pickup, return) from WorkerDispatcher
+- WorkerDispatcher slimmed from 384 → 235 lines
+- Net reduction: ~600+ lines removed across the codebase
+
 ## 3.0.49
 - Removed all fallbackType/type-based eligibility code — Pokémon type never affects job eligibility
 - Only moves and species determine what jobs a Pokémon can do
