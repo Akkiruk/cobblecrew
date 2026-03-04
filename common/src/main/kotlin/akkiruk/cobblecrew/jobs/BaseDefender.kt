@@ -49,7 +49,9 @@ abstract class BaseDefender : Worker {
         val origin = context.origin
         val world = context.world
         val searchBox = Box(origin).expand(searchRadius.toDouble(), searchHeight.toDouble(), searchRadius.toDouble())
-        return world.getEntitiesByClass(HostileEntity::class.java, searchBox) { it.isAlive }.isNotEmpty()
+        return world.getEntitiesByClass(HostileEntity::class.java, searchBox) {
+            it.isAlive && !CobbleCrewNavigationUtils.isMobTargeted(it.id)
+        }.isNotEmpty()
     }
 
     override fun tick(context: JobContext, pokemonEntity: PokemonEntity) {

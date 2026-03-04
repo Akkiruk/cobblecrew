@@ -61,6 +61,7 @@ abstract class BaseHarvester : Worker {
             !context.world.getBlockState(pos).isAir
                 && isTargetReady(context.world, pos)
                 && !CobbleCrewNavigationUtils.isRecentlyExpired(pos, context.world)
+                && !CobbleCrewNavigationUtils.isTargeted(pos, context.world)
                 && !CobbleCrewNavigationUtils.isUnreachable(pokemonId, pos, now)
         }
     }

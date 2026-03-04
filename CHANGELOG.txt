@@ -1,3 +1,9 @@
+## 3.0.43
+- Fixed major throughput regression: Pokémon were trapped in stickiness loops doing nothing
+- isAvailable() now checks whether targets are already claimed by other Pokémon
+- Harvesters, defenders, and environmental workers properly go idle when all targets are taken
+- Idle pickup claims are released when transitioning to a real job (prevents ghost targets)
+
 ## 3.0.42
 - Growth accelerator now skips mature crops — no longer wastes time on fully-grown plants
 - Fixed hearty grains harvest: properly removes upper half and resets lower half to age 0

@@ -87,8 +87,10 @@ open class EnvironmentalJob(
     override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean =
         dslEligible(config, qualifyingMoves, fallbackSpecies, moves, species)
 
-    override fun isAvailable(context: JobContext, pokemonId: UUID): Boolean =
-        findTarget(context.world, context.origin) != null
+    override fun isAvailable(context: JobContext, pokemonId: UUID): Boolean {
+        val found = findTarget(context.world, context.origin) ?: return false
+        return !CobbleCrewNavigationUtils.isTargeted(found, context.world)
+    }
 
     override fun tick(context: JobContext, pokemonEntity: PokemonEntity) {
         val world = context.world

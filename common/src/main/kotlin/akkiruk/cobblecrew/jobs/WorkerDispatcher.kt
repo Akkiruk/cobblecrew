@@ -18,6 +18,7 @@ import akkiruk.cobblecrew.utilities.DeferredBlockScanner
 import akkiruk.cobblecrew.utilities.WorkerAnimationUtils
 import akkiruk.cobblecrew.utilities.WorkerVisualUtils
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
+import net.minecraft.block.Block
 import net.minecraft.entity.ItemEntity
 import net.minecraft.item.ItemStack
 import net.minecraft.util.math.BlockPos
@@ -181,6 +182,14 @@ object WorkerDispatcher {
         idleSinceTick.remove(pokemonId)
         returningHome.remove(pokemonId)
         lastReturnNavTick.remove(pokemonId)
+        // Release stale idle-pickup claims so the new job starts clean
+        if (current == null) {
+            CobbleCrewNavigationUtils.releaseTarget(pokemonId, world, blacklist = false)
+            val orphaned = idleHeldItems.remove(pokemonId)
+            orphaned?.forEach { stack -> Block.dropStack(world, pokemonEntity.blockPos, stack) }
+            idleFailedDeposits.remove(pokemonId)
+            idlePickupClaimTick.remove(pokemonId)
+        }
         CobbleCrewDebugLogger.jobAssigned(pokemonEntity.pokemon.species.name, pokemonId, job.name)
         WorkerVisualUtils.setExcited(pokemonEntity, true)
         job.tick(context, pokemonEntity)
