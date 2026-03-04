@@ -101,6 +101,12 @@ abstract class BaseJob : Worker {
     final override fun tick(context: JobContext, pokemonEntity: PokemonEntity) {
         val state = StateManager.getOrCreate(pokemonEntity.pokemon.uuid)
 
+        // Safety: if items are held but phase isn't DEPOSITING, force deposit.
+        // Handles orphan items from job switches or interrupted idle pickups.
+        if (state.heldItems.isNotEmpty() && state.phase != JobPhase.DEPOSITING && producesItems) {
+            state.phase = JobPhase.DEPOSITING
+        }
+
         when (state.phase) {
             JobPhase.IDLE -> tickIdle(state, context, pokemonEntity)
             JobPhase.NAVIGATING -> tickNavigating(state, context, pokemonEntity)

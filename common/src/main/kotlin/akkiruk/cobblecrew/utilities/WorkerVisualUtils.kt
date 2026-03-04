@@ -9,6 +9,7 @@
 package akkiruk.cobblecrew.utilities
 
 import akkiruk.cobblecrew.enums.WorkPhase
+import akkiruk.cobblecrew.state.StateManager
 import com.cobblemon.mod.common.entity.pokemon.PokemonBehaviourFlag
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import net.minecraft.entity.player.PlayerEntity
@@ -20,22 +21,12 @@ import java.util.UUID
 
 /**
  * Handles visual feedback and work delays for Pokémon workers.
- * Provides look-at, particles, animations, and excited flag behavior.
+ * Timing state (arrivalTick, graceTick) lives in [StateManager].
  */
 object WorkerVisualUtils {
-    private val arrivalTick = mutableMapOf<UUID, Long>()
-    private val graceTick = mutableMapOf<UUID, Long>()
-    private const val WORK_DELAY_TICKS = 30L // 1.5 seconds
+    private const val WORK_DELAY_TICKS = 30L
     private const val GRACE_PERIOD_TICKS = 10L
 
-    /**
-     * Handles the "working" animation when a Pokémon arrives at its target block.
-     * Returns true when the work delay is complete and the action should execute.
-     *
-     * On first arrival: plays work animation, looks at target, starts timer.
-     * During delay: keeps looking at target.
-     * On completion: plays completion animation, spawns particles.
-     */
     fun handleArrival(
         pokemonEntity: PokemonEntity,
         targetPos: BlockPos,
@@ -44,31 +35,28 @@ object WorkerVisualUtils {
         offset: Double = 3.0,
         workPhase: WorkPhase = WorkPhase.HARVESTING,
     ): Boolean {
-        val pokemonId = pokemonEntity.pokemon.uuid
+        val state = StateManager.getOrCreate(pokemonEntity.pokemon.uuid)
         val now = world.time
 
         if (!CobbleCrewNavigationUtils.isPokemonAtPosition(pokemonEntity, targetPos, offset)) {
-            // Grace period: don't reset timer immediately if briefly bumped out
-            if (arrivalTick.containsKey(pokemonId)) {
-                val grace = graceTick.getOrPut(pokemonId) { now }
+            if (state.arrivalTick != null) {
+                val grace = state.graceTick ?: run { state.graceTick = now; now }
                 if (now - grace < GRACE_PERIOD_TICKS) {
                     lookAt(pokemonEntity, targetPos)
                     return false
                 }
-                arrivalTick.remove(pokemonId)
-                graceTick.remove(pokemonId)
+                state.arrivalTick = null
+                state.graceTick = null
             }
             return false
         }
 
-        graceTick.remove(pokemonId)
-        // Always halt movement while at target — navigateTo() may have been called
-        // earlier in the same tick, which would restart pathfinding and cause drift.
+        state.graceTick = null
         pokemonEntity.navigation.stop()
-        val arrived = arrivalTick[pokemonId]
+        val arrived = state.arrivalTick
 
         if (arrived == null) {
-            arrivalTick[pokemonId] = now
+            state.arrivalTick = now
             WorkerAnimationUtils.playWorkAnimation(pokemonEntity, workPhase, world)
             lookAt(pokemonEntity, targetPos)
             return false
@@ -79,17 +67,13 @@ object WorkerVisualUtils {
             return false
         }
 
-        // Work delay complete
-        arrivalTick.remove(pokemonId)
+        state.arrivalTick = null
         CobbleCrewDebugLogger.arrivedAtTarget(pokemonEntity, targetPos)
         WorkerAnimationUtils.playImmediate(pokemonEntity, WorkPhase.WORK_COMPLETE, world)
         if (particleType != null) spawnParticles(world, targetPos, particleType)
         return true
     }
 
-    /**
-     * Same as handleArrival but for player targets (support jobs).
-     */
     fun handlePlayerArrival(
         pokemonEntity: PokemonEntity,
         player: PlayerEntity,
@@ -97,21 +81,19 @@ object WorkerVisualUtils {
         particleType: ParticleEffect? = null,
         workPhase: WorkPhase = WorkPhase.HEALING,
     ): Boolean {
+        val state = StateManager.getOrCreate(pokemonEntity.pokemon.uuid)
+
         if (!CobbleCrewNavigationUtils.isPokemonNearPlayer(pokemonEntity, player)) {
-            arrivalTick.remove(pokemonEntity.pokemon.uuid)
+            state.arrivalTick = null
             return false
         }
 
-        // Halt movement while near player — navigateToPlayer() may have been called
-        // earlier in the same tick, and continued pathing can push the entity around.
         pokemonEntity.navigation.stop()
-
-        val pokemonId = pokemonEntity.pokemon.uuid
         val now = world.time
-        val arrived = arrivalTick[pokemonId]
+        val arrived = state.arrivalTick
 
         if (arrived == null) {
-            arrivalTick[pokemonId] = now
+            state.arrivalTick = now
             WorkerAnimationUtils.playWorkAnimation(pokemonEntity, workPhase, world)
             pokemonEntity.lookControl.lookAt(player.x, player.eyeY, player.z)
             return false
@@ -122,7 +104,7 @@ object WorkerVisualUtils {
             return false
         }
 
-        arrivalTick.remove(pokemonId)
+        state.arrivalTick = null
         WorkerAnimationUtils.playImmediate(pokemonEntity, WorkPhase.WORK_COMPLETE, world)
         if (particleType != null) spawnParticles(world, player.blockPos, particleType)
         return true
@@ -150,8 +132,8 @@ object WorkerVisualUtils {
     }
 
     fun cleanup(pokemonId: UUID) {
-        arrivalTick.remove(pokemonId)
-        graceTick.remove(pokemonId)
+        // Timing state lives in StateManager — cleared on StateManager.remove().
+        // Only clean WorkerAnimationUtils here.
         WorkerAnimationUtils.cleanup(pokemonId)
     }
 }

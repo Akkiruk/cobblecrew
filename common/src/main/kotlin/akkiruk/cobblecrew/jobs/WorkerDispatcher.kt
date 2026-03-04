@@ -11,82 +11,66 @@ package akkiruk.cobblecrew.jobs
 import akkiruk.cobblecrew.enums.WorkPhase
 import akkiruk.cobblecrew.enums.WorkerPriority
 import akkiruk.cobblecrew.interfaces.Worker
+import akkiruk.cobblecrew.state.ClaimManager
+import akkiruk.cobblecrew.state.PokemonWorkerState
+import akkiruk.cobblecrew.state.StateManager
 import akkiruk.cobblecrew.utilities.CobbleCrewDebugLogger
 import akkiruk.cobblecrew.utilities.CobbleCrewInventoryUtils
 import akkiruk.cobblecrew.utilities.CobbleCrewNavigationUtils
+import akkiruk.cobblecrew.utilities.DepositHelper
 import akkiruk.cobblecrew.utilities.DeferredBlockScanner
 import akkiruk.cobblecrew.utilities.WorkerAnimationUtils
 import akkiruk.cobblecrew.utilities.WorkerVisualUtils
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import net.minecraft.block.Block
 import net.minecraft.entity.ItemEntity
-import net.minecraft.item.ItemStack
-import net.minecraft.util.math.BlockPos
 import net.minecraft.util.math.Box
 import net.minecraft.world.World
 import java.util.UUID
 import kotlin.random.Random
 
+/**
+ * Central dispatcher — assigns jobs to Pokémon and manages idle behavior.
+ *
+ * All per-Pokémon state lives in [StateManager]. This object holds only
+ * constants and stateless logic (profile building, job selection, idle behavior).
+ */
 object WorkerDispatcher {
     private val workers: List<Worker> get() = WorkerRegistry.workers
 
-    private val activeJobs = mutableMapOf<UUID, Worker>()
-    private val profiles = mutableMapOf<UUID, PokemonProfile>()
-    private val jobAssignedTick = mutableMapOf<UUID, Long>()
-    private val idleLogTick = mutableMapOf<UUID, Long>()
-    private val idleSinceTick = mutableMapOf<UUID, Long>()
-    private const val JOB_STICKINESS_TICKS = 100L // 5 seconds
-    private const val IDLE_LOG_INTERVAL = 600L // log idle reason every 30s
-    private const val IDLE_BORED_THRESHOLD = 600L // 30 seconds idle → bored animation
+    private const val JOB_STICKINESS_TICKS = 100L
+    private const val IDLE_LOG_INTERVAL = 600L
+    private const val IDLE_BORED_THRESHOLD = 600L
     private const val IDLE_PICKUP_RADIUS = 8.0
-    private const val RETURN_NAV_COOLDOWN = 40L // only re-path home every 2 seconds
-    private const val ARRIVAL_RADIUS = 5.0 // blocks from origin to count as "home"
+    private const val RETURN_NAV_COOLDOWN = 40L
+    private const val ARRIVAL_RADIUS = 5.0
     private const val PARTY_ARRIVAL_RADIUS = 6.0
-    private const val IDLE_WANDER_RADIUS = 4 // blocks to wander from origin when bored
-    private const val IDLE_WANDER_COOLDOWN = 200L // 10 seconds between wanders
-    private const val IDLE_PICKUP_ATTEMPT_COOLDOWN = 60L // 3 seconds between pickup scans
-    private const val IDLE_PICKUP_STALE_TICKS = 100L // abandon pickup target after 5 seconds
-
-    // Return-to-origin state
-    private val returningHome = mutableSetOf<UUID>()
-    private val lastReturnNavTick = mutableMapOf<UUID, Long>()
-
-    // Idle wander state
-    private val lastWanderTick = mutableMapOf<UUID, Long>()
-
-    // Idle pickup throttle
-    private val lastPickupAttemptTick = mutableMapOf<UUID, Long>()
-    private val idlePickupClaimTick = mutableMapOf<UUID, Long>()
-
-    // Idle ground pickup state — not a job, just background behavior
-    private val idleHeldItems = mutableMapOf<UUID, List<ItemStack>>()
-    private val idleFailedDeposits = mutableMapOf<UUID, MutableSet<BlockPos>>()
+    private const val IDLE_WANDER_RADIUS = 4
+    private const val IDLE_WANDER_COOLDOWN = 200L
+    private const val IDLE_PICKUP_ATTEMPT_COOLDOWN = 60L
+    private const val IDLE_PICKUP_STALE_TICKS = 100L
 
     fun tickAreaScan(context: JobContext) {
         DeferredBlockScanner.tickAreaScan(context)
     }
 
-    /**
-     * Builds or retrieves a cached PokemonProfile for the given entity.
-     * Profile caches which jobs a Pokémon qualifies for — eliminates
-     * per-tick shouldRun() calls across all workers.
-     */
-    private fun getOrBuildProfile(pokemonEntity: PokemonEntity): PokemonProfile {
+    private fun getOrBuildProfile(pokemonEntity: PokemonEntity, state: PokemonWorkerState): PokemonProfile {
         val pokemon = pokemonEntity.pokemon
         val pokemonId = pokemon.uuid
 
-        // Include both active and benched moves — workers can use any move the Pokémon knows
         val active = pokemon.moveSet.getMoves().map { it.name.lowercase() }
         val benched = pokemon.benchedMoves.map { it.moveTemplate.name.lowercase() }
         val moves = (active + benched).toSet()
 
-        // Invalidate cache if moves changed (e.g. player taught/forgot a move)
-        profiles[pokemonId]?.let { cached ->
-            if (cached.moves == moves) return cached
-            CobbleCrewDebugLogger.log(CobbleCrewDebugLogger.Category.DISPATCH, "${pokemon.species.name}($pokemonId) moves changed, rebuilding profile")
-            // Clean up active job — it may no longer be eligible
-            activeJobs.remove(pokemonId)?.cleanup(pokemonId)
-            jobAssignedTick.remove(pokemonId)
+        val cached = state.profile
+        if (cached != null && state.lastMoveSet == moves) return cached
+
+        if (cached != null) {
+            CobbleCrewDebugLogger.log(CobbleCrewDebugLogger.Category.DISPATCH,
+                "${pokemon.species.name}($pokemonId) moves changed, rebuilding profile")
+            state.activeJob?.cleanup(pokemonId)
+            state.activeJob = null
+            state.jobAssignedTick = 0L
         }
 
         val types = pokemon.types.map { it.name.uppercase() }.toSet()
@@ -95,7 +79,8 @@ object WorkerDispatcher {
 
         return PokemonProfile.build(pokemonId, moves, types, species, ability, workers)
             .also {
-                profiles[pokemonId] = it
+                state.profile = it
+                state.lastMoveSet = moves
                 val eligible = it.allEligible()
                 CobbleCrewDebugLogger.profileBuilt(species, pokemonId, moves, types, eligible.map { w -> w.name })
             }
@@ -104,41 +89,35 @@ object WorkerDispatcher {
     fun tickPokemon(context: JobContext, pokemonEntity: PokemonEntity) {
         val world = context.world
         val pokemonId = pokemonEntity.pokemon.uuid
-        val profile = getOrBuildProfile(pokemonEntity)
+        val state = StateManager.getOrCreate(pokemonId)
+        val profile = getOrBuildProfile(pokemonEntity, state)
         val eligible = profile.allEligible()
 
         if (eligible.isEmpty()) {
-            activeJobs.remove(pokemonId)
+            state.activeJob = null
             WorkerVisualUtils.setExcited(pokemonEntity, false)
             val now = world.time
-            val lastLog = idleLogTick[pokemonId] ?: 0L
-            if (now - lastLog >= IDLE_LOG_INTERVAL) {
-                idleLogTick[pokemonId] = now
+            if (now - state.idleLogTick >= IDLE_LOG_INTERVAL) {
+                state.idleLogTick = now
                 CobbleCrewDebugLogger.noEligibleJobs(pokemonEntity.pokemon.species.name, pokemonId)
             }
-            handleIdleBehavior(context, pokemonEntity, world, pokemonId)
+            handleIdleBehavior(state, context, pokemonEntity, world)
             return
         }
 
-        val current = activeJobs[pokemonId]
+        val current = state.activeJob
         val now = world.time
-        idleSinceTick.remove(pokemonId) // Working, not idle
+        state.idleSinceTick = 0L
 
-        // Stick with current job while it has work or stickiness hasn't expired
         if (current != null && current in eligible) {
-            val assignedAt = jobAssignedTick[pokemonId] ?: 0L
-            val hasRealWork = current.hasActiveState(pokemonId)
-                || CobbleCrewNavigationUtils.getTarget(pokemonId, world) != null
-                || CobbleCrewNavigationUtils.getPlayerTarget(pokemonId, world) != null
-            // Break stickiness early if the job has no available targets
+            val hasRealWork = current.hasActiveState(pokemonId) || state.claim != null
             val stickyAndAvailable = !hasRealWork
-                && now - assignedAt < JOB_STICKINESS_TICKS
+                && now - state.jobAssignedTick < JOB_STICKINESS_TICKS
                 && current.isAvailable(context, pokemonId)
             if (hasRealWork || stickyAndAvailable) {
                 val reason = when {
                     current.hasActiveState(pokemonId) -> "activeState"
-                    CobbleCrewNavigationUtils.getTarget(pokemonId, world) != null -> "hasTarget"
-                    CobbleCrewNavigationUtils.getPlayerTarget(pokemonId, world) != null -> "hasPlayerTarget"
+                    state.claim != null -> "hasClaim"
                     else -> "stickiness"
                 }
                 CobbleCrewDebugLogger.jobSticking(pokemonEntity.pokemon.species.name, pokemonId, current.name, reason)
@@ -148,25 +127,22 @@ object WorkerDispatcher {
             }
         }
 
-        // Priority-ordered selection: check tiers in order (COMBO > MOVE > SPECIES > TYPE).
-        // Within each tier, sort by importance (CRITICAL > HIGH > STANDARD > LOW > BACKGROUND).
         val job = selectBestAvailableJob(profile, context, pokemonId)
 
-        // Clean up old job if switching away
         if (current != null && job != current) {
             current.cleanup(pokemonId)
+            ClaimManager.release(state, world, blacklist = false)
+            state.resetJobState()
         }
 
         if (job == null) {
-            activeJobs.remove(pokemonId)
+            state.activeJob = null
             WorkerVisualUtils.setExcited(pokemonEntity, false)
-            // Grace period: suppress idle pickup for 3s after losing a real job
-            if (current != null) lastPickupAttemptTick[pokemonId] = now
-            handleIdleBehavior(context, pokemonEntity, world, pokemonId)
+            if (current != null) state.lastPickupAttemptTick = now
+            handleIdleBehavior(state, context, pokemonEntity, world)
 
-            val lastLog = idleLogTick[pokemonId] ?: 0L
-            if (now - lastLog >= IDLE_LOG_INTERVAL) {
-                idleLogTick[pokemonId] = now
+            if (now - state.idleLogTick >= IDLE_LOG_INTERVAL) {
+                state.idleLogTick = now
                 val availInfo = eligible.map { w ->
                     val avail = w.isAvailable(context, pokemonId)
                     "${w.name}=$avail"
@@ -179,38 +155,30 @@ object WorkerDispatcher {
             return
         }
 
-        activeJobs[pokemonId] = job
-        jobAssignedTick[pokemonId] = now
-        idleSinceTick.remove(pokemonId)
-        returningHome.remove(pokemonId)
-        lastReturnNavTick.remove(pokemonId)
-        // Release stale idle-pickup claims so the new job starts clean
+        state.activeJob = job
+        state.jobAssignedTick = now
+        state.idleSinceTick = 0L
+        state.returningHome = false
+        state.lastReturnNavTick = 0L
+        // Release stale idle-pickup claims when transitioning from idle to job
         if (current == null) {
-            CobbleCrewNavigationUtils.releaseTarget(pokemonId, world, blacklist = false)
-            val orphaned = idleHeldItems.remove(pokemonId)
-            orphaned?.forEach { stack -> Block.dropStack(world, pokemonEntity.blockPos, stack) }
-            idleFailedDeposits.remove(pokemonId)
-            idlePickupClaimTick.remove(pokemonId)
+            ClaimManager.release(state, world, blacklist = false)
+            if (state.heldItems.isNotEmpty()) {
+                state.heldItems.forEach { stack -> Block.dropStack(world, pokemonEntity.blockPos, stack) }
+                state.heldItems.clear()
+            }
+            state.failedDeposits.clear()
+            state.idlePickupClaimTick = 0L
         }
         CobbleCrewDebugLogger.jobAssigned(pokemonEntity.pokemon.species.name, pokemonId, job.name)
         WorkerVisualUtils.setExcited(pokemonEntity, true)
         job.tick(context, pokemonEntity)
     }
 
-    /**
-     * Selects the best available job using priority tiers.
-     * COMBO jobs are checked first, then MOVE, SPECIES, TYPE.
-     * Within each tier, candidates are sorted by [JobImportance]
-     * (CRITICAL > HIGH > STANDARD > LOW > BACKGROUND).
-     * Same-importance jobs are shuffled for fairness.
-     * Stops at the first tier that has an available job.
-     */
-    private fun selectBestAvailableJob(profile: PokemonProfile, context: JobContext, pokemonId: java.util.UUID): Worker? {
+    private fun selectBestAvailableJob(profile: PokemonProfile, context: JobContext, pokemonId: UUID): Worker? {
         for (priority in WorkerPriority.entries) {
             val candidates = profile.getByPriority(priority)
             if (candidates.isEmpty()) continue
-            // Group by importance, iterate from highest (CRITICAL) to lowest (BACKGROUND),
-            // shuffle within each group for fairness
             val sorted = candidates
                 .groupBy { it.importance }
                 .toSortedMap()
@@ -221,38 +189,26 @@ object WorkerDispatcher {
         return null
     }
 
-    /**
-     * Central idle behavior: pickup → return home → wander → idle anim.
-     * Each step is tried in order; first one that engages wins.
-     */
-    private fun handleIdleBehavior(context: JobContext, pokemonEntity: PokemonEntity, world: World, pokemonId: UUID) {
-        if (tryIdlePickup(context, pokemonEntity)) return
-        if (returnToOrigin(pokemonEntity, context, world)) return
-        // At origin — try wandering if bored
-        if (tryIdleWander(pokemonEntity, context, world, pokemonId)) return
-        handleIdleAnimation(pokemonEntity, world, pokemonId)
+    private fun handleIdleBehavior(state: PokemonWorkerState, context: JobContext, pokemonEntity: PokemonEntity, world: World) {
+        if (tryIdlePickup(state, context, pokemonEntity)) return
+        if (returnToOrigin(state, pokemonEntity, context, world)) return
+        if (tryIdleWander(state, pokemonEntity, context, world)) return
+        handleIdleAnimation(state, pokemonEntity, world)
     }
 
-    private fun handleIdleAnimation(pokemonEntity: PokemonEntity, world: World, pokemonId: UUID) {
+    private fun handleIdleAnimation(state: PokemonWorkerState, pokemonEntity: PokemonEntity, world: World) {
         val now = world.time
-        val idleSince = idleSinceTick.getOrPut(pokemonId) { now }
-        val phase = if (now - idleSince >= IDLE_BORED_THRESHOLD) WorkPhase.IDLE_BORED else WorkPhase.IDLE_AT_ORIGIN
+        if (state.idleSinceTick == 0L) state.idleSinceTick = now
+        val phase = if (now - state.idleSinceTick >= IDLE_BORED_THRESHOLD) WorkPhase.IDLE_BORED else WorkPhase.IDLE_AT_ORIGIN
         WorkerAnimationUtils.playWorkAnimation(pokemonEntity, phase, world)
     }
 
-    /**
-     * Occasionally wander to a random nearby position when idle at origin.
-     */
-    private fun tryIdleWander(pokemonEntity: PokemonEntity, context: JobContext, world: World, pokemonId: UUID): Boolean {
+    private fun tryIdleWander(state: PokemonWorkerState, pokemonEntity: PokemonEntity, context: JobContext, world: World): Boolean {
         val now = world.time
-        val idleSince = idleSinceTick[pokemonId] ?: now
-        // Only wander once bored (after IDLE_BORED_THRESHOLD)
-        if (now - idleSince < IDLE_BORED_THRESHOLD) return false
+        if (state.idleSinceTick == 0L || now - state.idleSinceTick < IDLE_BORED_THRESHOLD) return false
+        if (now - state.lastWanderTick < IDLE_WANDER_COOLDOWN) return false
 
-        val lastWander = lastWanderTick[pokemonId] ?: 0L
-        if (now - lastWander < IDLE_WANDER_COOLDOWN) return false
-
-        lastWanderTick[pokemonId] = now
+        state.lastWanderTick = now
         val origin = context.origin
         val dx = Random.nextInt(-IDLE_WANDER_RADIUS, IDLE_WANDER_RADIUS + 1)
         val dz = Random.nextInt(-IDLE_WANDER_RADIUS, IDLE_WANDER_RADIUS + 1)
@@ -261,75 +217,61 @@ object WorkerDispatcher {
         return true
     }
 
-    /**
-     * Idle ground pickup — not a formal job, just background behavior.
-     * When a Pokémon has nothing to do, it picks up nearby ground items
-     * and deposits them in containers (or delivers to player in party mode).
-     * Returns true if the Pokémon is actively picking up / depositing.
-     *
-     * Throttled so Pokémon don't constantly scan for items, and claims
-     * are abandoned if the Pokémon can't reach the item in time.
-     */
-    private fun tryIdlePickup(context: JobContext, pokemonEntity: PokemonEntity): Boolean {
+    private fun tryIdlePickup(state: PokemonWorkerState, context: JobContext, pokemonEntity: PokemonEntity): Boolean {
         val world = context.world
         val origin = context.origin
-        val pid = pokemonEntity.pokemon.uuid
         val now = world.time
 
-        // Already holding items — deposit them (no throttle, always finish delivery)
-        val held = idleHeldItems[pid]
-        if (!held.isNullOrEmpty()) {
+        // Already holding items — deposit them
+        if (state.heldItems.isNotEmpty()) {
             if (context is JobContext.Party) {
-                CobbleCrewInventoryUtils.deliverToPlayer(context.player, held, pokemonEntity)
-                idleHeldItems.remove(pid)
-                idleFailedDeposits.remove(pid)
-                idlePickupClaimTick.remove(pid)
+                CobbleCrewInventoryUtils.deliverToPlayer(context.player, state.heldItems, pokemonEntity)
+                state.heldItems.clear()
+                state.failedDeposits.clear()
+                state.idlePickupClaimTick = 0L
                 return true
             }
-            CobbleCrewInventoryUtils.handleDepositing(world, origin, pokemonEntity, held, idleFailedDeposits, idleHeldItems)
+            DepositHelper.tick(state, context, pokemonEntity)
             return true
         }
-        idleFailedDeposits.remove(pid)
+        state.failedDeposits.clear()
 
-        // If we have an active pickup claim, keep navigating to it
-        val currentTarget = CobbleCrewNavigationUtils.getTarget(pid, world)
-        if (currentTarget != null) {
-            val claimedAt = idlePickupClaimTick[pid] ?: now
-            // Abandon stale claim — we've been chasing this item too long
+        // Active pickup claim — keep navigating to it
+        val currentTarget = (state.claim?.target as? Target.Block)?.pos
+        if (currentTarget != null && state.activeJob == null) {
+            val claimedAt = state.idlePickupClaimTick.takeIf { it > 0L } ?: now
             if (now - claimedAt > IDLE_PICKUP_STALE_TICKS) {
-                CobbleCrewNavigationUtils.releaseTarget(pid, world)
-                idlePickupClaimTick.remove(pid)
+                ClaimManager.release(state, world)
+                state.idlePickupClaimTick = 0L
                 return false
             }
-            // Check if the item still exists at the target
             val searchArea = Box(currentTarget).expand(2.0)
             val nearbyItem = world.getEntitiesByClass(ItemEntity::class.java, searchArea) { !it.isRemoved && it.isOnGround }
                 .firstOrNull()
             if (nearbyItem == null) {
-                CobbleCrewNavigationUtils.releaseTarget(pid, world)
-                idlePickupClaimTick.remove(pid)
+                ClaimManager.release(state, world)
+                state.idlePickupClaimTick = 0L
                 return false
             }
             CobbleCrewNavigationUtils.navigateTo(pokemonEntity, currentTarget)
             if (CobbleCrewNavigationUtils.isPokemonAtPosition(pokemonEntity, currentTarget, 2.0)) {
                 if (nearbyItem.isRemoved || nearbyItem.stack.isEmpty) {
-                    CobbleCrewNavigationUtils.releaseTarget(pid, world)
-                    idlePickupClaimTick.remove(pid)
+                    ClaimManager.release(state, world)
+                    state.idlePickupClaimTick = 0L
                     return true
                 }
                 val stack = nearbyItem.stack.split(nearbyItem.stack.count)
                 if (nearbyItem.stack.isEmpty) nearbyItem.discard()
-                idleHeldItems[pid] = listOf(stack)
-                CobbleCrewNavigationUtils.releaseTarget(pid, world, blacklist = false)
-                idlePickupClaimTick.remove(pid)
+                state.heldItems.add(stack)
+                ClaimManager.release(state, world, blacklist = false)
+                state.idlePickupClaimTick = 0L
             }
             return true
         }
 
-        // Throttle new pickup scans — don't spam entity queries every 5 ticks
-        val lastAttempt = lastPickupAttemptTick[pid] ?: 0L
-        if (now - lastAttempt < IDLE_PICKUP_ATTEMPT_COOLDOWN) return false
-        lastPickupAttemptTick[pid] = now
+        // Throttle new pickup scans
+        if (now - state.lastPickupAttemptTick < IDLE_PICKUP_ATTEMPT_COOLDOWN) return false
+        state.lastPickupAttemptTick = now
 
         // Scan for ground items
         val searchArea = Box(origin).expand(IDLE_PICKUP_RADIUS, IDLE_PICKUP_RADIUS, IDLE_PICKUP_RADIUS)
@@ -337,96 +279,88 @@ object WorkerDispatcher {
             .firstOrNull() ?: return false
 
         val itemPos = item.blockPos
-        if (!CobbleCrewNavigationUtils.isTargeted(itemPos, world)) {
-            CobbleCrewNavigationUtils.claimTarget(pid, itemPos, world)
+        if (!ClaimManager.isTargeted(itemPos)) {
+            ClaimManager.claim(state, Target.Block(itemPos), world)
             CobbleCrewNavigationUtils.navigateTo(pokemonEntity, itemPos)
-            idlePickupClaimTick[pid] = now
+            state.idlePickupClaimTick = now
             return true
         }
         return false
     }
 
-    /**
-     * Walks the Pokémon back to its origin (pasture block or player).
-     * Returns true if the Pokémon is still walking, false if already at origin.
-     * Only re-paths every RETURN_NAV_COOLDOWN ticks to avoid spamming pathfinder.
-     */
-    private fun returnToOrigin(pokemonEntity: PokemonEntity, context: JobContext, world: World): Boolean {
-        val pokemonId = pokemonEntity.pokemon.uuid
+    private fun returnToOrigin(state: PokemonWorkerState, pokemonEntity: PokemonEntity, context: JobContext, world: World): Boolean {
         val (target, radius) = when (context) {
             is JobContext.Pasture -> context.origin to ARRIVAL_RADIUS
             is JobContext.Party -> context.player.blockPos to PARTY_ARRIVAL_RADIUS
         }
 
         if (CobbleCrewNavigationUtils.isPokemonAtPosition(pokemonEntity, target, radius)) {
-            // We're home
-            returningHome.remove(pokemonId)
-            lastReturnNavTick.remove(pokemonId)
+            state.returningHome = false
+            state.lastReturnNavTick = 0L
             return false
         }
 
-        // Not home — mark as returning and (re-)path on cooldown
-        returningHome.add(pokemonId)
+        state.returningHome = true
         val now = world.time
-        val lastNav = lastReturnNavTick[pokemonId] ?: 0L
-        if (now - lastNav >= RETURN_NAV_COOLDOWN) {
-            lastReturnNavTick[pokemonId] = now
+        if (now - state.lastReturnNavTick >= RETURN_NAV_COOLDOWN) {
+            state.lastReturnNavTick = now
             CobbleCrewNavigationUtils.navigateTo(pokemonEntity, target)
         }
         return true
     }
 
     fun cleanupPokemon(pokemonId: UUID, world: World) {
-        val species = profiles[pokemonId]?.species
+        val state = StateManager.get(pokemonId)
+        val species = state?.profile?.species
+
         workers.forEach { it.cleanup(pokemonId) }
-        activeJobs.remove(pokemonId)
-        profiles.remove(pokemonId)
-        jobAssignedTick.remove(pokemonId)
-        idleLogTick.remove(pokemonId)
-        idleSinceTick.remove(pokemonId)
-        idleHeldItems.remove(pokemonId)
-        idleFailedDeposits.remove(pokemonId)
-        returningHome.remove(pokemonId)
-        lastReturnNavTick.remove(pokemonId)
-        lastWanderTick.remove(pokemonId)
-        lastPickupAttemptTick.remove(pokemonId)
-        idlePickupClaimTick.remove(pokemonId)
+        ClaimManager.cleanupPokemon(pokemonId, world)
         WorkerVisualUtils.cleanup(pokemonId)
         CobbleCrewNavigationUtils.cleanupPokemon(pokemonId, world)
         CobbleCrewInventoryUtils.cleanupPokemon(pokemonId)
+        StateManager.remove(pokemonId)
+
         CobbleCrewDebugLogger.pokemonCleanedUp(species, pokemonId)
     }
 
-    /** Invalidate all cached profiles (e.g. on config reload). */
     fun invalidateProfiles() {
         resetAllAssignments()
-        profiles.clear()
+        for (state in StateManager.all()) {
+            state.profile = null
+            state.lastMoveSet = emptySet()
+        }
         CobbleCrewDebugLogger.profileInvalidated()
     }
 
     // -- Command accessors --
 
-    fun getActiveJobsSnapshot(): Map<UUID, String> = activeJobs.mapValues { it.value.name }
+    fun getActiveJobsSnapshot(): Map<UUID, String> = StateManager.activeJobsSnapshot()
 
-    fun hasActiveJob(pokemonId: UUID): Boolean = pokemonId in activeJobs
+    fun hasActiveJob(pokemonId: UUID): Boolean = StateManager.get(pokemonId)?.activeJob != null
 
-    fun getProfilesSnapshot(): Map<UUID, PokemonProfile> = profiles.toMap()
+    fun getProfilesSnapshot(): Map<UUID, PokemonProfile> = StateManager.profilesSnapshot()
 
-    fun getCachedProfileCount(): Int = profiles.size
+    fun getCachedProfileCount(): Int = StateManager.cachedProfileCount()
 
-    fun getActiveWorkerCount(): Int = activeJobs.size
+    fun getActiveWorkerCount(): Int = StateManager.activeWorkerCount()
 
     fun resetAssignment(pokemonId: UUID) {
-        val job = activeJobs.remove(pokemonId) ?: return
+        val state = StateManager.get(pokemonId) ?: return
+        val job = state.activeJob ?: return
         job.cleanup(pokemonId)
-        jobAssignedTick.remove(pokemonId)
-        idleLogTick.remove(pokemonId)
-        // Don't clear profiles — moves/types don't change on reset.
-        // Profile will be invalidated if moves actually change (getOrBuildProfile checks).
+        state.activeJob = null
+        state.jobAssignedTick = 0L
+        state.idleLogTick = 0L
     }
 
     fun resetAllAssignments() {
-        val ids = activeJobs.keys.toList()
-        ids.forEach { resetAssignment(it) }
+        for (state in StateManager.all()) {
+            if (state.activeJob != null) {
+                state.activeJob!!.cleanup(state.pokemonId)
+                state.activeJob = null
+                state.jobAssignedTick = 0L
+                state.idleLogTick = 0L
+            }
+        }
     }
 }

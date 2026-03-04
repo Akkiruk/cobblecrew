@@ -8,357 +8,138 @@
 
 package akkiruk.cobblecrew.utilities
 
+import akkiruk.cobblecrew.jobs.Target
+import akkiruk.cobblecrew.state.ClaimManager
+import akkiruk.cobblecrew.state.StateManager
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import net.minecraft.entity.player.PlayerEntity
 import net.minecraft.util.math.BlockPos
 import net.minecraft.util.math.Box
 import net.minecraft.world.World
-import akkiruk.cobblecrew.config.CobbleCrewConfigHolder
-import java.util.PriorityQueue
 import java.util.UUID
 
 /**
- * Pokémon navigation and target claim management.
+ * Backward-compatible facade over [ClaimManager] and [StateManager].
+ * All state is delegated — this object maintains no internal maps.
  *
- * Internally uses a unified claim system: each Pokémon holds at most ONE claim
- * (block, player, or mob). Claiming a new target auto-releases the previous one.
- * Backward-compatible API wrappers are provided for each target type.
+ * New code should use [ClaimManager] directly. This facade exists for
+ * hand-coded jobs and other legacy callers that haven't been migrated yet.
  */
 object CobbleCrewNavigationUtils {
-    private val generalConfig get() = CobbleCrewConfigHolder.config.general
-
-    // --- Unified claim system ---
-
-    sealed interface Target {
-        data class Block(val pos: BlockPos) : Target
-        data class Player(val playerId: UUID) : Target
-        data class Mob(val entityId: Int) : Target
-    }
-
-    private data class Claim(
-        val pokemonId: UUID,
-        val target: Target,
-        val claimTick: Long,
-        val timeoutTicks: Long,
-    )
-
-    // Forward: pokemonId → claim. One claim per Pokémon, enforced.
-    private val pokemonToClaim = mutableMapOf<UUID, Claim>()
-    // Reverse: target → pokemonId. For O(1) "is this targeted?" checks.
-    private val targetToPokemon = mutableMapOf<Target, UUID>()
-
-    private data class ExpiredTarget(val pos: BlockPos, val expiryTick: Long)
-    private val recentlyExpiredTargets = mutableMapOf<BlockPos, ExpiredTarget>()
-    private val expiredQueue = PriorityQueue<ExpiredTarget>(compareBy { it.expiryTick })
-    private val lastPathfindTick = mutableMapOf<UUID, Long>()
-    private var lastCleanUpTick = 0L
-
-    private const val DEFAULT_CLAIM_TIMEOUT = 200L
-    private val EXPIRED_TARGET_TIMEOUT_TICKS: Long get() = generalConfig.targetGracePeriodSeconds.toLong() * 20L
     private const val PATHFIND_INTERVAL_TICKS = 5L
 
-    // Escalating blacklist: per-position fail count (O(1) lookup)
-    private val blockFailCounts = mutableMapOf<BlockPos, Int>()
-    private val BLACKLIST_SHORT: Long get() = generalConfig.blacklistShortSeconds.toLong() * 20L
-    private val BLACKLIST_MEDIUM: Long get() = generalConfig.blacklistMediumSeconds.toLong() * 20L
-    private val BLACKLIST_LONG: Long get() = generalConfig.blacklistLongSeconds.toLong() * 20L
+    // --- Position checks (pure geometry, no state) ---
 
-    // Pathfind validation cache: remembers unreachable targets temporarily
-    private val unreachableCache = mutableMapOf<Pair<UUID, BlockPos>, Long>()
-    private const val UNREACHABLE_CACHE_TTL = 200L
-
-    /**
-     * Checks if the Pokémon's bounding box intersects with the target block area.
-     */
     fun isPokemonAtPosition(pokemonEntity: PokemonEntity, targetPos: BlockPos, offset: Double = 1.0): Boolean {
         val interactionHitbox = Box(targetPos).expand(offset)
         return pokemonEntity.boundingBox.intersects(interactionHitbox)
     }
 
-    /**
-     * Checks if the Pokémon is near enough to the player.
-     */
     fun isPokemonNearPlayer(pokemonEntity: PokemonEntity, player: PlayerEntity, offset: Double = 1.0): Boolean {
         val interactionHitbox = player.boundingBox.expand(offset)
         return pokemonEntity.boundingBox.intersects(interactionHitbox)
     }
 
-    /**
-     * Commands the Pokémon entity to move towards the target destination.
-     */
-    fun navigateTo(pokemonEntity: PokemonEntity, targetPos: BlockPos, speed: Double = 0.5) {
-        val world = pokemonEntity.world
-        val now = world.time
-        val id = pokemonEntity.pokemon.uuid
-        val last = lastPathfindTick[id] ?: 0L
+    // --- Navigation (throttled pathfinding) ---
 
-        if (now - last < PATHFIND_INTERVAL_TICKS) return
-        lastPathfindTick[id] = now
+    fun navigateTo(pokemonEntity: PokemonEntity, targetPos: BlockPos, speed: Double = 0.5) {
+        val state = StateManager.getOrCreate(pokemonEntity.pokemon.uuid)
+        val now = pokemonEntity.world.time
+        if (now - state.lastPathfindTick < PATHFIND_INTERVAL_TICKS) return
+        state.lastPathfindTick = now
 
         pokemonEntity.lookControl.lookAt(
-            targetPos.x + 0.5,
-            targetPos.y + 0.5,
-            targetPos.z + 0.5
+            targetPos.x + 0.5, targetPos.y + 0.5, targetPos.z + 0.5
         )
-
         pokemonEntity.navigation.startMovingTo(
-            targetPos.x + 0.5,
-            targetPos.y.toDouble(),
-            targetPos.z + 0.5,
-            speed
+            targetPos.x + 0.5, targetPos.y.toDouble(), targetPos.z + 0.5, speed
         )
     }
 
-    /**
-     * Commands the Pokémon entity to move towards the player's current position.
-     * Throttled to avoid pathfinding every tick.
-     */
     fun navigateToPlayer(pokemonEntity: PokemonEntity, player: PlayerEntity, speed: Double = 0.5) {
-        val id = pokemonEntity.pokemon.uuid
+        val state = StateManager.getOrCreate(pokemonEntity.pokemon.uuid)
         val now = pokemonEntity.world.time
-        val last = lastPathfindTick[id] ?: 0L
-        if (now - last < PATHFIND_INTERVAL_TICKS) return
-        lastPathfindTick[id] = now
+        if (now - state.lastPathfindTick < PATHFIND_INTERVAL_TICKS) return
+        state.lastPathfindTick = now
 
         pokemonEntity.lookControl.lookAt(player.x, player.eyeY, player.z)
         pokemonEntity.navigation.startMovingTo(player.x, player.y, player.z, speed)
     }
 
-    /**
-     * Assigns a target block to a Pokémon. Releases any existing claim first.
-     * @param timeoutTicks per-job timeout (default 5s). Slow jobs can pass longer values.
-     */
-    fun claimTarget(pokemonId: UUID, target: BlockPos, world: World, timeoutTicks: Long = DEFAULT_CLAIM_TIMEOUT) {
-        releaseExpiredClaims(world)
-        releaseInternal(pokemonId, world)
-
-        val immutableTarget = target.toImmutable()
-        val t = Target.Block(immutableTarget)
-        pokemonToClaim[pokemonId] = Claim(pokemonId, t, world.time, timeoutTicks)
-        targetToPokemon[t] = pokemonId
-        CobbleCrewDebugLogger.targetClaimed(null, pokemonId, immutableTarget)
-    }
-
-    /**
-     * Assigns a player target to a Pokémon. Releases any existing claim first.
-     */
-    fun claimTarget(pokemonId: UUID, player: PlayerEntity, world: World) {
-        releaseExpiredClaims(world)
-        releaseInternal(pokemonId, world)
-
-        val t = Target.Player(player.uuid)
-        pokemonToClaim[pokemonId] = Claim(pokemonId, t, world.time, DEFAULT_CLAIM_TIMEOUT)
-        targetToPokemon[t] = pokemonId
-        CobbleCrewDebugLogger.playerTargetClaimed(null, pokemonId, player.uuid)
-    }
-
-    /**
-     * Refreshes the claim timer so it won't expire while the Pokémon is actively working.
-     */
-    fun renewClaim(pokemonId: UUID, world: World) {
-        val claim = pokemonToClaim[pokemonId] ?: return
-        pokemonToClaim[pokemonId] = claim.copy(claimTick = world.time)
-    }
-
-    /**
-     * Releases any claim held by this Pokémon.
-     * @param blacklist if true, adds the position to the recently-expired blacklist.
-     *                  Pass false for clean harvests (cache removal is sufficient).
-     */
-    fun releaseTarget(pokemonId: UUID, world: World, blacklist: Boolean = true) = releaseInternal(pokemonId, world, blacklist)
-
-    /**
-     * Releases the player target for a given Pokémon.
-     */
-    fun releasePlayerTarget(pokemonId: UUID) = releaseInternal(pokemonId, null, false)
-
-    private fun releaseInternal(pokemonId: UUID, world: World?, blacklist: Boolean = true) {
-        val claim = pokemonToClaim.remove(pokemonId) ?: return
-        targetToPokemon.remove(claim.target)
-
-        if (claim.target is Target.Block && world != null) {
-            val pos = claim.target.pos
-            // Only blacklist on failed claims (timeout, pathfind failure).
-            // Successful harvests rely on cache removal — no need to blacklist.
-            if (blacklist) {
-                val expired = ExpiredTarget(pos, world.time)
-                recentlyExpiredTargets[pos] = expired
-                expiredQueue.add(expired)
-            }
-            CobbleCrewDebugLogger.targetReleased(null, pokemonId, pos)
-        } else if (claim.target is Target.Player) {
-            CobbleCrewDebugLogger.playerTargetReleased(pokemonId)
-        } else if (claim.target is Target.Mob) {
-            CobbleCrewDebugLogger.mobTargetReleased(pokemonId)
-        }
-    }
-
-    /**
-     * Gets the current block target for a Pokémon, or null.
-     */
-    fun getTarget(pokemonId: UUID, world: World): BlockPos? {
-        releaseExpiredClaims(world)
-        return (pokemonToClaim[pokemonId]?.target as? Target.Block)?.pos
-    }
-
-    /**
-     * Gets the current player target UUID for a Pokémon, or null.
-     */
-    fun getPlayerTarget(pokemonId: UUID, world: World): UUID? {
-        releaseExpiredClaims(world)
-        return (pokemonToClaim[pokemonId]?.target as? Target.Player)?.playerId
-    }
-
-    /**
-     * Checks if a specific block is claimed by any Pokémon.
-     */
-    fun isTargeted(pos: BlockPos, world: World): Boolean {
-        releaseExpiredClaims(world)
-        return targetToPokemon.containsKey(Target.Block(pos))
-    }
-
-    /**
-     * Checks if a specific block is claimed by any Pokémon OTHER than [excludePokemonId].
-     * Prevents self-sabotage where a Pokémon's own claim causes isAvailable() to return false.
-     */
-    fun isTargetedByOther(pos: BlockPos, world: World, excludePokemonId: UUID): Boolean {
-        releaseExpiredClaims(world)
-        val claimant = targetToPokemon[Target.Block(pos)] ?: return false
-        return claimant != excludePokemonId
-    }
-
-    /**
-     * Checks if a player is targeted by any Pokémon.
-     */
-    fun isPlayerTargeted(player: PlayerEntity, world: World): Boolean {
-        releaseExpiredClaims(world)
-        return targetToPokemon.containsKey(Target.Player(player.uuid))
-    }
-
-    /**
-     * Releases claims that have exceeded their per-job timeout.
-     */
-    private fun releaseExpiredClaims(world: World) {
-        val now = world.time
-
-        if (now - lastCleanUpTick < 20) return
-        lastCleanUpTick = now
-
-        val expired = mutableListOf<UUID>()
-
-        for ((pokemonId, claim) in pokemonToClaim) {
-            if (now - claim.claimTick > claim.timeoutTicks) {
-                expired.add(pokemonId)
-                // Track block claim failures for escalating blacklist
-                if (claim.target is Target.Block) {
-                    val pos = claim.target.pos
-                    blockFailCounts.merge(pos, 1) { a, b -> a + b }
-                    CobbleCrewDebugLogger.targetExpired(pokemonId, pos)
-                }
-            }
-        }
-
-        expired.forEach { releaseInternal(it, world) }
-
-        // Clean expired target queue — preserve fail counts for escalating blacklist
-        while (expiredQueue.isNotEmpty() && now - expiredQueue.peek().expiryTick > EXPIRED_TARGET_TIMEOUT_TICKS) {
-            val polled = expiredQueue.poll()
-            val pos = polled.pos
-            // Only remove map entry if it hasn't been overwritten by a newer release
-            val current = recentlyExpiredTargets[pos]
-            if (current != null && current.expiryTick <= polled.expiryTick) {
-                recentlyExpiredTargets.remove(pos)
-            }
-            // Don't clear fail counts — let the escalating blacklist work.
-            // Fail counts reset naturally when the blacklist duration expires in isRecentlyExpired().
-        }
-
-        // Periodic sweep of unreachableCache (prevents unbounded growth)
-        unreachableCache.values.removeAll { expiry -> now >= expiry }
-
-        // Sweep orphaned fail counts (position no longer in expired map)
-        if (blockFailCounts.size > recentlyExpiredTargets.size * 2 + 10) {
-            blockFailCounts.keys.retainAll(recentlyExpiredTargets.keys)
-        }
-    }
-
-    /**
-     * Checks if a block is in the recently expired targets.
-     * Uses escalating blacklist: repeated failures extend the blackout.
-     * O(1) lookup via per-position fail counts.
-     */
-    fun isRecentlyExpired(pos: BlockPos, world: World): Boolean {
-        releaseExpiredClaims(world)
-        val expired = recentlyExpiredTargets[pos] ?: return false
-        val now = world.time
-        val fails = blockFailCounts.getOrDefault(pos, 0)
-        val blacklistDuration = when {
-            fails <= 1 -> BLACKLIST_SHORT
-            fails == 2 -> BLACKLIST_MEDIUM
-            else -> BLACKLIST_LONG
-        }
-        return now - expired.expiryTick < blacklistDuration
-    }
-
-    /**
-     * Checks if a target was recently found unreachable by pathfinding validation.
-     */
-    fun isUnreachable(pokemonId: UUID, pos: BlockPos, currentTick: Long): Boolean {
-        val expiry = unreachableCache[pokemonId to pos] ?: return false
-        if (currentTick >= expiry) {
-            unreachableCache.remove(pokemonId to pos)
-            return false
-        }
-        return true
-    }
-
-    /**
-     * Marks a block as unreachable for a specific Pokémon for [UNREACHABLE_CACHE_TTL] ticks.
-     */
-    fun markUnreachable(pokemonId: UUID, pos: BlockPos, currentTick: Long) {
-        unreachableCache[pokemonId to pos] = currentTick + UNREACHABLE_CACHE_TTL
-    }
-
-    /**
-     * Validates pathfinding to a target. Returns true if a path exists and can reach the target.
-     */
     fun canPathfindTo(pokemonEntity: PokemonEntity, targetPos: BlockPos): Boolean {
         val path = pokemonEntity.navigation.findPathTo(targetPos, 1)
         return path != null && path.reachesTarget()
     }
 
-    /**
-     * Removes all state associated with a Pokémon.
-     */
+    // --- Block claims ---
+
+    fun claimTarget(pokemonId: UUID, target: BlockPos, world: World, timeoutTicks: Long = 200L) {
+        val state = StateManager.getOrCreate(pokemonId)
+        ClaimManager.claim(state, Target.Block(target.toImmutable()), world)
+    }
+
+    fun releaseTarget(pokemonId: UUID, world: World, blacklist: Boolean = true) {
+        val state = StateManager.get(pokemonId) ?: return
+        ClaimManager.release(state, world, blacklist)
+    }
+
+    fun renewClaim(pokemonId: UUID, world: World) {
+        val state = StateManager.get(pokemonId) ?: return
+        ClaimManager.renewClaim(state, world)
+    }
+
+    fun getTarget(pokemonId: UUID, world: World): BlockPos? {
+        val state = StateManager.get(pokemonId) ?: return null
+        return (state.claim?.target as? Target.Block)?.pos
+    }
+
+    fun isTargeted(pos: BlockPos, world: World): Boolean =
+        ClaimManager.isTargeted(pos)
+
+    fun isTargetedByOther(pos: BlockPos, world: World, excludePokemonId: UUID): Boolean =
+        ClaimManager.isTargetedByOther(pos, excludePokemonId)
+
+    // --- Player claims ---
+
+    fun claimTarget(pokemonId: UUID, player: PlayerEntity, world: World) {
+        val state = StateManager.getOrCreate(pokemonId)
+        ClaimManager.claim(state, Target.Player(player.uuid, player.blockPos), world)
+    }
+
+    fun releasePlayerTarget(pokemonId: UUID) {
+        val state = StateManager.get(pokemonId) ?: return
+        ClaimManager.releaseWithoutWorld(state)
+    }
+
+    fun getPlayerTarget(pokemonId: UUID, world: World): UUID? {
+        val state = StateManager.get(pokemonId) ?: return null
+        return (state.claim?.target as? Target.Player)?.playerId
+    }
+
+    fun isPlayerTargeted(player: PlayerEntity, world: World): Boolean =
+        ClaimManager.isPlayerTargeted(player.uuid)
+
+    // --- Blacklist / unreachable ---
+
+    fun isRecentlyExpired(pos: BlockPos, world: World): Boolean =
+        ClaimManager.isBlacklisted(pos, world.time)
+
+    fun isUnreachable(pokemonId: UUID, pos: BlockPos, currentTick: Long): Boolean =
+        ClaimManager.isUnreachable(pokemonId, pos, currentTick)
+
+    fun markUnreachable(pokemonId: UUID, pos: BlockPos, currentTick: Long) =
+        ClaimManager.markUnreachable(pokemonId, pos, currentTick)
+
+    // --- Mob targeting (deprecated — only old BaseDefender used these) ---
+
+    fun claimMobTarget(pokemonId: UUID, entityId: Int, world: World) {}
+    fun releaseMobTarget(pokemonId: UUID) {}
+    fun getMobTarget(pokemonId: UUID): Int? = null
+    fun isMobTargeted(entityId: Int): Boolean = false
+
+    // --- Cleanup ---
+
     fun cleanupPokemon(pokemonId: UUID, world: World) {
-        releaseInternal(pokemonId, world, blacklist = false)
-        lastPathfindTick.remove(pokemonId)
-        unreachableCache.keys.removeAll { it.first == pokemonId }
+        ClaimManager.cleanupPokemon(pokemonId, world)
     }
-
-    // --- Mob targeting (delegates to unified claim system) ---
-
-    private const val MOB_CLAIM_TIMEOUT = 600L // 30s — generous but finite to prevent permanent leaks
-
-    fun claimMobTarget(pokemonId: UUID, entityId: Int, world: World) {
-        releaseInternal(pokemonId, null)
-        val target = Target.Mob(entityId)
-        pokemonToClaim[pokemonId] = Claim(pokemonId, target, world.time, MOB_CLAIM_TIMEOUT)
-        targetToPokemon[target] = pokemonId
-        CobbleCrewDebugLogger.mobTargetClaimed(null, pokemonId, entityId)
-    }
-
-    fun releaseMobTarget(pokemonId: UUID) {
-        val claim = pokemonToClaim[pokemonId] ?: return
-        if (claim.target is Target.Mob) {
-            releaseInternal(pokemonId, null)
-            CobbleCrewDebugLogger.mobTargetReleased(pokemonId)
-        }
-    }
-
-    fun getMobTarget(pokemonId: UUID): Int? =
-        (pokemonToClaim[pokemonId]?.target as? Target.Mob)?.entityId
-
-    fun isMobTargeted(entityId: Int): Boolean =
-        targetToPokemon.containsKey(Target.Mob(entityId))
 }

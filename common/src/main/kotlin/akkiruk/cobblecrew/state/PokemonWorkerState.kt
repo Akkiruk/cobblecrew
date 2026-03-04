@@ -34,6 +34,7 @@ class PokemonWorkerState(val pokemonId: UUID) {
 
     // --- Idle behavior ---
     var idleSinceTick: Long = 0L
+    var idleLogTick: Long = 0L
     var lastWanderTick: Long = 0L
     var lastPickupAttemptTick: Long = 0L
     var idlePickupClaimTick: Long = 0L
@@ -72,7 +73,8 @@ class PokemonWorkerState(val pokemonId: UUID) {
      * Called when switching jobs.
      */
     fun resetJobState() {
-        phase = JobPhase.IDLE
+        // Keep DEPOSITING if we have orphan items — they must be delivered
+        phase = if (heldItems.isNotEmpty()) JobPhase.DEPOSITING else JobPhase.IDLE
         targetPos = null
         secondaryTargetPos = null
         arrivalTick = null

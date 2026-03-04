@@ -73,6 +73,13 @@ object ClaimManager {
         state.claim = null
     }
 
+    /** Release without world ref (player/mob targets that don't need blacklisting). */
+    fun releaseWithoutWorld(state: PokemonWorkerState) {
+        val claim = state.claim ?: return
+        targetToPokemon.remove(claim.target.toKey())
+        state.claim = null
+    }
+
     /** Refresh the claim timer (called when actively working at a target). */
     fun renewClaim(state: PokemonWorkerState, world: World) {
         val old = state.claim ?: return
@@ -90,6 +97,9 @@ object ClaimManager {
     }
 
     fun isTargeted(pos: BlockPos): Boolean = targetToPokemon.containsKey(TargetKey.Block(pos))
+
+    fun isPlayerTargeted(playerId: UUID): Boolean =
+        targetToPokemon.containsKey(TargetKey.Player(playerId))
 
     // ---- Blacklist ----
 
