@@ -108,11 +108,6 @@ object DeferredBlockScanner {
         }
     }
 
-    /** Backward-compat wrapper: delegates to tickAreaScan. */
-    fun tickPastureAreaScan(world: World, pastureOrigin: BlockPos) {
-        tickAreaScan(JobContext.Pasture(pastureOrigin, world))
-    }
-
     /** Checks whether a scan job is running for the given origin. */
     fun isScanActive(origin: BlockPos): Boolean = activeScans.containsKey(origin)
 

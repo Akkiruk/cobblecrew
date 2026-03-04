@@ -17,7 +17,6 @@ import akkiruk.cobblecrew.state.StateManager
 import akkiruk.cobblecrew.utilities.CobbleCrewDebugLogger
 import akkiruk.cobblecrew.utilities.CobbleCrewInventoryUtils
 import akkiruk.cobblecrew.utilities.DepositHelper
-import akkiruk.cobblecrew.utilities.DeferredBlockScanner
 import akkiruk.cobblecrew.utilities.WorkerAnimationUtils
 import akkiruk.cobblecrew.utilities.WorkerVisualUtils
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
@@ -60,10 +59,6 @@ object WorkerDispatcher {
             lastSweepTick = serverTick
             ClaimManager.sweepExpired(serverTick)
         }
-    }
-
-    fun tickAreaScan(context: JobContext) {
-        DeferredBlockScanner.tickAreaScan(context)
     }
 
     private fun getOrBuildProfile(pokemonEntity: PokemonEntity, state: PokemonWorkerState): PokemonProfile {

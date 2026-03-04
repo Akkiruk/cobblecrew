@@ -14,6 +14,7 @@ import akkiruk.cobblecrew.commands.CobbleCrewCommand
 import akkiruk.cobblecrew.fabric.integration.FabricIntegrationHelper
 import akkiruk.cobblecrew.integration.CobbleCrewIntegrationHandler
 import akkiruk.cobblecrew.jobs.PartyWorkerManager
+import akkiruk.cobblecrew.jobs.PastureWorkerManager
 import akkiruk.cobblecrew.jobs.WorkerDispatcher
 import akkiruk.cobblecrew.network.JobSyncPayload
 import akkiruk.cobblecrew.network.JobSyncSerializer
@@ -37,6 +38,10 @@ object CobbleCrewFabric : ModInitializer {
 
         CommandRegistrationCallback.EVENT.register { dispatcher, _, _ ->
             CobbleCrewCommand.register(dispatcher)
+        }
+
+        ServerLifecycleEvents.SERVER_STOPPING.register { _ ->
+            PastureWorkerManager.clearAll()
         }
 
         ServerLifecycleEvents.SERVER_STARTING.register { _ ->
