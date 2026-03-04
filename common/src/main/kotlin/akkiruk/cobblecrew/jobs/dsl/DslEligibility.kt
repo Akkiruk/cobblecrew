@@ -16,6 +16,7 @@ import akkiruk.cobblecrew.enums.WorkerPriority
  *
  * When [isCombo] is false (default), the Pokémon needs ANY qualifying move.
  * When [isCombo] is true, the Pokémon needs ALL qualifying moves (combo jobs).
+ * Falls back to species, then type if no move match.
  */
 fun dslEligible(
     config: JobConfig,
@@ -24,6 +25,7 @@ fun dslEligible(
     moves: Set<String>,
     species: String,
     isCombo: Boolean = false,
+    types: Set<String> = emptySet(),
 ): Boolean {
     if (!config.enabled) return false
     val effectiveMoves = config.qualifyingMoves.ifEmpty { defaultMoves }.map { it.lowercase() }.toSet()
@@ -31,12 +33,15 @@ fun dslEligible(
     if (moveMatch) return true
     if (isCombo) return false // combos don't fall back to species
     val sp = config.fallbackSpecies.ifEmpty { defaultSpecies }
-    return sp.any { it.equals(species, ignoreCase = true) }
+    if (sp.any { it.equals(species, ignoreCase = true) }) return true
+    if (config.fallbackType.isNotEmpty() && config.fallbackType.uppercase() in types) return true
+    return false
 }
 
 /**
  * Returns the dynamic priority tier based on HOW the Pokémon matched.
- * COMBO if all combo moves present, MOVE if any qualifying move, SPECIES if fallback species.
+ * COMBO if all combo moves present, MOVE if any qualifying move,
+ * SPECIES if fallback species, TYPE if fallback type.
  * Returns null if the Pokémon doesn't qualify at all.
  */
 fun dslMatchPriority(
@@ -46,6 +51,7 @@ fun dslMatchPriority(
     moves: Set<String>,
     species: String,
     isCombo: Boolean = false,
+    types: Set<String> = emptySet(),
 ): WorkerPriority? {
     if (!config.enabled) return null
     val effectiveMoves = config.qualifyingMoves.ifEmpty { defaultMoves }.map { it.lowercase() }.toSet()
@@ -54,5 +60,6 @@ fun dslMatchPriority(
     if (isCombo) return null
     val sp = config.fallbackSpecies.ifEmpty { defaultSpecies }
     if (sp.any { it.equals(species, ignoreCase = true) }) return WorkerPriority.SPECIES
+    if (config.fallbackType.isNotEmpty() && config.fallbackType.uppercase() in types) return WorkerPriority.TYPE
     return null
 }

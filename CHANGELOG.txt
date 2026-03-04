@@ -1,3 +1,9 @@
+## 3.0.48
+- Activated fallbackType eligibility: Pokémon type now matters for job matching (was dead code)
+- Grass-type Pokémon can now use growth_accelerator, crop_harvester, and root_harvester without specific moves
+- GROWABLE scanner excludes upper halves of two-block crops (consistent with CROP_GRAIN)
+- Schema version bumped to 2 (auto-migrates fallbackType values)
+
 ## 3.0.47
 - Fixed hearty grains spinning: scanner no longer caches upper half of two-block crops as separate targets
 - isMatureCrop now only returns true for the lower half of hearty grains

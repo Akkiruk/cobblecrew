@@ -51,10 +51,10 @@ open class ProcessingJob(
     }
 
     override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean =
-        dslEligible(config, qualifyingMoves, fallbackSpecies, moves, species, isCombo)
+        dslEligible(config, qualifyingMoves, fallbackSpecies, moves, species, isCombo, types)
 
     override fun matchPriority(moves: Set<String>, types: Set<String>, species: String, ability: String) =
-        dslMatchPriority(config, qualifyingMoves, fallbackSpecies, moves, species, isCombo)
+        dslMatchPriority(config, qualifyingMoves, fallbackSpecies, moves, species, isCombo, types)
 
     override fun inputPredicate(stack: ItemStack): Boolean = inputCheck(stack)
     override fun transform(input: ItemStack): List<ItemStack> = transformFn(input)

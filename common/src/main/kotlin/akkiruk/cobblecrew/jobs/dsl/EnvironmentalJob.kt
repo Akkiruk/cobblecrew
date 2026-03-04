@@ -55,6 +55,7 @@ open class EnvironmentalJob(
     override val additionalScanCategories: Set<BlockCategory> = emptySet(),
     val qualifyingMoves: Set<String> = emptySet(),
     val fallbackSpecies: List<String> = emptyList(),
+    val fallbackType: String = "",
     override val priority: WorkerPriority = WorkerPriority.MOVE,
     override val importance: JobImportance = JobImportance.LOW,
     val particle: ParticleEffect = ParticleTypes.HAPPY_VILLAGER,
@@ -76,6 +77,7 @@ open class EnvironmentalJob(
         val defaultConfig = JobConfig(
             enabled = true,
             qualifyingMoves = qualifyingMoves.toList(),
+            fallbackType = fallbackType,
             fallbackSpecies = fallbackSpecies,
             cooldownSeconds = if (defaultCooldownSeconds > 0) defaultCooldownSeconds else 30,
             radius = defaultRadius,
@@ -86,10 +88,10 @@ open class EnvironmentalJob(
     }
 
     override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean =
-        dslEligible(config, qualifyingMoves, fallbackSpecies, moves, species)
+        dslEligible(config, qualifyingMoves, fallbackSpecies, moves, species, types = types)
 
     override fun matchPriority(moves: Set<String>, types: Set<String>, species: String, ability: String) =
-        dslMatchPriority(config, qualifyingMoves, fallbackSpecies, moves, species)
+        dslMatchPriority(config, qualifyingMoves, fallbackSpecies, moves, species, types = types)
 
     override fun isAvailable(context: JobContext, pokemonId: UUID): Boolean {
         val found = findTarget(context.world, context.origin) ?: return false

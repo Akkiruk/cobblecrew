@@ -31,7 +31,7 @@ object JobConfigManager {
      * Schema version for job configs. Bump when qualifyingMoves or fallbackSpecies
      * defaults change in code, so stale disk configs get migrated automatically.
      */
-    private const val CURRENT_SCHEMA_VERSION = 1
+    private const val CURRENT_SCHEMA_VERSION = 2
 
     /** Default configs registered by DSL jobs before load() is called. */
     private val defaults = mutableMapOf<String, MutableMap<String, JobConfig>>()
@@ -91,6 +91,7 @@ object JobConfigManager {
                     merged[name] = cfg.copy(
                         qualifyingMoves = codeDef.qualifyingMoves,
                         fallbackSpecies = codeDef.fallbackSpecies,
+                        fallbackType = codeDef.fallbackType,
                         schemaVersion = CURRENT_SCHEMA_VERSION,
                     )
                     dirty = true

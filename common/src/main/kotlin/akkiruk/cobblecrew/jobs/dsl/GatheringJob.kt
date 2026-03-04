@@ -68,10 +68,10 @@ open class GatheringJob(
     }
 
     override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean =
-        dslEligible(config, qualifyingMoves, fallbackSpecies, moves, species, isCombo)
+        dslEligible(config, qualifyingMoves, fallbackSpecies, moves, species, isCombo, types)
 
     override fun matchPriority(moves: Set<String>, types: Set<String>, species: String, ability: String) =
-        dslMatchPriority(config, qualifyingMoves, fallbackSpecies, moves, species, isCombo)
+        dslMatchPriority(config, qualifyingMoves, fallbackSpecies, moves, species, isCombo, types)
 
     override fun isTargetReady(world: World, pos: BlockPos): Boolean {
         return readyCheck?.invoke(world, pos) ?: true

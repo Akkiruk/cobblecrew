@@ -127,7 +127,10 @@ object BlockCategoryValidators {
         BlockCategory.LAVA to { _, state -> state.fluidState.isOf(net.minecraft.fluid.Fluids.LAVA) },
 
         // Growable (crops + saplings — Growth Accelerator)
-        BlockCategory.GROWABLE to { block, _ -> block is CropBlock || block is SaplingBlock },
+        BlockCategory.GROWABLE to { block, state ->
+            (block is CropBlock || block is SaplingBlock)
+                && !(state.contains(Properties.DOUBLE_BLOCK_HALF) && state.get(Properties.DOUBLE_BLOCK_HALF) == DoubleBlockHalf.UPPER)
+        },
 
         // Farmland (irrigation)
         BlockCategory.FARMLAND to { block, _ -> block == Blocks.FARMLAND },
