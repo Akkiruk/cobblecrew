@@ -16,6 +16,7 @@ import akkiruk.cobblecrew.integration.CobbleCrewIntegrationHandler
 import akkiruk.cobblecrew.jobs.PartyWorkerManager
 import akkiruk.cobblecrew.jobs.PastureWorkerManager
 import akkiruk.cobblecrew.jobs.WorkerDispatcher
+import akkiruk.cobblecrew.utilities.HostileScanCache
 import akkiruk.cobblecrew.network.JobSyncPayload
 import akkiruk.cobblecrew.network.JobSyncSerializer
 import net.fabricmc.api.ModInitializer
@@ -42,6 +43,7 @@ object CobbleCrewFabric : ModInitializer {
 
         ServerLifecycleEvents.SERVER_STOPPING.register { _ ->
             PastureWorkerManager.clearAll()
+            HostileScanCache.clear()
         }
 
         ServerLifecycleEvents.SERVER_STARTING.register { _ ->

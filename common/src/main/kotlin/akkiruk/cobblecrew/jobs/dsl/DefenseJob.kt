@@ -20,12 +20,12 @@ import akkiruk.cobblecrew.jobs.Target
 import akkiruk.cobblecrew.jobs.WorkResult
 import akkiruk.cobblecrew.state.ClaimManager
 import akkiruk.cobblecrew.state.PokemonWorkerState
+import akkiruk.cobblecrew.utilities.HostileScanCache
 import akkiruk.cobblecrew.utilities.WorkerAnimationUtils
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import net.minecraft.entity.mob.HostileEntity
 import net.minecraft.particle.ParticleEffect
 import net.minecraft.particle.ParticleTypes
-import net.minecraft.server.world.ServerWorld
 import net.minecraft.util.math.Box
 import net.minecraft.world.World
 import java.util.UUID
@@ -72,35 +72,32 @@ open class DefenseJob(
 
     override fun isAvailable(context: JobContext, pokemonId: UUID): Boolean {
         if (!config.enabled) return false
-        val searchBox = searchBox(context.origin)
-        return context.world.getEntitiesByClass(HostileEntity::class.java, searchBox) {
-            it.isAlive && !ClaimManager.isTargetedByOther(
-                Target.Mob(it.uuid, it.blockPos), pokemonId
-            )
-        }.isNotEmpty()
+        val box = searchBox(context.origin)
+        return HostileScanCache.getHostileIds(context.world, context.origin, box).any { id ->
+            val mob = HostileScanCache.resolve(context.world, id) ?: return@any false
+            !ClaimManager.isTargetedByOther(Target.Mob(id, mob.blockPos), pokemonId)
+        }
     }
 
     override fun findTarget(state: PokemonWorkerState, context: JobContext): Target? {
-        val hostiles = context.world.getEntitiesByClass(
-            HostileEntity::class.java, searchBox(context.origin)
-        ) { it.isAlive }
-        if (hostiles.isEmpty()) return null
+        val box = searchBox(context.origin)
+        val ids = HostileScanCache.getHostileIds(context.world, context.origin, box)
+        if (ids.isEmpty()) return null
 
-        val closest = hostiles
-            .filter { !ClaimManager.isTargetedByOther(Target.Mob(it.uuid, it.blockPos), state.pokemonId) }
-            .minByOrNull { it.blockPos.getSquaredDistance(context.origin) }
+        val closest = ids
+            .mapNotNull { id -> HostileScanCache.resolve(context.world, id)?.let { id to it } }
+            .filter { (id, mob) -> !ClaimManager.isTargetedByOther(Target.Mob(id, mob.blockPos), state.pokemonId) }
+            .minByOrNull { (_, mob) -> mob.blockPos.getSquaredDistance(context.origin) }
             ?: return null
 
-        return Target.Mob(closest.uuid, closest.blockPos)
+        return Target.Mob(closest.first, closest.second.blockPos)
     }
 
     override fun validateTarget(state: PokemonWorkerState, context: JobContext): Boolean {
         val claim = state.claim ?: return false
         val mobTarget = claim.target as? Target.Mob ?: return false
-        val mob = (context.world as? ServerWorld)?.getEntity(mobTarget.entityId) as? HostileEntity
-            ?: return false
+        val mob = HostileScanCache.resolve(context.world, mobTarget.entityId) ?: return false
         if (!mob.isAlive || mob.isRemoved) return false
-        // Update position to track the moving mob
         state.targetPos = mob.blockPos
         return true
     }
@@ -108,8 +105,7 @@ open class DefenseJob(
     override fun doWork(state: PokemonWorkerState, context: JobContext, pokemonEntity: PokemonEntity): WorkResult {
         val claim = state.claim ?: return WorkResult.Done()
         val mobTarget = claim.target as? Target.Mob ?: return WorkResult.Done()
-        val mob = (context.world as? ServerWorld)?.getEntity(mobTarget.entityId) as? HostileEntity
-            ?: return WorkResult.Done()
+        val mob = HostileScanCache.resolve(context.world, mobTarget.entityId) ?: return WorkResult.Done()
         WorkerAnimationUtils.playImmediate(pokemonEntity, WorkPhase.HOSTILE_SPOTTED, context.world)
         effectFn(context.world, pokemonEntity, mob)
         return WorkResult.Done()
