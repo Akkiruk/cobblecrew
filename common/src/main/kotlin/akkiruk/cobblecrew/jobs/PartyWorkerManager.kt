@@ -9,7 +9,6 @@
 package akkiruk.cobblecrew.jobs
 
 import akkiruk.cobblecrew.CobbleCrew
-import akkiruk.cobblecrew.cache.CacheKey
 import akkiruk.cobblecrew.cache.CobbleCrewCacheManager
 import akkiruk.cobblecrew.config.CobbleCrewConfigHolder
 import akkiruk.cobblecrew.enums.BlockCategory
@@ -236,7 +235,7 @@ object PartyWorkerManager {
             if (activePartyWorkers.values.none { it.owner.uuid == playerId }) {
                 val removed = playerContexts.remove(playerId)
                 if (removed != null) {
-                    CobbleCrewCacheManager.removeCache(removed.cacheKey)
+                    CobbleCrewCacheManager.removeCache(removed.origin)
                 }
                 lastScanTick.remove(playerId)
             }
@@ -273,12 +272,12 @@ object PartyWorkerManager {
             val dz = playerPos.z - oldOrigin.z
             val distSq = dx * dx + dy * dy + dz * dz
             if (distSq < RESCAN_DISTANCE_SQ) return  // Too close — skip rescan, keep old cache
-            CobbleCrewCacheManager.removeCache(CacheKey.PastureKey(oldOrigin))
+            CobbleCrewCacheManager.removeCache(oldOrigin)
         }
 
         // Pin origin to current player pos — stable until next scan
         context.scanOrigin = playerPos
-        val key = context.cacheKey
+        val key = context.origin
 
         val categoryValidators = BlockCategoryValidators.validators
         val needed = DeferredBlockScanner.getNeededCategories()
@@ -350,7 +349,7 @@ object PartyWorkerManager {
 
         val context = playerContexts.remove(playerId)
         if (context != null) {
-            CobbleCrewCacheManager.removeCache(context.cacheKey)
+            CobbleCrewCacheManager.removeCache(context.origin)
         }
         lastScanTick.remove(playerId)
         playersInBattle.remove(playerId)
@@ -380,7 +379,7 @@ object PartyWorkerManager {
             }
             val context = playerContexts.remove(playerId)
             if (context != null) {
-                CobbleCrewCacheManager.removeCache(context.cacheKey)
+                CobbleCrewCacheManager.removeCache(context.origin)
             }
             lastScanTick.remove(playerId)
             false

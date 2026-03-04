@@ -790,7 +790,7 @@ object CobbleCrewCommand {
         val y = IntegerArgumentType.getInteger(ctx, "y")
         val z = IntegerArgumentType.getInteger(ctx, "z")
         val pos = BlockPos(x, y, z)
-        CobbleCrewCacheManager.removePasture(pos)
+        CobbleCrewCacheManager.removeCache(pos)
         ctx.source.sendFeedback({ success("Cleared cache for pasture at ($x, $y, $z). Will rescan automatically.") }, true)
         return 1
     }

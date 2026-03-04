@@ -8,7 +8,6 @@
 
 package akkiruk.cobblecrew.utilities
 
-import akkiruk.cobblecrew.cache.CacheKey
 import akkiruk.cobblecrew.cache.CobbleCrewCacheManager
 import akkiruk.cobblecrew.config.CobbleCrewConfigHolder
 import akkiruk.cobblecrew.enums.BlockCategory
@@ -32,8 +31,8 @@ object DeferredBlockScanner {
         val staged: MutableMap<BlockCategory, MutableSet<BlockPos>> = mutableMapOf()
     )
 
-    private val activeScans = mutableMapOf<CacheKey, ScanJob>()
-    private val lastScanCompletion = mutableMapOf<CacheKey, Long>()
+    private val activeScans = mutableMapOf<BlockPos, ScanJob>()
+    private val lastScanCompletion = mutableMapOf<BlockPos, Long>()
 
     /** Categories actually needed by registered workers — computed once after init. */
     private var neededCategories: Set<BlockCategory>? = null
@@ -57,7 +56,7 @@ object DeferredBlockScanner {
      */
     fun tickAreaScan(context: JobContext) {
         val world = context.world
-        val key = context.cacheKey
+        val key = context.origin
         val scanCenter = context.origin
         val currentTick = world.time
 
@@ -114,16 +113,13 @@ object DeferredBlockScanner {
         tickAreaScan(JobContext.Pasture(pastureOrigin, world))
     }
 
-    /** Checks whether a scan job is running for the given cache key. */
-    fun isScanActive(key: CacheKey): Boolean = activeScans.containsKey(key)
+    /** Checks whether a scan job is running for the given origin. */
+    fun isScanActive(origin: BlockPos): Boolean = activeScans.containsKey(origin)
 
-    /** Backward-compat: check by BlockPos (wraps to PastureKey). */
-    fun isScanActive(pastureOrigin: BlockPos): Boolean = isScanActive(CacheKey.PastureKey(pastureOrigin))
-
-    /** Abort any in-progress scan and clear cooldown for the given key. */
-    fun clearScan(key: CacheKey) {
-        activeScans.remove(key)
-        lastScanCompletion.remove(key)
+    /** Abort any in-progress scan and clear cooldown for the given origin. */
+    fun clearScan(origin: BlockPos) {
+        activeScans.remove(origin)
+        lastScanCompletion.remove(origin)
     }
 
     /**

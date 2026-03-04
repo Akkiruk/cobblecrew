@@ -116,7 +116,7 @@ public class PokemonPastureBlockEntityMixin {
 					CobbleCrew.LOGGER.error("[CobbleCrew] - Failed to cleanup Pokémon on pasture break", e);
 				}
 			}
-			CobbleCrewCacheManager.INSTANCE.removePasture(self.getPos());
+			CobbleCrewCacheManager.INSTANCE.removeCache(self.getPos());
 		}
 	}
 }
