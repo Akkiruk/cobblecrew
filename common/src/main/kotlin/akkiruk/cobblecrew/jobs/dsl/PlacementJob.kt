@@ -28,7 +28,6 @@ class PlacementJob(
     val category: String = "placement",
     val qualifyingMoves: Set<String> = emptySet(),
     val typeGatedMoves: Map<String, String> = emptyMap(),
-    val fallbackType: String = "",
     val fallbackSpecies: List<String> = emptyList(),
     override val priority: WorkerPriority = WorkerPriority.MOVE,
     override val importance: JobImportance = JobImportance.LOW,
@@ -47,16 +46,15 @@ class PlacementJob(
         JobConfigManager.registerDefault(category, name, JobConfig(
             enabled = true,
             qualifyingMoves = qualifyingMoves.toList(),
-            fallbackType = fallbackType,
             fallbackSpecies = fallbackSpecies,
         ))
     }
 
     override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean =
-        dslEligible(config, qualifyingMoves, fallbackSpecies, moves, species, types = types)
+        dslEligible(config, qualifyingMoves, fallbackSpecies, moves, species)
 
     override fun matchPriority(moves: Set<String>, types: Set<String>, species: String, ability: String) =
-        dslMatchPriority(config, qualifyingMoves, fallbackSpecies, moves, species, types = types)
+        dslMatchPriority(config, qualifyingMoves, fallbackSpecies, moves, species)
 
     override fun itemPredicate(stack: ItemStack): Boolean = itemCheck(stack)
     override fun findPlacementTarget(world: World, origin: BlockPos): BlockPos? = findTarget(world, origin)

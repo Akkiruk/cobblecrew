@@ -477,9 +477,6 @@ object CobbleCrewCommand {
         if (config.qualifyingMoves.isNotEmpty()) {
             s.sendFeedback({ label("Moves", config.qualifyingMoves.joinToString(", ")) }, false)
         }
-        if (config.fallbackType.isNotEmpty()) {
-            s.sendFeedback({ label("Type", config.fallbackType) }, false)
-        }
         if (config.fallbackSpecies.isNotEmpty()) {
             s.sendFeedback({ label("Species", config.fallbackSpecies.joinToString(", ")) }, false)
         }

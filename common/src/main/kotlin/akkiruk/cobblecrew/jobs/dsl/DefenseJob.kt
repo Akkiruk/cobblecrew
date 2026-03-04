@@ -29,7 +29,6 @@ open class DefenseJob(
     val category: String = "defense",
     val qualifyingMoves: Set<String> = emptySet(),
     val typeGatedMoves: Map<String, String> = emptyMap(),
-    val fallbackType: String = "",
     val fallbackSpecies: List<String> = emptyList(),
     override val priority: WorkerPriority = WorkerPriority.MOVE,
     override val importance: JobImportance = JobImportance.CRITICAL,
@@ -49,16 +48,15 @@ open class DefenseJob(
         JobConfigManager.registerDefault(category, name, JobConfig(
             enabled = true,
             qualifyingMoves = qualifyingMoves.toList(),
-            fallbackType = fallbackType,
             fallbackSpecies = fallbackSpecies,
         ))
     }
 
     override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean =
-        dslEligible(config, qualifyingMoves, fallbackSpecies, moves, species, isCombo, types)
+        dslEligible(config, qualifyingMoves, fallbackSpecies, moves, species, isCombo)
 
     override fun matchPriority(moves: Set<String>, types: Set<String>, species: String, ability: String) =
-        dslMatchPriority(config, qualifyingMoves, fallbackSpecies, moves, species, isCombo, types)
+        dslMatchPriority(config, qualifyingMoves, fallbackSpecies, moves, species, isCombo)
 
     override fun applyEffect(world: World, pokemonEntity: PokemonEntity, target: HostileEntity) {
         effectFn(world, pokemonEntity, target)

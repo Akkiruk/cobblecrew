@@ -86,7 +86,6 @@ object EnvironmentalJobs {
         name = "growth_accelerator",
         targetCategory = BlockCategory.GROWABLE,
         qualifyingMoves = setOf("growth"),
-        fallbackType = "GRASS",
         priority = WorkerPriority.MOVE,
         particle = ParticleTypes.HAPPY_VILLAGER,
         findTarget = { world, origin ->

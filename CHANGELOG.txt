@@ -1,8 +1,11 @@
+## 3.0.49
+- Removed all fallbackType/type-based eligibility code — Pokémon type never affects job eligibility
+- Only moves and species determine what jobs a Pokémon can do
+- Stripped fallbackType from JobConfig, all DSL job classes, API, and commands
+- GROWABLE scanner still excludes upper halves of two-block crops (kept from 3.0.48)
+
 ## 3.0.48
-- Activated fallbackType eligibility: Pokémon type now matters for job matching (was dead code)
-- Grass-type Pokémon can now use growth_accelerator, crop_harvester, and root_harvester without specific moves
-- GROWABLE scanner excludes upper halves of two-block crops (consistent with CROP_GRAIN)
-- Schema version bumped to 2 (auto-migrates fallbackType values)
+- (Reverted in 3.0.49) — fallbackType eligibility was added and immediately removed
 
 ## 3.0.47
 - Fixed hearty grains spinning: scanner no longer caches upper half of two-block crops as separate targets

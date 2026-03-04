@@ -39,7 +39,6 @@ open class GatheringJob(
     override val targetCategory: BlockCategory,
     val qualifyingMoves: Set<String> = emptySet(),
     val typeGatedMoves: Map<String, String> = emptyMap(),
-    val fallbackType: String = "",
     val fallbackSpecies: List<String> = emptyList(),
     val particle: ParticleEffect = ParticleTypes.CAMPFIRE_COSY_SMOKE,
     override val priority: WorkerPriority = WorkerPriority.TYPE,
@@ -62,16 +61,15 @@ open class GatheringJob(
         JobConfigManager.registerDefault(category, name, JobConfig(
             enabled = true,
             qualifyingMoves = qualifyingMoves.toList(),
-            fallbackType = fallbackType,
             fallbackSpecies = fallbackSpecies,
         ))
     }
 
     override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean =
-        dslEligible(config, qualifyingMoves, fallbackSpecies, moves, species, isCombo, types)
+        dslEligible(config, qualifyingMoves, fallbackSpecies, moves, species, isCombo)
 
     override fun matchPriority(moves: Set<String>, types: Set<String>, species: String, ability: String) =
-        dslMatchPriority(config, qualifyingMoves, fallbackSpecies, moves, species, isCombo, types)
+        dslMatchPriority(config, qualifyingMoves, fallbackSpecies, moves, species, isCombo)
 
     override fun isTargetReady(world: World, pos: BlockPos): Boolean {
         return readyCheck?.invoke(world, pos) ?: true

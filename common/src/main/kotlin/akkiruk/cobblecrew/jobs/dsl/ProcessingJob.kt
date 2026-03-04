@@ -26,7 +26,6 @@ open class ProcessingJob(
     val category: String = "processing",
     val qualifyingMoves: Set<String> = emptySet(),
     val typeGatedMoves: Map<String, String> = emptyMap(),
-    val fallbackType: String = "",
     val fallbackSpecies: List<String> = emptyList(),
     override val priority: WorkerPriority = WorkerPriority.MOVE,
     override val importance: JobImportance = JobImportance.STANDARD,
@@ -45,16 +44,15 @@ open class ProcessingJob(
         JobConfigManager.registerDefault(category, name, JobConfig(
             enabled = true,
             qualifyingMoves = qualifyingMoves.toList(),
-            fallbackType = fallbackType,
             fallbackSpecies = fallbackSpecies,
         ))
     }
 
     override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean =
-        dslEligible(config, qualifyingMoves, fallbackSpecies, moves, species, isCombo, types)
+        dslEligible(config, qualifyingMoves, fallbackSpecies, moves, species, isCombo)
 
     override fun matchPriority(moves: Set<String>, types: Set<String>, species: String, ability: String) =
-        dslMatchPriority(config, qualifyingMoves, fallbackSpecies, moves, species, isCombo, types)
+        dslMatchPriority(config, qualifyingMoves, fallbackSpecies, moves, species, isCombo)
 
     override fun inputPredicate(stack: ItemStack): Boolean = inputCheck(stack)
     override fun transform(input: ItemStack): List<ItemStack> = transformFn(input)

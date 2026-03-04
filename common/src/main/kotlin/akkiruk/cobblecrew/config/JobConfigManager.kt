@@ -91,7 +91,6 @@ object JobConfigManager {
                     merged[name] = cfg.copy(
                         qualifyingMoves = codeDef.qualifyingMoves,
                         fallbackSpecies = codeDef.fallbackSpecies,
-                        fallbackType = codeDef.fallbackType,
                         schemaVersion = CURRENT_SCHEMA_VERSION,
                     )
                     dirty = true

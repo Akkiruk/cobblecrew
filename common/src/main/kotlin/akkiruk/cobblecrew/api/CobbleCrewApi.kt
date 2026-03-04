@@ -22,7 +22,6 @@ object CobbleCrewApi {
         val displayName: String,
         val description: String,
         val enabled: Boolean,
-        val requiredType: String?,
         val designatedSpecies: List<String>,
         val requiredMoves: List<String>,
         val requiredAbility: String?,
@@ -179,7 +178,6 @@ object CobbleCrewApi {
 
             val config = JobConfigManager.get(worker.name)
             if (config.qualifyingMoves.isEmpty()
-                && config.fallbackType.isEmpty()
                 && config.fallbackSpecies.isEmpty()
                 && config.requiredAbility.isNullOrEmpty()
             ) return@mapNotNull null
@@ -189,7 +187,6 @@ object CobbleCrewApi {
                 displayName = formatName(worker.name),
                 description = descriptions[worker.name] ?: "",
                 enabled = config.enabled,
-                requiredType = config.fallbackType.takeIf { it.isNotEmpty() },
                 designatedSpecies = emptyList(),
                 requiredMoves = config.qualifyingMoves,
                 requiredAbility = config.requiredAbility?.takeIf { it.isNotEmpty() },
@@ -222,7 +219,6 @@ object CobbleCrewApi {
             sb.appendLine("    Priority: ${worker.priority.name}")
             sb.appendLine("    Enabled: ${config.enabled}")
             sb.appendLine("    Moves: ${config.qualifyingMoves.ifEmpty { listOf("(none)") }.joinToString(", ")}")
-            sb.appendLine("    Fallback Type: ${config.fallbackType.ifEmpty { "(none)" }}")
             sb.appendLine("    Fallback Species: ${config.fallbackSpecies.ifEmpty { listOf("(none)") }.joinToString(", ")}")
             sb.appendLine()
         }
@@ -236,7 +232,6 @@ object CobbleCrewApi {
             sb.appendLine("  [${rule.id}] ${rule.displayName}")
             sb.appendLine("    Enabled: ${rule.enabled}")
             sb.appendLine("    Priority: ${rule.priority}")
-            sb.appendLine("    Required Type: ${rule.requiredType ?: "(none)"}")
             sb.appendLine("    Required Moves: ${rule.requiredMoves.ifEmpty { listOf("(none)") }.joinToString(", ")}")
             sb.appendLine("    Required Ability: ${rule.requiredAbility ?: "(none)"}")
             sb.appendLine("    Fallback Species: ${rule.hardcodedSpecies.ifEmpty { listOf("(none)") }.joinToString(", ")}")

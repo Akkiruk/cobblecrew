@@ -29,7 +29,6 @@ open class ProductionJob(
     val category: String = "production",
     val qualifyingMoves: Set<String> = emptySet(),
     val typeGatedMoves: Map<String, String> = emptyMap(),
-    val fallbackType: String = "",
     val fallbackSpecies: List<String> = emptyList(),
     val defaultCooldownSeconds: Int = 120,
     override val priority: WorkerPriority = WorkerPriority.MOVE,
@@ -50,16 +49,15 @@ open class ProductionJob(
             enabled = true,
             cooldownSeconds = defaultCooldownSeconds,
             qualifyingMoves = qualifyingMoves.toList(),
-            fallbackType = fallbackType,
             fallbackSpecies = fallbackSpecies,
         ))
     }
 
     override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean =
-        dslEligible(config, qualifyingMoves, fallbackSpecies, moves, species, isCombo, types)
+        dslEligible(config, qualifyingMoves, fallbackSpecies, moves, species, isCombo)
 
     override fun matchPriority(moves: Set<String>, types: Set<String>, species: String, ability: String) =
-        dslMatchPriority(config, qualifyingMoves, fallbackSpecies, moves, species, isCombo, types)
+        dslMatchPriority(config, qualifyingMoves, fallbackSpecies, moves, species, isCombo)
 
     override fun produce(world: World, origin: BlockPos, pokemonEntity: PokemonEntity): List<ItemStack> {
         return output(world, pokemonEntity)

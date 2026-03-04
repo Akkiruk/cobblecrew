@@ -414,7 +414,6 @@ object GatheringJobs {
         name = "crop_harvester",
         targetCategory = BlockCategory.CROP_GRAIN,
         qualifyingMoves = setOf("trailblaze"),
-        fallbackType = "GRASS",
         particle = ParticleTypes.HAPPY_VILLAGER,
         readyCheck = { world, pos ->
             CobbleCrewCropUtils.isMatureCrop(world, pos)
@@ -428,7 +427,6 @@ object GatheringJobs {
         name = "root_harvester",
         targetCategory = BlockCategory.CROP_ROOT,
         qualifyingMoves = setOf("strength"),
-        fallbackType = "GRASS",
         particle = ParticleTypes.COMPOSTER,
         readyCheck = { world, pos ->
             val state = world.getBlockState(pos)
