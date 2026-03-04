@@ -12,13 +12,8 @@ import akkiruk.cobblecrew.config.JobConfig
 import akkiruk.cobblecrew.config.JobConfigManager
 import akkiruk.cobblecrew.enums.BlockCategory
 import akkiruk.cobblecrew.enums.JobImportance
-import akkiruk.cobblecrew.enums.WorkPhase
 import akkiruk.cobblecrew.enums.WorkerPriority
-import akkiruk.cobblecrew.jobs.BaseJob
-import akkiruk.cobblecrew.jobs.JobContext
-import akkiruk.cobblecrew.jobs.Target
-import akkiruk.cobblecrew.jobs.WorkResult
-import akkiruk.cobblecrew.state.PokemonWorkerState
+import akkiruk.cobblecrew.jobs.BaseHarvester
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import net.minecraft.block.BlockState
 import net.minecraft.item.ItemStack
@@ -54,12 +49,13 @@ open class GatheringJob(
     val afterHarvestAction: ((World, BlockPos, BlockState) -> Unit)? = null,
     val tolerance: Double = 3.0,
     val isCombo: Boolean = false,
-) : BaseJob() {
+) : BaseHarvester() {
+
+    private val config get() = JobConfigManager.get(name)
 
     override val arrivalParticle: ParticleEffect = particle
     override val arrivalTolerance: Double = tolerance
-    override val workPhase: WorkPhase = WorkPhase.HARVESTING
-    override val config: JobConfig get() = JobConfigManager.get(name)
+    override val harvestTool: ItemStack = toolOverride
 
     init {
         JobConfigManager.registerDefault(category, name, JobConfig(
@@ -75,19 +71,21 @@ open class GatheringJob(
     override fun matchPriority(moves: Set<String>, types: Set<String>, species: String, ability: String) =
         dslMatchPriority(config, qualifyingMoves, fallbackSpecies, moves, species, isCombo)
 
-    override fun findTarget(state: PokemonWorkerState, context: JobContext): Target? =
-        findCachedBlockTarget(state, context, targetCategory, readyCheck = readyCheck)
+    override fun isTargetReady(world: World, pos: BlockPos): Boolean {
+        return readyCheck?.invoke(world, pos) ?: true
+    }
 
-    override fun doWork(state: PokemonWorkerState, context: JobContext, pokemonEntity: PokemonEntity): WorkResult {
-        val pos = state.targetPos ?: return WorkResult.Done()
-        val items = if (harvestOverride != null) {
-            harvestOverride.invoke(context.world, pos, pokemonEntity)
+    override fun harvest(world: World, targetPos: BlockPos, pokemonEntity: PokemonEntity) {
+        if (harvestOverride != null) {
+            val drops = harvestOverride.invoke(world, targetPos, pokemonEntity)
+            if (drops.isNotEmpty()) {
+                heldItemsByPokemon[pokemonEntity.pokemon.uuid] = drops
+            }
         } else {
-            harvestWithLoot(context.world, pos, pokemonEntity, toolOverride) { w, p, s ->
-                afterHarvestAction?.invoke(w, p, s)
-                    ?: w.setBlockState(p, net.minecraft.block.Blocks.AIR.defaultState)
+            harvestWithLoot(world, targetPos, pokemonEntity) { w, pos, state ->
+                afterHarvestAction?.invoke(w, pos, state)
+                    ?: w.setBlockState(pos, net.minecraft.block.Blocks.AIR.defaultState)
             }
         }
-        return WorkResult.Done(items)
     }
 }

@@ -12,14 +12,24 @@ import akkiruk.cobblecrew.config.JobConfig
 import akkiruk.cobblecrew.config.JobConfigManager
 import akkiruk.cobblecrew.enums.BlockCategory
 import akkiruk.cobblecrew.enums.JobImportance
+import akkiruk.cobblecrew.enums.WorkPhase
 import akkiruk.cobblecrew.enums.WorkerPriority
-import akkiruk.cobblecrew.jobs.BaseProcessor
+import akkiruk.cobblecrew.jobs.BaseJob
+import akkiruk.cobblecrew.jobs.JobContext
+import akkiruk.cobblecrew.jobs.Target
+import akkiruk.cobblecrew.jobs.WorkResult
+import akkiruk.cobblecrew.state.PokemonWorkerState
+import akkiruk.cobblecrew.utilities.CobbleCrewInventoryUtils
+import akkiruk.cobblecrew.utilities.WorkerAnimationUtils
+import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
+import net.minecraft.inventory.Inventory
 import net.minecraft.item.ItemStack
 import net.minecraft.particle.ParticleEffect
 import net.minecraft.particle.ParticleTypes
 
 /**
- * DSL-style processing job. Pulls items from barrels, transforms, deposits in chests.
+ * DSL-style processing job. Finds a barrel with matching input items,
+ * navigates there, extracts + transforms, then deposits the results.
  */
 open class ProcessingJob(
     override val name: String,
@@ -33,12 +43,13 @@ open class ProcessingJob(
     val inputCheck: (ItemStack) -> Boolean,
     val transformFn: (ItemStack) -> List<ItemStack>,
     val isCombo: Boolean = false,
-) : BaseProcessor() {
+) : BaseJob() {
 
-    private val config get() = JobConfigManager.get(name)
-
+    override val arrivalParticle: ParticleEffect = particle
     override val targetCategory: BlockCategory? = null
-    override val processParticle: ParticleEffect = particle
+    override val workPhase: WorkPhase = WorkPhase.PROCESSING
+    override val config: JobConfig get() = JobConfigManager.get(name)
+    open val minExtractAmount: Int = 1
 
     init {
         JobConfigManager.registerDefault(category, name, JobConfig(
@@ -54,6 +65,26 @@ open class ProcessingJob(
     override fun matchPriority(moves: Set<String>, types: Set<String>, species: String, ability: String) =
         dslMatchPriority(config, qualifyingMoves, fallbackSpecies, moves, species, isCombo)
 
-    override fun inputPredicate(stack: ItemStack): Boolean = inputCheck(stack)
-    override fun transform(input: ItemStack): List<ItemStack> = transformFn(input)
+    override fun findTarget(state: PokemonWorkerState, context: JobContext): Target? {
+        val barrelPos = CobbleCrewInventoryUtils.findInputContainer(
+            context.world, context.origin, inputCheck
+        ) ?: return null
+        return Target.Block(barrelPos)
+    }
+
+    override fun validateTarget(state: PokemonWorkerState, context: JobContext): Boolean {
+        val pos = state.targetPos ?: return false
+        val inv = context.world.getBlockEntity(pos) as? Inventory ?: return false
+        return (0 until inv.size()).any { inputCheck(inv.getStack(it)) }
+    }
+
+    override fun doWork(state: PokemonWorkerState, context: JobContext, pokemonEntity: PokemonEntity): WorkResult {
+        val pos = state.targetPos ?: return WorkResult.Done()
+        val extracted = CobbleCrewInventoryUtils.extractFromContainer(
+            context.world, pos, inputCheck, minExtractAmount
+        )
+        if (extracted.isEmpty) return WorkResult.Done()
+        WorkerAnimationUtils.playImmediate(pokemonEntity, WorkPhase.PROCESSING, context.world)
+        return WorkResult.Done(transformFn(extracted))
+    }
 }

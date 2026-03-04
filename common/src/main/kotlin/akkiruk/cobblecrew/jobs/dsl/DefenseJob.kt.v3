@@ -14,45 +14,39 @@ import akkiruk.cobblecrew.enums.BlockCategory
 import akkiruk.cobblecrew.enums.JobImportance
 import akkiruk.cobblecrew.enums.WorkPhase
 import akkiruk.cobblecrew.enums.WorkerPriority
-import akkiruk.cobblecrew.jobs.BaseJob
-import akkiruk.cobblecrew.jobs.JobContext
-import akkiruk.cobblecrew.jobs.Target
-import akkiruk.cobblecrew.jobs.WorkResult
-import akkiruk.cobblecrew.state.PokemonWorkerState
-import akkiruk.cobblecrew.utilities.WorkerAnimationUtils
+import akkiruk.cobblecrew.jobs.BaseDefender
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
-import net.minecraft.item.ItemStack
+import net.minecraft.entity.mob.HostileEntity
 import net.minecraft.particle.ParticleEffect
 import net.minecraft.particle.ParticleTypes
 import net.minecraft.world.World
 
 /**
- * DSL-style production job. Self-generates items on cooldown without target blocks.
+ * DSL-style defense job. Finds hostile mobs and applies effects.
  */
-open class ProductionJob(
+open class DefenseJob(
     override val name: String,
-    val category: String = "production",
+    val category: String = "defense",
     val qualifyingMoves: Set<String> = emptySet(),
     val typeGatedMoves: Map<String, String> = emptyMap(),
     val fallbackSpecies: List<String> = emptyList(),
-    val defaultCooldownSeconds: Int = 120,
     override val priority: WorkerPriority = WorkerPriority.MOVE,
-    override val importance: JobImportance = JobImportance.STANDARD,
-    val particle: ParticleEffect = ParticleTypes.HAPPY_VILLAGER,
-    val output: (World, PokemonEntity) -> List<ItemStack>,
+    override val importance: JobImportance = JobImportance.CRITICAL,
+    val particle: ParticleEffect = ParticleTypes.CRIT,
+    val phase: WorkPhase = WorkPhase.ATTACKING,
+    val effectFn: (World, PokemonEntity, HostileEntity) -> Unit,
     val isCombo: Boolean = false,
-) : BaseJob() {
+) : BaseDefender() {
 
-    override val arrivalParticle: ParticleEffect = particle
+    private val config get() = JobConfigManager.get(name)
+
     override val targetCategory: BlockCategory? = null
-    override val requiresTarget: Boolean = false
-    override val workPhase: WorkPhase = WorkPhase.PRODUCING
-    override val config: JobConfig get() = JobConfigManager.get(name)
+    override val attackParticle: ParticleEffect = particle
+    override val combatPhase: WorkPhase = phase
 
     init {
         JobConfigManager.registerDefault(category, name, JobConfig(
             enabled = true,
-            cooldownSeconds = defaultCooldownSeconds,
             qualifyingMoves = qualifyingMoves.toList(),
             fallbackSpecies = fallbackSpecies,
         ))
@@ -64,14 +58,7 @@ open class ProductionJob(
     override fun matchPriority(moves: Set<String>, types: Set<String>, species: String, ability: String) =
         dslMatchPriority(config, qualifyingMoves, fallbackSpecies, moves, species, isCombo)
 
-    // Never called — requiresTarget = false skips navigation
-    override fun findTarget(state: PokemonWorkerState, context: JobContext): Target? = null
-
-    override fun doWork(state: PokemonWorkerState, context: JobContext, pokemonEntity: PokemonEntity): WorkResult {
-        WorkerAnimationUtils.playImmediate(pokemonEntity, WorkPhase.PRODUCING, context.world)
-        return WorkResult.Done(output(context.world, pokemonEntity))
+    override fun applyEffect(world: World, pokemonEntity: PokemonEntity, target: HostileEntity) {
+        effectFn(world, pokemonEntity, target)
     }
-
-    override fun getCooldownTicks(state: PokemonWorkerState): Long =
-        (config.cooldownSeconds.takeIf { it > 0 } ?: defaultCooldownSeconds) * 20L
 }

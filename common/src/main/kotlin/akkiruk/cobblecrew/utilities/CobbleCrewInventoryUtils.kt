@@ -382,7 +382,103 @@ object CobbleCrewInventoryUtils {
         }
     }
 
-    // --- V2: Input container extraction (barrels = input, chests = output) ---
+    // --- V2: State-based depositing (replaces map-based version) ---
+
+    /**
+     * Handles depositing using centralized [PokemonWorkerState] instead of raw maps.
+     * Same logic as handleDepositing but reads/writes state fields directly.
+     */
+    fun handleDepositingV2(
+        world: World,
+        origin: BlockPos,
+        pokemonEntity: PokemonEntity,
+        state: akkiruk.cobblecrew.state.PokemonWorkerState,
+    ) {
+        val pokemonId = pokemonEntity.pokemon.uuid
+        val itemsToDeposit = state.heldItems.toList()
+        val allContainers = CobbleCrewCacheManager.getTargets(origin, BlockCategory.CONTAINER)
+        val inventoryPos = findClosestInventory(world, origin, state.failedDeposits, itemsToDeposit)
+
+        if (inventoryPos == null) {
+            val now = world.time
+            if (now - state.lastDepositWarning >= 200L) {
+                CobbleCrewDebugLogger.depositNoContainers(pokemonEntity, allContainers.size, state.failedDeposits.size)
+                state.lastDepositWarning = now
+            }
+            if (DeferredBlockScanner.isScanActive(origin)) return
+
+            if (state.depositRetryTick == 0L) state.depositRetryTick = now
+            if (now - state.depositRetryTick >= DEPOSIT_RETRY_COOLDOWN) {
+                CobbleCrewDebugLogger.depositRetryReset(pokemonEntity)
+                state.failedDeposits.clear()
+                state.depositRetryTick = 0L
+            }
+
+            akkiruk.cobblecrew.state.ClaimManager.navigateTo(pokemonEntity, origin, state)
+            return
+        }
+
+        if (akkiruk.cobblecrew.state.ClaimManager.isPokemonAtPosition(pokemonEntity, inventoryPos, 2.0)) {
+            val now = world.time
+            val arrived = state.depositArrivalTick
+
+            if (arrived == null) {
+                if (!hasSpaceFor(world, inventoryPos, itemsToDeposit)) {
+                    CobbleCrewDebugLogger.depositContainerFull(pokemonEntity, inventoryPos)
+                    state.failedDeposits.add(inventoryPos)
+                    return
+                }
+                state.depositArrivalTick = now
+                pokemonEntity.navigation.stop()
+                WorkerAnimationUtils.playImmediate(pokemonEntity, WorkPhase.DEPOSITING, world)
+                pokemonEntity.lookControl.lookAt(inventoryPos.x + 0.5, inventoryPos.y + 0.5, inventoryPos.z + 0.5)
+                openContainer(world, inventoryPos)
+                return
+            }
+
+            if (now - arrived < DEPOSIT_DELAY) {
+                pokemonEntity.lookControl.lookAt(inventoryPos.x + 0.5, inventoryPos.y + 0.5, inventoryPos.z + 0.5)
+                return
+            }
+
+            state.depositArrivalTick = null
+
+            val inventory = world.getBlockEntity(inventoryPos) as? Inventory
+            if (inventory == null) {
+                CobbleCrewDebugLogger.log(
+                    CobbleCrewDebugLogger.Category.DEPOSIT, pokemonEntity,
+                    "no block entity at (${inventoryPos.x},${inventoryPos.y},${inventoryPos.z}), marking tried"
+                )
+                state.failedDeposits.add(inventoryPos)
+                pendingCloses.add(PendingClose(inventoryPos.toImmutable(), now + 5L))
+                return
+            }
+
+            WorkerAnimationUtils.playImmediate(pokemonEntity, WorkPhase.DEPOSIT_SUCCESS, world)
+            val remainingDrops = insertStacks(inventory, itemsToDeposit)
+
+            if (remainingDrops.size == itemsToDeposit.size) {
+                state.failedDeposits.add(inventoryPos)
+            }
+
+            pendingCloses.add(PendingClose(inventoryPos.toImmutable(), now + CHEST_OPEN_DURATION))
+
+            state.heldItems.clear()
+            if (remainingDrops.isNotEmpty()) {
+                state.heldItems.addAll(remainingDrops)
+            } else {
+                CobbleCrewDebugLogger.depositSuccess(pokemonEntity, inventoryPos, itemsToDeposit)
+                state.failedDeposits.clear()
+                state.depositRetryTick = 0L
+                state.lastDepositWarning = 0L
+                pokemonEntity.navigation.stop()
+            }
+        } else {
+            akkiruk.cobblecrew.state.ClaimManager.navigateTo(pokemonEntity, inventoryPos, state)
+        }
+    }
+
+    // --- Input container extraction (barrels = input, chests = output) ---
 
     /**
      * Finds the closest barrel-type container with items matching the predicate.

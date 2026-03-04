@@ -12,18 +12,13 @@ import akkiruk.cobblecrew.config.JobConfig
 import akkiruk.cobblecrew.config.JobConfigManager
 import akkiruk.cobblecrew.enums.BlockCategory
 import akkiruk.cobblecrew.enums.JobImportance
-import akkiruk.cobblecrew.enums.WorkPhase
 import akkiruk.cobblecrew.enums.WorkerPriority
-import akkiruk.cobblecrew.jobs.BaseJob
-import akkiruk.cobblecrew.jobs.JobContext
-import akkiruk.cobblecrew.jobs.Target
-import akkiruk.cobblecrew.jobs.WorkResult
-import akkiruk.cobblecrew.state.PokemonWorkerState
-import akkiruk.cobblecrew.utilities.WorkerAnimationUtils
+import akkiruk.cobblecrew.jobs.BaseProducer
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import net.minecraft.item.ItemStack
 import net.minecraft.particle.ParticleEffect
 import net.minecraft.particle.ParticleTypes
+import net.minecraft.util.math.BlockPos
 import net.minecraft.world.World
 
 /**
@@ -41,13 +36,13 @@ open class ProductionJob(
     val particle: ParticleEffect = ParticleTypes.HAPPY_VILLAGER,
     val output: (World, PokemonEntity) -> List<ItemStack>,
     val isCombo: Boolean = false,
-) : BaseJob() {
+) : BaseProducer() {
 
-    override val arrivalParticle: ParticleEffect = particle
+    private val config get() = JobConfigManager.get(name)
+
     override val targetCategory: BlockCategory? = null
-    override val requiresTarget: Boolean = false
-    override val workPhase: WorkPhase = WorkPhase.PRODUCING
-    override val config: JobConfig get() = JobConfigManager.get(name)
+    override val productionParticle: ParticleEffect = particle
+    override val cooldownTicks: Long get() = (config.cooldownSeconds.takeIf { it > 0 } ?: defaultCooldownSeconds) * 20L
 
     init {
         JobConfigManager.registerDefault(category, name, JobConfig(
@@ -64,14 +59,7 @@ open class ProductionJob(
     override fun matchPriority(moves: Set<String>, types: Set<String>, species: String, ability: String) =
         dslMatchPriority(config, qualifyingMoves, fallbackSpecies, moves, species, isCombo)
 
-    // Never called — requiresTarget = false skips navigation
-    override fun findTarget(state: PokemonWorkerState, context: JobContext): Target? = null
-
-    override fun doWork(state: PokemonWorkerState, context: JobContext, pokemonEntity: PokemonEntity): WorkResult {
-        WorkerAnimationUtils.playImmediate(pokemonEntity, WorkPhase.PRODUCING, context.world)
-        return WorkResult.Done(output(context.world, pokemonEntity))
+    override fun produce(world: World, origin: BlockPos, pokemonEntity: PokemonEntity): List<ItemStack> {
+        return output(world, pokemonEntity)
     }
-
-    override fun getCooldownTicks(state: PokemonWorkerState): Long =
-        (config.cooldownSeconds.takeIf { it > 0 } ?: defaultCooldownSeconds) * 20L
 }
