@@ -17,7 +17,7 @@ import net.minecraft.util.math.BlockPos
  * Without a budget, 20 Pokémon × 3 attempts each = 60 pathfinds/tick.
  */
 object PathfindingBudget {
-    private const val MAX_PATHFINDS_PER_TICK = 3
+    private const val MAX_PATHFINDS_PER_TICK = 6
     private var usedThisTick = 0
     private var lastResetTick = 0L
 

@@ -62,13 +62,15 @@ object WorkerVisualUtils {
         }
 
         graceTick.remove(pokemonId)
+        // Always halt movement while at target — navigateTo() may have been called
+        // earlier in the same tick, which would restart pathfinding and cause drift.
+        pokemonEntity.navigation.stop()
         val arrived = arrivalTick[pokemonId]
 
         if (arrived == null) {
             arrivalTick[pokemonId] = now
             WorkerAnimationUtils.playWorkAnimation(pokemonEntity, workPhase, world)
             lookAt(pokemonEntity, targetPos)
-            pokemonEntity.navigation.stop()
             return false
         }
 
@@ -99,6 +101,10 @@ object WorkerVisualUtils {
             arrivalTick.remove(pokemonEntity.pokemon.uuid)
             return false
         }
+
+        // Halt movement while near player — navigateToPlayer() may have been called
+        // earlier in the same tick, and continued pathing can push the entity around.
+        pokemonEntity.navigation.stop()
 
         val pokemonId = pokemonEntity.pokemon.uuid
         val now = world.time
