@@ -10,6 +10,7 @@ package akkiruk.cobblecrew.utilities
 
 import akkiruk.cobblecrew.cache.CobbleCrewCacheManager
 import akkiruk.cobblecrew.enums.BlockCategory
+import akkiruk.cobblecrew.state.ClaimManager
 import net.minecraft.block.Blocks
 import net.minecraft.block.LeveledCauldronBlock
 import net.minecraft.util.math.BlockPos
@@ -30,7 +31,7 @@ object CobbleCrewCauldronUtils {
         return possibleTargets
             .filter { pos ->
                 world.getBlockState(pos).isOf(Blocks.CAULDRON)
-                    && !CobbleCrewNavigationUtils.isRecentlyExpired(pos, world)
+                    && !ClaimManager.isBlacklisted(pos, world.time)
             }
             .minByOrNull { it.getSquaredDistance(origin) }
     }

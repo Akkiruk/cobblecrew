@@ -16,7 +16,6 @@ import akkiruk.cobblecrew.state.PokemonWorkerState
 import akkiruk.cobblecrew.state.StateManager
 import akkiruk.cobblecrew.utilities.CobbleCrewDebugLogger
 import akkiruk.cobblecrew.utilities.CobbleCrewInventoryUtils
-import akkiruk.cobblecrew.utilities.CobbleCrewNavigationUtils
 import akkiruk.cobblecrew.utilities.DepositHelper
 import akkiruk.cobblecrew.utilities.DeferredBlockScanner
 import akkiruk.cobblecrew.utilities.WorkerAnimationUtils
@@ -226,7 +225,7 @@ object WorkerDispatcher {
         val dx = Random.nextInt(-IDLE_WANDER_RADIUS, IDLE_WANDER_RADIUS + 1)
         val dz = Random.nextInt(-IDLE_WANDER_RADIUS, IDLE_WANDER_RADIUS + 1)
         val wanderTarget = origin.add(dx, 0, dz)
-        CobbleCrewNavigationUtils.navigateTo(pokemonEntity, wanderTarget)
+        ClaimManager.navigateTo(pokemonEntity, wanderTarget, state)
         return true
     }
 
@@ -266,8 +265,8 @@ object WorkerDispatcher {
                 state.idlePickupClaimTick = 0L
                 return false
             }
-            CobbleCrewNavigationUtils.navigateTo(pokemonEntity, currentTarget)
-            if (CobbleCrewNavigationUtils.isPokemonAtPosition(pokemonEntity, currentTarget, 2.0)) {
+            ClaimManager.navigateTo(pokemonEntity, currentTarget, state)
+            if (ClaimManager.isPokemonAtPosition(pokemonEntity, currentTarget, 2.0)) {
                 if (nearbyItem.isRemoved || nearbyItem.stack.isEmpty) {
                     ClaimManager.release(state, world)
                     state.idlePickupClaimTick = 0L
@@ -294,7 +293,7 @@ object WorkerDispatcher {
         val itemPos = item.blockPos
         if (!ClaimManager.isTargeted(itemPos)) {
             ClaimManager.claim(state, Target.Block(itemPos), world)
-            CobbleCrewNavigationUtils.navigateTo(pokemonEntity, itemPos)
+            ClaimManager.navigateTo(pokemonEntity, itemPos, state)
             state.idlePickupClaimTick = now
             return true
         }
@@ -307,7 +306,7 @@ object WorkerDispatcher {
             is JobContext.Party -> context.player.blockPos to PARTY_ARRIVAL_RADIUS
         }
 
-        if (CobbleCrewNavigationUtils.isPokemonAtPosition(pokemonEntity, target, radius)) {
+        if (ClaimManager.isPokemonAtPosition(pokemonEntity, target, radius)) {
             state.returningHome = false
             state.lastReturnNavTick = 0L
             return false
@@ -317,7 +316,7 @@ object WorkerDispatcher {
         val now = world.time
         if (now - state.lastReturnNavTick >= RETURN_NAV_COOLDOWN) {
             state.lastReturnNavTick = now
-            CobbleCrewNavigationUtils.navigateTo(pokemonEntity, target)
+            ClaimManager.navigateTo(pokemonEntity, target, state)
         }
         return true
     }
@@ -328,9 +327,6 @@ object WorkerDispatcher {
 
         workers.forEach { it.cleanup(pokemonId) }
         ClaimManager.cleanupPokemon(pokemonId, world)
-        WorkerVisualUtils.cleanup(pokemonId)
-        CobbleCrewNavigationUtils.cleanupPokemon(pokemonId, world)
-        CobbleCrewInventoryUtils.cleanupPokemon(pokemonId)
         StateManager.remove(pokemonId)
 
         CobbleCrewDebugLogger.pokemonCleanedUp(species, pokemonId)

@@ -52,7 +52,7 @@ object DepositHelper {
         }
 
         // Delegate to InventoryUtils for the container-finding + chest animation logic
-        CobbleCrewInventoryUtils.handleDepositingV2(
+        CobbleCrewInventoryUtils.handleDepositing(
             world, context.origin, pokemonEntity, state
         )
         return state.heldItems.isNotEmpty()

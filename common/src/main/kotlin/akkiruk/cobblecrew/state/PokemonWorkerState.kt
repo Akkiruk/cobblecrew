@@ -64,10 +64,6 @@ class PokemonWorkerState(val pokemonId: UUID) {
     var lastActionTime: Long = 0L
     var cooldownUntil: Long = 0L
 
-    // Defense: cached hostile entity UUIDs (not raw entity refs)
-    var cachedHostileIds: List<UUID> = emptyList()
-    var lastHostileScan: Long = 0L
-
     /**
      * Reset job-related state without destroying idle/navigation state.
      * Called when switching jobs.

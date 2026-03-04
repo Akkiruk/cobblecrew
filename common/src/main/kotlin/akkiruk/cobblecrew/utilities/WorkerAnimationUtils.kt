@@ -9,6 +9,7 @@
 package akkiruk.cobblecrew.utilities
 
 import akkiruk.cobblecrew.enums.WorkPhase
+import akkiruk.cobblecrew.state.StateManager
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import com.cobblemon.mod.common.net.messages.client.animation.PlayPosableAnimationPacket
 import net.minecraft.server.world.ServerWorld
@@ -27,7 +28,6 @@ import java.util.UUID
  */
 object WorkerAnimationUtils {
 
-    private val lastAnimationTick = mutableMapOf<UUID, Long>()
     private const val ANIM_COOLDOWN_TICKS = 20L // 1 second between animations
 
     /**
@@ -42,8 +42,9 @@ object WorkerAnimationUtils {
     ) {
         val pokemonId = entity.pokemon.uuid
         val now = world.time
-        if (now - (lastAnimationTick[pokemonId] ?: 0L) < ANIM_COOLDOWN_TICKS) return
-        lastAnimationTick[pokemonId] = now
+        val state = StateManager.getOrCreate(pokemonId)
+        if (now - state.lastAnimationTick < ANIM_COOLDOWN_TICKS) return
+        state.lastAnimationTick = now
         sendAnimationPacket(entity, phase, world)
     }
 
@@ -56,7 +57,7 @@ object WorkerAnimationUtils {
         phase: WorkPhase,
         world: World,
     ) {
-        lastAnimationTick[entity.pokemon.uuid] = world.time
+        StateManager.getOrCreate(entity.pokemon.uuid).lastAnimationTick = world.time
         sendAnimationPacket(entity, phase, world)
     }
 
@@ -72,9 +73,5 @@ object WorkerAnimationUtils {
             128.0,
             serverWorld.registryKey
         ) { false }
-    }
-
-    fun cleanup(pokemonId: UUID) {
-        lastAnimationTick.remove(pokemonId)
     }
 }

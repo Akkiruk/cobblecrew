@@ -148,14 +148,6 @@ object CobbleCrewDebugLogger {
         log(Category.NAVIGATION, null, pokemonId, "released player target")
     }
 
-    fun mobTargetClaimed(species: String?, pokemonId: UUID, entityId: Int) {
-        log(Category.NAVIGATION, species, pokemonId, "claimed mob target entity#$entityId")
-    }
-
-    fun mobTargetReleased(pokemonId: UUID) {
-        log(Category.NAVIGATION, null, pokemonId, "released mob target")
-    }
-
     fun arrivedAtTarget(entity: PokemonEntity, pos: BlockPos) {
         if (!debugConfig.verbose) return
         log(Category.NAVIGATION, entity, "arrived at ${posTag(pos)}")

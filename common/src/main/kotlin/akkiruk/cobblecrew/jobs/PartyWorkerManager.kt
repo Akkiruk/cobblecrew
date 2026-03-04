@@ -13,9 +13,10 @@ import akkiruk.cobblecrew.cache.CacheKey
 import akkiruk.cobblecrew.cache.CobbleCrewCacheManager
 import akkiruk.cobblecrew.config.CobbleCrewConfigHolder
 import akkiruk.cobblecrew.enums.BlockCategory
+import akkiruk.cobblecrew.state.ClaimManager
+import akkiruk.cobblecrew.state.StateManager
 import akkiruk.cobblecrew.utilities.BlockCategoryValidators
 import akkiruk.cobblecrew.utilities.CobbleCrewInventoryUtils
-import akkiruk.cobblecrew.utilities.CobbleCrewNavigationUtils
 import akkiruk.cobblecrew.utilities.DeferredBlockScanner
 import com.cobblemon.mod.common.api.events.CobblemonEvents
 import com.cobblemon.mod.common.api.events.pokemon.PokemonSentEvent
@@ -224,7 +225,8 @@ object PartyWorkerManager {
                 )
                 if (distFromPlayerSq > maxDist * maxDist) {
                     WorkerDispatcher.resetAssignment(entry.pokemonId)
-                    CobbleCrewNavigationUtils.navigateTo(entry.pokemonEntity, playerPos)
+                    val navState = StateManager.getOrCreate(entry.pokemonId)
+                    ClaimManager.navigateTo(entry.pokemonEntity, playerPos, navState)
                 } else {
                     WorkerDispatcher.tickPokemon(context, entry.pokemonEntity)
                 }
@@ -329,7 +331,6 @@ object PartyWorkerManager {
         WorkerDispatcher.cleanupPokemon(pokemonId, 
             playerContexts[playerId]?.world 
             ?: return)
-        CobbleCrewInventoryUtils.cleanupPokemon(pokemonId)
     }
 
     /** Full cleanup for a player (disconnect/death). */

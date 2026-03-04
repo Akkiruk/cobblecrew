@@ -9,6 +9,7 @@
 package akkiruk.cobblecrew.utilities
 
 import akkiruk.cobblecrew.enums.WorkPhase
+import akkiruk.cobblecrew.state.ClaimManager
 import akkiruk.cobblecrew.state.StateManager
 import com.cobblemon.mod.common.entity.pokemon.PokemonBehaviourFlag
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
@@ -38,7 +39,7 @@ object WorkerVisualUtils {
         val state = StateManager.getOrCreate(pokemonEntity.pokemon.uuid)
         val now = world.time
 
-        if (!CobbleCrewNavigationUtils.isPokemonAtPosition(pokemonEntity, targetPos, offset)) {
+        if (!ClaimManager.isPokemonAtPosition(pokemonEntity, targetPos, offset)) {
             if (state.arrivalTick != null) {
                 val grace = state.graceTick ?: run { state.graceTick = now; now }
                 if (now - grace < GRACE_PERIOD_TICKS) {
@@ -83,7 +84,7 @@ object WorkerVisualUtils {
     ): Boolean {
         val state = StateManager.getOrCreate(pokemonEntity.pokemon.uuid)
 
-        if (!CobbleCrewNavigationUtils.isPokemonNearPlayer(pokemonEntity, player)) {
+        if (!ClaimManager.isPokemonNearPlayer(pokemonEntity, player)) {
             state.arrivalTick = null
             return false
         }
@@ -129,11 +130,5 @@ object WorkerVisualUtils {
             pos.x + 0.5, pos.y + 1.0, pos.z + 0.5,
             count, 0.3, 0.3, 0.3, 0.02
         )
-    }
-
-    fun cleanup(pokemonId: UUID) {
-        // Timing state lives in StateManager — cleared on StateManager.remove().
-        // Only clean WorkerAnimationUtils here.
-        WorkerAnimationUtils.cleanup(pokemonId)
     }
 }

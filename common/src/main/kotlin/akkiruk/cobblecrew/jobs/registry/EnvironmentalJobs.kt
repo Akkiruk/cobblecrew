@@ -19,7 +19,7 @@ import akkiruk.cobblecrew.mixin.AbstractFurnaceBlockEntityAccessor
 import akkiruk.cobblecrew.mixin.BrewingStandBlockEntityAccessor
 import akkiruk.cobblecrew.utilities.CobbleCrewCauldronUtils
 import akkiruk.cobblecrew.utilities.CobbleCrewCropUtils
-import akkiruk.cobblecrew.utilities.CobbleCrewNavigationUtils
+import akkiruk.cobblecrew.state.ClaimManager
 import net.minecraft.block.*
 import net.minecraft.block.entity.AbstractFurnaceBlockEntity
 import net.minecraft.block.entity.BrewingStandBlockEntity
@@ -54,7 +54,7 @@ object EnvironmentalJobs {
             val water = CobbleCrewCacheManager.getTargets(origin, BlockCategory.WATER)
             val ice = CobbleCrewCacheManager.getTargets(origin, BlockCategory.ICE)
             (water + ice)
-                .filter { !CobbleCrewNavigationUtils.isTargeted(it, world) }
+                .filter { !ClaimManager.isTargeted(it) }
                 .minByOrNull { it.getSquaredDistance(origin) }
         },
         action = { world, pos ->
@@ -72,7 +72,7 @@ object EnvironmentalJobs {
         particle = ParticleTypes.CLOUD,
         findTarget = { world, origin ->
             CobbleCrewCacheManager.getTargets(origin, BlockCategory.LAVA)
-                .filter { !CobbleCrewNavigationUtils.isTargeted(it, world) }
+                .filter { !ClaimManager.isTargeted(it) }
                 .minByOrNull { it.getSquaredDistance(origin) }
         },
         action = { world, pos ->
@@ -90,7 +90,7 @@ object EnvironmentalJobs {
         particle = ParticleTypes.HAPPY_VILLAGER,
         findTarget = { world, origin ->
             CobbleCrewCacheManager.getTargets(origin, BlockCategory.GROWABLE)
-                .filter { !CobbleCrewNavigationUtils.isTargeted(it, world) }
+                .filter { !ClaimManager.isTargeted(it) }
                 .filter { !CobbleCrewCropUtils.isMatureCrop(world, it) }
                 .minByOrNull { it.getSquaredDistance(origin) }
         },
@@ -156,7 +156,7 @@ object EnvironmentalJobs {
                 val be = world.getBlockEntity(pos) as? AbstractFurnaceBlockEntity ?: return@filter false
                 !be.getStack(0).isEmpty
                     && !world.getBlockState(pos).get(AbstractFurnaceBlock.LIT)
-                    && !CobbleCrewNavigationUtils.isRecentlyExpired(pos, world)
+                    && !ClaimManager.isBlacklisted(pos, world.time)
             }
             .minByOrNull { it.getSquaredDistance(origin) }
 
@@ -192,7 +192,7 @@ object EnvironmentalJobs {
                 val be = world.getBlockEntity(pos) as? BrewingStandBlockEntity ?: return@filter false
                 val accessor = be as BrewingStandBlockEntityAccessor
                 accessor.fuel < BrewingStandBlockEntity.MAX_FUEL_USES
-                    && !CobbleCrewNavigationUtils.isRecentlyExpired(pos, world)
+                    && !ClaimManager.isBlacklisted(pos, world.time)
             }
             .minByOrNull { it.getSquaredDistance(origin) }
 
@@ -218,7 +218,7 @@ object EnvironmentalJobs {
         defaultRadius = 2,
         findTarget = { world, origin ->
             CobbleCrewCacheManager.getTargets(origin, BlockCategory.FIRE)
-                .filter { !CobbleCrewNavigationUtils.isRecentlyExpired(it, world) }
+                .filter { !ClaimManager.isBlacklisted(it, world.time) }
                 .minByOrNull { it.getSquaredDistance(origin) }
         },
         action = { world, pos ->
@@ -244,7 +244,7 @@ object EnvironmentalJobs {
                 .filter { pos ->
                     world.getBlockState(pos).block == Blocks.FARMLAND
                         && world.getBlockState(pos).get(FarmlandBlock.MOISTURE) <= 2
-                        && !CobbleCrewNavigationUtils.isRecentlyExpired(pos, world)
+                        && !ClaimManager.isBlacklisted(pos, world.time)
                 }
                 .minByOrNull { it.getSquaredDistance(origin) }
         },
@@ -277,7 +277,7 @@ object EnvironmentalJobs {
                     val s = world.getBlockState(pos)
                     s.block is BeehiveBlock
                         && s.get(BeehiveBlock.HONEY_LEVEL) < BeehiveBlock.FULL_HONEY_LEVEL
-                        && !CobbleCrewNavigationUtils.isRecentlyExpired(pos, world)
+                        && !ClaimManager.isBlacklisted(pos, world.time)
                 }
                 .minByOrNull { it.getSquaredDistance(origin) }
         },

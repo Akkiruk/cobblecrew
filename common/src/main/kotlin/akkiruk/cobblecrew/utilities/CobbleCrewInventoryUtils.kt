@@ -47,16 +47,9 @@ object CobbleCrewInventoryUtils {
     // Chest open/close animation tracking
     private data class PendingClose(val pos: BlockPos, val closeTick: Long)
     private val pendingCloses = mutableListOf<PendingClose>()
-    private val depositArrival = mutableMapOf<UUID, Long>()
     private const val CHEST_OPEN_DURATION = 20L // ticks chest stays open
     private const val DEPOSIT_DELAY = 15L // ticks before depositing after arrival
-
-    // Retry logic: when all containers are full, wait then try again instead of dropping
-    private val depositRetryTimers = mutableMapOf<UUID, Long>()
     private const val DEPOSIT_RETRY_COOLDOWN = 200L // 10 seconds before retrying all containers
-
-    // Rate-limit deposit failure warnings to avoid log spam
-    private val lastDepositWarning = mutableMapOf<UUID, Long>()
 
     /**
      * Ticks pending chest close animations. Call once per server tick.
@@ -267,128 +260,9 @@ object CobbleCrewInventoryUtils {
     }
 
     /**
-     * Handles depositing items into an inventory.
-     */
-    /**
-     * Handles logic for finding and depositing items into an inventory when the Pokémon is holding items.
-     * It will try multiple inventories nearby iteratively
+     * Handles depositing items into the nearest container using centralized [PokemonWorkerState].
      */
     fun handleDepositing(
-        world: World,
-        origin: BlockPos,
-        pokemonEntity: PokemonEntity,
-        itemsToDeposit: List<ItemStack>,
-        failedDepositLocations: MutableMap<UUID, MutableSet<BlockPos>>,
-        heldItemsByPokemon: MutableMap<UUID, List<ItemStack>>
-    ) {
-        val pokemonId = pokemonEntity.pokemon.uuid
-        val triedPositions = failedDepositLocations.getOrPut(pokemonId) { mutableSetOf() }
-        val allContainers = CobbleCrewCacheManager.getTargets(origin, BlockCategory.CONTAINER)
-        val inventoryPos = findClosestInventory(world, origin, triedPositions, itemsToDeposit)
-
-        if (inventoryPos == null) {
-            val now = world.time
-            val lastWarn = lastDepositWarning[pokemonId] ?: 0L
-            if (now - lastWarn >= 200L) { // log at most once per 10 seconds per Pokémon
-                CobbleCrewDebugLogger.depositNoContainers(pokemonEntity, allContainers.size, triedPositions.size)
-                lastDepositWarning[pokemonId] = now
-            }
-            // Don't drop items yet if scan is running as inventory might be found within the next ticks.
-            if (DeferredBlockScanner.isScanActive(origin)) {
-                heldItemsByPokemon[pokemonId] = itemsToDeposit
-                return
-            }
-
-            // All containers exhausted — hold items and retry after cooldown instead of dropping.
-            // Containers may get emptied by players or other Pokémon.
-            val retryStart = depositRetryTimers.getOrPut(pokemonId) { world.time }
-            if (world.time - retryStart >= DEPOSIT_RETRY_COOLDOWN) {
-                // Cooldown elapsed: clear failed locations so we re-check all containers
-                CobbleCrewDebugLogger.depositRetryReset(pokemonEntity)
-                failedDepositLocations.remove(pokemonId)
-                depositRetryTimers.remove(pokemonId)
-            }
-
-            // Keep holding items and wander back towards origin while waiting
-            heldItemsByPokemon[pokemonId] = itemsToDeposit
-            CobbleCrewNavigationUtils.navigateTo(pokemonEntity, origin)
-            return
-        }
-
-        if (CobbleCrewNavigationUtils.isPokemonAtPosition(pokemonEntity, inventoryPos, 2.0)) {
-            val now = world.time
-            val arrived = depositArrival[pokemonId]
-
-            // First tick at container: verify space, then open and start deposit delay
-            if (arrived == null) {
-                if (!hasSpaceFor(world, inventoryPos, itemsToDeposit)) {
-                    CobbleCrewDebugLogger.depositContainerFull(pokemonEntity, inventoryPos)
-                    triedPositions.add(inventoryPos)
-                    return
-                }
-                depositArrival[pokemonId] = now
-                pokemonEntity.navigation.stop()
-                WorkerAnimationUtils.playImmediate(pokemonEntity, WorkPhase.DEPOSITING, world)
-                pokemonEntity.lookControl.lookAt(
-                    inventoryPos.x + 0.5, inventoryPos.y + 0.5, inventoryPos.z + 0.5
-                )
-                openContainer(world, inventoryPos)
-                return
-            }
-
-            // Wait for deposit delay
-            if (now - arrived < DEPOSIT_DELAY) {
-                pokemonEntity.lookControl.lookAt(
-                    inventoryPos.x + 0.5, inventoryPos.y + 0.5, inventoryPos.z + 0.5
-                )
-                return
-            }
-
-            depositArrival.remove(pokemonId)
-
-            val inventory = world.getBlockEntity(inventoryPos) as? Inventory
-            if (inventory == null) {
-                CobbleCrewDebugLogger.log(
-                    CobbleCrewDebugLogger.Category.DEPOSIT, pokemonEntity,
-                    "no block entity at (${inventoryPos.x},${inventoryPos.y},${inventoryPos.z}), marking tried"
-                )
-                triedPositions.add(inventoryPos)
-                pendingCloses.add(PendingClose(inventoryPos.toImmutable(), now + 5L))
-                return
-            }
-
-            WorkerAnimationUtils.playImmediate(pokemonEntity, WorkPhase.DEPOSIT_SUCCESS, world)
-            val remainingDrops = insertStacks(inventory, itemsToDeposit)
-
-            if (remainingDrops.size == itemsToDeposit.size) {
-                triedPositions.add(inventoryPos)
-            }
-
-            // Schedule chest close
-            pendingCloses.add(PendingClose(inventoryPos.toImmutable(), now + CHEST_OPEN_DURATION))
-
-            if (remainingDrops.isNotEmpty()) {
-                heldItemsByPokemon[pokemonId] = remainingDrops
-            } else {
-                CobbleCrewDebugLogger.depositSuccess(pokemonEntity, inventoryPos, itemsToDeposit)
-                heldItemsByPokemon.remove(pokemonId)
-                failedDepositLocations.remove(pokemonId)
-                depositRetryTimers.remove(pokemonId)
-                lastDepositWarning.remove(pokemonId)
-                pokemonEntity.navigation.stop()
-            }
-        } else {
-            CobbleCrewNavigationUtils.navigateTo(pokemonEntity, inventoryPos)
-        }
-    }
-
-    // --- V2: State-based depositing (replaces map-based version) ---
-
-    /**
-     * Handles depositing using centralized [PokemonWorkerState] instead of raw maps.
-     * Same logic as handleDepositing but reads/writes state fields directly.
-     */
-    fun handleDepositingV2(
         world: World,
         origin: BlockPos,
         pokemonEntity: PokemonEntity,
@@ -541,14 +415,5 @@ object CobbleCrewInventoryUtils {
                 player.world.spawnEntity(drop)
             }
         }
-    }
-
-    /**
-     * Cleans up deposit tracking state for a Pokémon (on recall/disconnect).
-     */
-    fun cleanupPokemon(pokemonId: UUID) {
-        depositArrival.remove(pokemonId)
-        depositRetryTimers.remove(pokemonId)
-        lastDepositWarning.remove(pokemonId)
     }
 }
