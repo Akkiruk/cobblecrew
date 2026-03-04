@@ -58,8 +58,8 @@ data class PokemonProfile(
             val type = mutableListOf<Worker>()
 
             for (worker in allWorkers) {
-                if (!worker.isEligible(moves, types, species, ability)) continue
-                when (worker.priority) {
+                val matched = worker.matchPriority(moves, types, species, ability) ?: continue
+                when (matched) {
                     WorkerPriority.COMBO -> combo.add(worker)
                     WorkerPriority.MOVE -> move.add(worker)
                     WorkerPriority.SPECIES -> speciesList.add(worker)

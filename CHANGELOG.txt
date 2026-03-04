@@ -1,3 +1,12 @@
+## 3.0.45
+- Fixed critical self-sabotage bug: Pokémon's own claim no longer blocks isAvailable(), restoring full harvester throughput
+- Added dynamic priority matching: berry harvesters with Pluck now correctly land in MOVE tier instead of TYPE
+- Growth Accelerator no longer mistakes mature BerryBlocks as targets (isMatureCrop now handles BerryBlock)
+- Doubled pathfinding budget again (6→12 per tick) to support larger worker groups
+- Increased claim timeout (5s→10s) to prevent premature claim expiry during work delays
+- Added 3-second idle pickup grace period after job drops to prevent immediate item snatching
+- Harvesters and environmental workers skip navigateTo when already at target (avoids wasted pathfind calls)
+
 ## 3.0.44
 - Fixed major throughput bug: work delay was resetting due to navigateTo() fighting handleArrival()
 - Pokémon now stop moving immediately upon reaching targets instead of jittering and resetting the 1.5s delay

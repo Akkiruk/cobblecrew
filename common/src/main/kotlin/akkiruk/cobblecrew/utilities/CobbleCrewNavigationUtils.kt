@@ -53,7 +53,7 @@ object CobbleCrewNavigationUtils {
     private val lastPathfindTick = mutableMapOf<UUID, Long>()
     private var lastCleanUpTick = 0L
 
-    private const val DEFAULT_CLAIM_TIMEOUT = 100L
+    private const val DEFAULT_CLAIM_TIMEOUT = 200L
     private val EXPIRED_TARGET_TIMEOUT_TICKS: Long get() = generalConfig.targetGracePeriodSeconds.toLong() * 20L
     private const val PATHFIND_INTERVAL_TICKS = 5L
 
@@ -215,6 +215,16 @@ object CobbleCrewNavigationUtils {
     fun isTargeted(pos: BlockPos, world: World): Boolean {
         releaseExpiredClaims(world)
         return targetToPokemon.containsKey(Target.Block(pos))
+    }
+
+    /**
+     * Checks if a specific block is claimed by any Pokémon OTHER than [excludePokemonId].
+     * Prevents self-sabotage where a Pokémon's own claim causes isAvailable() to return false.
+     */
+    fun isTargetedByOther(pos: BlockPos, world: World, excludePokemonId: UUID): Boolean {
+        releaseExpiredClaims(world)
+        val claimant = targetToPokemon[Target.Block(pos)] ?: return false
+        return claimant != excludePokemonId
     }
 
     /**

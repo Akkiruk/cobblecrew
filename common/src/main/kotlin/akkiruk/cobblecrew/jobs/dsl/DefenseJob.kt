@@ -57,6 +57,9 @@ open class DefenseJob(
     override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean =
         dslEligible(config, qualifyingMoves, fallbackSpecies, moves, species, isCombo)
 
+    override fun matchPriority(moves: Set<String>, types: Set<String>, species: String, ability: String) =
+        dslMatchPriority(config, qualifyingMoves, fallbackSpecies, moves, species, isCombo)
+
     override fun applyEffect(world: World, pokemonEntity: PokemonEntity, target: HostileEntity) {
         effectFn(world, pokemonEntity, target)
     }

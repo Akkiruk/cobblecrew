@@ -55,6 +55,9 @@ class PlacementJob(
     override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean =
         dslEligible(config, qualifyingMoves, fallbackSpecies, moves, species)
 
+    override fun matchPriority(moves: Set<String>, types: Set<String>, species: String, ability: String) =
+        dslMatchPriority(config, qualifyingMoves, fallbackSpecies, moves, species)
+
     override fun itemPredicate(stack: ItemStack): Boolean = itemCheck(stack)
     override fun findPlacementTarget(world: World, origin: BlockPos): BlockPos? = findTarget(world, origin)
     override fun placeBlock(world: World, pos: BlockPos, item: ItemStack) = placeFn(world, pos, item)

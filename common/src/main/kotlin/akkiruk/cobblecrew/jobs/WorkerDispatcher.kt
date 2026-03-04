@@ -160,6 +160,8 @@ object WorkerDispatcher {
         if (job == null) {
             activeJobs.remove(pokemonId)
             WorkerVisualUtils.setExcited(pokemonEntity, false)
+            // Grace period: suppress idle pickup for 3s after losing a real job
+            if (current != null) lastPickupAttemptTick[pokemonId] = now
             handleIdleBehavior(context, pokemonEntity, world, pokemonId)
 
             val lastLog = idleLogTick[pokemonId] ?: 0L

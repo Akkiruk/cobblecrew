@@ -60,4 +60,7 @@ open class SupportJob(
 
     override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean =
         dslEligible(config, qualifyingMoves, fallbackSpecies, moves, species, isCombo)
+
+    override fun matchPriority(moves: Set<String>, types: Set<String>, species: String, ability: String) =
+        dslMatchPriority(config, qualifyingMoves, fallbackSpecies, moves, species, isCombo)
 }

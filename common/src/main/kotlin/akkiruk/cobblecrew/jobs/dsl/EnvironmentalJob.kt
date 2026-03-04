@@ -87,9 +87,12 @@ open class EnvironmentalJob(
     override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean =
         dslEligible(config, qualifyingMoves, fallbackSpecies, moves, species)
 
+    override fun matchPriority(moves: Set<String>, types: Set<String>, species: String, ability: String) =
+        dslMatchPriority(config, qualifyingMoves, fallbackSpecies, moves, species)
+
     override fun isAvailable(context: JobContext, pokemonId: UUID): Boolean {
         val found = findTarget(context.world, context.origin) ?: return false
-        return !CobbleCrewNavigationUtils.isTargeted(found, context.world)
+        return !CobbleCrewNavigationUtils.isTargetedByOther(found, context.world, pokemonId)
     }
 
     override fun tick(context: JobContext, pokemonEntity: PokemonEntity) {
@@ -109,7 +112,7 @@ open class EnvironmentalJob(
         val target = targets[pid]
         if (target == null) {
             val found = findTarget(world, origin) ?: return
-            if (!CobbleCrewNavigationUtils.isTargeted(found, world)) {
+            if (!CobbleCrewNavigationUtils.isTargetedByOther(found, world, pid)) {
                 CobbleCrewNavigationUtils.claimTarget(pid, found, world)
                 targets[pid] = found
                 CobbleCrewNavigationUtils.navigateTo(pokemonEntity, found)
@@ -125,7 +128,9 @@ open class EnvironmentalJob(
             return
         }
 
-        CobbleCrewNavigationUtils.navigateTo(pokemonEntity, target)
+        if (!CobbleCrewNavigationUtils.isPokemonAtPosition(pokemonEntity, target, 3.0)) {
+            CobbleCrewNavigationUtils.navigateTo(pokemonEntity, target)
+        }
         if (WorkerVisualUtils.handleArrival(pokemonEntity, target, world, particle, 3.0, WorkPhase.ENVIRONMENTAL)) {
             action(world, target)
             if (defaultCooldownSeconds > 0) lastActionTime[pid] = now

@@ -13,6 +13,7 @@ import akkiruk.cobblecrew.config.JobConfigManager
 import akkiruk.cobblecrew.enums.BlockCategory
 import akkiruk.cobblecrew.integration.FarmersDelightBlocks
 import com.cobblemon.mod.common.CobblemonBlocks
+import com.cobblemon.mod.common.block.BerryBlock
 import com.cobblemon.mod.common.block.HeartyGrainsBlock
 import com.cobblemon.mod.common.block.MedicinalLeekBlock
 import com.cobblemon.mod.common.block.NutBushBlock
@@ -157,6 +158,7 @@ object CobbleCrewCropUtils {
         val blockId = Registries.BLOCK.getId(block).path
 
         return when {
+            block is BerryBlock -> state.get(BerryBlock.AGE) == BerryBlock.FRUIT_AGE
             block is HeartyGrainsBlock -> block.getAge(state) == HeartyGrainsBlock.MATURE_AGE
             block is CropBlock -> block.getAge(state) == block.maxAge
             block is CaveVines -> state.get(CaveVinesBodyBlock.BERRIES)

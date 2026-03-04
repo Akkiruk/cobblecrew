@@ -43,6 +43,18 @@ interface Worker {
     ): Boolean = false
 
     /**
+     * Returns the effective priority tier for a specific Pokémon based on HOW it matched.
+     * DSL jobs override this to return MOVE/SPECIES/COMBO dynamically.
+     * Returns null if the Pokémon doesn't qualify.
+     */
+    fun matchPriority(
+        moves: Set<String>,
+        types: Set<String>,
+        species: String,
+        ability: String,
+    ): WorkerPriority? = if (isEligible(moves, types, species, ability)) priority else null
+
+    /**
      * Dynamic availability check — are there targets right now?
      * Called during job selection, not every tick.
      */
