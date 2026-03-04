@@ -18,6 +18,8 @@ import com.cobblemon.mod.common.block.HeartyGrainsBlock
 import com.cobblemon.mod.common.block.MedicinalLeekBlock
 import com.cobblemon.mod.common.block.NutBushBlock
 import com.cobblemon.mod.common.block.RevivalHerbBlock
+import net.minecraft.block.enums.DoubleBlockHalf
+import net.minecraft.state.property.Properties
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import net.minecraft.block.BeetrootsBlock
 import net.minecraft.block.Block
@@ -88,30 +90,21 @@ object CobbleCrewCropUtils {
         val isMushroomColony = blockId in FarmersDelightBlocks.MUSHROOMS
 
         if (block == CobblemonBlocks.HEARTY_GRAINS) {
-            val abovePos = blockPos.up()
-            val aboveState = world.getBlockState(abovePos)
-            val belowPos = blockPos.down()
-            val belowState = world.getBlockState(belowPos)
+            // Resolve to the lower half for consistent loot + cleanup
+            val isUpper = blockState.contains(Properties.DOUBLE_BLOCK_HALF)
+                && blockState.get(Properties.DOUBLE_BLOCK_HALF) == DoubleBlockHalf.UPPER
+            val lowerPos = if (isUpper) blockPos.down() else blockPos
+            val upperPos = lowerPos.up()
+            val upperState = world.getBlockState(upperPos)
 
-            if (belowState.block == CobblemonBlocks.HEARTY_GRAINS) {
-                // Targeted the upper half — remove it and reset lower half to age 0
-                world.setBlockState(blockPos, Blocks.AIR.defaultState, Block.NOTIFY_LISTENERS)
-                world.setBlockState(
-                    belowPos,
-                    CobblemonBlocks.HEARTY_GRAINS.defaultState,
-                    Block.NOTIFY_ALL,
-                )
-            } else {
-                // Targeted the lower half — remove upper half if present, reset lower to age 0
-                if (aboveState.block == CobblemonBlocks.HEARTY_GRAINS) {
-                    world.setBlockState(abovePos, Blocks.AIR.defaultState, Block.NOTIFY_LISTENERS)
-                }
-                world.setBlockState(
-                    blockPos,
-                    CobblemonBlocks.HEARTY_GRAINS.defaultState,
-                    Block.NOTIFY_ALL,
-                )
+            if (upperState.block == CobblemonBlocks.HEARTY_GRAINS) {
+                world.setBlockState(upperPos, Blocks.AIR.defaultState, Block.NOTIFY_LISTENERS)
             }
+            world.setBlockState(
+                lowerPos,
+                CobblemonBlocks.HEARTY_GRAINS.defaultState,
+                Block.NOTIFY_ALL,
+            )
             return drops
         }
 
@@ -159,7 +152,10 @@ object CobbleCrewCropUtils {
 
         return when {
             block is BerryBlock -> state.get(BerryBlock.AGE) == BerryBlock.FRUIT_AGE
-            block is HeartyGrainsBlock -> block.getAge(state) == HeartyGrainsBlock.MATURE_AGE
+            block is HeartyGrainsBlock ->
+                state.contains(Properties.DOUBLE_BLOCK_HALF)
+                    && state.get(Properties.DOUBLE_BLOCK_HALF) == DoubleBlockHalf.LOWER
+                    && block.getAge(state) == HeartyGrainsBlock.MATURE_AGE
             block is CropBlock -> block.getAge(state) == block.maxAge
             block is CaveVines -> state.get(CaveVinesBodyBlock.BERRIES)
             block is SweetBerryBushBlock -> state.get(SweetBerryBushBlock.AGE) == SweetBerryBushBlock.MAX_AGE

@@ -14,7 +14,9 @@ import com.cobblemon.mod.common.block.ApricornBlock
 import com.cobblemon.mod.common.block.BerryBlock
 import com.cobblemon.mod.common.block.MintBlock
 import net.minecraft.block.*
+import net.minecraft.block.enums.DoubleBlockHalf
 import net.minecraft.registry.tag.BlockTags
+import net.minecraft.state.property.Properties
 
 /**
  * Maps each BlockCategory to a block validator lambda.
@@ -69,7 +71,10 @@ object BlockCategoryValidators {
 
         // Vanilla growables
         BlockCategory.NETHERWART to { block, _ -> block is NetherWartBlock },
-        BlockCategory.CROP_GRAIN to { block, _ -> block in CobbleCrewCropUtils.validCropBlocks },
+        BlockCategory.CROP_GRAIN to { block, state ->
+            block in CobbleCrewCropUtils.validCropBlocks &&
+                !(state.contains(Properties.DOUBLE_BLOCK_HALF) && state.get(Properties.DOUBLE_BLOCK_HALF) == DoubleBlockHalf.UPPER)
+        },
         BlockCategory.CROP_ROOT to { block, _ ->
             block == Blocks.CARROTS || block == Blocks.POTATOES || block == Blocks.BEETROOTS
         },

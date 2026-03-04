@@ -1,3 +1,8 @@
+## 3.0.47
+- Fixed hearty grains spinning: scanner no longer caches upper half of two-block crops as separate targets
+- isMatureCrop now only returns true for the lower half of hearty grains
+- harvestCropDsl always resolves to the lower half for correct loot and cleanup
+
 ## 3.0.46
 - Fixed stale config override: server config files now auto-migrate when code defaults change (schemaVersion tracking)
 - Fixed growth_accelerator spinning: Pokémon now stay on the same crop until it's mature instead of release/re-find cycling
