@@ -49,6 +49,19 @@ object WorkerDispatcher {
     private const val IDLE_WANDER_COOLDOWN = 200L
     private const val IDLE_PICKUP_ATTEMPT_COOLDOWN = 60L
     private const val IDLE_PICKUP_STALE_TICKS = 100L
+    private const val SWEEP_INTERVAL = 200L
+    private var lastSweepTick = 0L
+
+    /**
+     * Periodic maintenance — call once per server tick from platform hooks.
+     * Sweeps expired claims/blacklists every [SWEEP_INTERVAL] ticks.
+     */
+    fun tickMaintenance(serverTick: Long) {
+        if (serverTick - lastSweepTick >= SWEEP_INTERVAL) {
+            lastSweepTick = serverTick
+            ClaimManager.sweepExpired(serverTick)
+        }
+    }
 
     fun tickAreaScan(context: JobContext) {
         DeferredBlockScanner.tickAreaScan(context)

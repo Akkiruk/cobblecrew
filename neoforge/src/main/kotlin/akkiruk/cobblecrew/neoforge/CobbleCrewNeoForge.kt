@@ -13,6 +13,7 @@ import akkiruk.cobblecrew.api.CobbleCrewApi
 import akkiruk.cobblecrew.commands.CobbleCrewCommand
 import akkiruk.cobblecrew.integration.CobbleCrewIntegrationHandler
 import akkiruk.cobblecrew.jobs.PartyWorkerManager
+import akkiruk.cobblecrew.jobs.WorkerDispatcher
 import akkiruk.cobblecrew.network.JobSyncPayload
 import akkiruk.cobblecrew.network.JobSyncSerializer
 import akkiruk.cobblecrew.neoforge.client.config.CobbleCrewModListScreen
@@ -52,7 +53,10 @@ object CobbleCrewNeoForge {
         NeoForge.EVENT_BUS.addListener(::onPlayerJoin)
 
         NeoForge.EVENT_BUS.addListener { event: ServerTickEvent.Post ->
-            event.server.let { PartyWorkerManager.tick(it) }
+            event.server.let {
+                WorkerDispatcher.tickMaintenance(it.overworld.time)
+                PartyWorkerManager.tick(it)
+            }
         }
 
         NeoForge.EVENT_BUS.addListener { event: PlayerEvent.PlayerLoggedOutEvent ->

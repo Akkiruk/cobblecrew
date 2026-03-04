@@ -16,14 +16,15 @@ import akkiruk.cobblecrew.enums.BlockCategory
 import akkiruk.cobblecrew.enums.JobImportance
 import akkiruk.cobblecrew.enums.WorkPhase
 import akkiruk.cobblecrew.enums.WorkerPriority
-import akkiruk.cobblecrew.interfaces.Worker
+import akkiruk.cobblecrew.jobs.BaseJob
 import akkiruk.cobblecrew.jobs.JobContext
+import akkiruk.cobblecrew.jobs.Target
+import akkiruk.cobblecrew.jobs.WorkResult
 import akkiruk.cobblecrew.jobs.WorkerRegistry
 import akkiruk.cobblecrew.jobs.dsl.SupportJob
-import akkiruk.cobblecrew.utilities.CobbleCrewInventoryUtils
-import akkiruk.cobblecrew.utilities.CobbleCrewNavigationUtils
+import akkiruk.cobblecrew.state.ClaimManager
+import akkiruk.cobblecrew.state.PokemonWorkerState
 import akkiruk.cobblecrew.utilities.WorkSpeedBoostManager
-import akkiruk.cobblecrew.utilities.WorkerVisualUtils
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import net.minecraft.component.DataComponentTypes
 import net.minecraft.component.type.MapColorComponent
@@ -34,6 +35,7 @@ import net.minecraft.item.ItemStack
 import net.minecraft.item.Items
 import net.minecraft.item.map.MapDecorationTypes
 import net.minecraft.item.map.MapState
+import net.minecraft.particle.ParticleEffect
 import net.minecraft.particle.ParticleTypes
 import net.minecraft.registry.RegistryKey
 import net.minecraft.registry.RegistryKeys
@@ -46,7 +48,6 @@ import net.minecraft.util.math.BlockPos
 import net.minecraft.util.math.Box
 import net.minecraft.world.World
 import net.minecraft.world.gen.structure.Structure
-import java.util.UUID
 import java.util.concurrent.CompletableFuture
 
 /**
@@ -150,16 +151,18 @@ object SupportJobs {
 
     // ── Scout (migrated from legacy) ─────────────────────────────────
     // Picks up blank Maps, converts to structure-locating filled maps
-    object ScoutWorker : Worker {
+    object ScoutWorker : BaseJob() {
         override val name = "scout"
         override val priority = WorkerPriority.MOVE
         override val targetCategory: BlockCategory? = null
+        override val requiresTarget = true
+        override val arrivalParticle: ParticleEffect = ParticleTypes.END_ROD
+        override val workPhase: WorkPhase = WorkPhase.HARVESTING
+        override val config get() = JobConfigManager.get(name)
 
-        private val config get() = JobConfigManager.get(name)
         private val qualifyingMoves = setOf("fly")
-        private val heldItems = mutableMapOf<UUID, List<ItemStack>>()
-        private val failedDeposits = mutableMapOf<UUID, MutableSet<BlockPos>>()
-        private val lastGenTime = mutableMapOf<UUID, Long>()
+
+        // Shared async structure lookup cache (per structure ID, not per Pokémon)
         private val pendingLookups = mutableMapOf<Identifier, CompletableFuture<com.mojang.datafixers.util.Pair<BlockPos, RegistryEntry<Structure>>?>>()
 
         init {
@@ -173,66 +176,46 @@ object SupportJobs {
             ))
         }
 
-        override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean =
+        override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String) =
             dslEligible(config, qualifyingMoves, emptyList(), moves, species)
 
-        override fun tick(context: JobContext, pokemonEntity: PokemonEntity) {
-            val world = context.world
-            val origin = context.origin
-            val pid = pokemonEntity.pokemon.uuid
-            val ownerId = pokemonEntity.ownerUuid ?: return
-
-            val held = heldItems[pid]
-            if (!held.isNullOrEmpty()) {
-                if (context is JobContext.Party) {
-                    CobbleCrewInventoryUtils.deliverToPlayer(context.player, held, pokemonEntity)
-                    heldItems.remove(pid)
-                    failedDeposits.remove(pid)
-                    return
-                }
-                CobbleCrewInventoryUtils.handleDepositing(world, origin, pokemonEntity, held, failedDeposits, heldItems)
-                return
-            }
-            failedDeposits.remove(pid)
-
-            val now = world.time
-            val last = lastGenTime[pid] ?: 0L
-            val baseCd = (config.cooldownSeconds.takeIf { it > 0 } ?: 600) * 20L
-            val cd = WorkSpeedBoostManager.adjustCooldown(baseCd, origin, now)
-            if (now - last < cd) return
-
-            handleMapPickup(world, origin, pokemonEntity)
+        override fun findTarget(state: PokemonWorkerState, context: JobContext): Target? {
+            val searchArea = Box(context.origin).expand(8.0, 8.0, 8.0)
+            val mapItem = context.world.getEntitiesByClass(ItemEntity::class.java, searchArea) { true }
+                .filter { it.isOnGround && it.stack.item == Items.MAP }
+                .minByOrNull { it.squaredDistanceTo(context.origin.x + 0.5, context.origin.y + 0.5, context.origin.z + 0.5) }
+                ?: return null
+            val pos = mapItem.blockPos
+            if (ClaimManager.isTargetedByOther(pos, state.pokemonId)) return null
+            return Target.Block(pos)
         }
 
-        private fun handleMapPickup(world: World, origin: BlockPos, pokemonEntity: PokemonEntity) {
-            val pid = pokemonEntity.pokemon.uuid
-            val r = 8
-            val searchArea = Box(origin).expand(r.toDouble(), r.toDouble(), r.toDouble())
-            val mapItem = world.getEntitiesByClass(ItemEntity::class.java, searchArea) { true }
-                .filter { it.isOnGround && it.stack.item == Items.MAP }
-                .minByOrNull { it.squaredDistanceTo(origin.x + 0.5, origin.y + 0.5, origin.z + 0.5) }
-                ?: return
+        override fun validateTarget(state: PokemonWorkerState, context: JobContext): Boolean {
+            val pos = state.targetPos ?: return false
+            val searchArea = Box(pos).expand(2.0)
+            return context.world.getEntitiesByClass(ItemEntity::class.java, searchArea) { true }
+                .any { it.isOnGround && it.stack.item == Items.MAP }
+        }
 
-            val itemPos = mapItem.blockPos
-            val currentTarget = CobbleCrewNavigationUtils.getTarget(pid, world)
-            if (currentTarget == null) {
-                if (!CobbleCrewNavigationUtils.isTargeted(itemPos, world)) {
-                    CobbleCrewNavigationUtils.claimTarget(pid, itemPos, world)
-                    CobbleCrewNavigationUtils.navigateTo(pokemonEntity, itemPos)
-                }
-                return
-            }
-            CobbleCrewNavigationUtils.navigateTo(pokemonEntity, currentTarget)
-            if (WorkerVisualUtils.handleArrival(pokemonEntity, currentTarget, world, ParticleTypes.END_ROD, 3.0, WorkPhase.HARVESTING)) {
-                if (mapItem.stack.item == Items.MAP) {
-                    val singleItem = mapItem.stack.split(1)
-                    if (mapItem.stack.isEmpty) mapItem.discard()
-                    val map = createStructureMap(world as ServerWorld, origin)
-                    heldItems[pid] = listOf(map ?: singleItem)
-                    lastGenTime[pid] = world.time
-                }
-                CobbleCrewNavigationUtils.releaseTarget(pid, world, blacklist = false)
-            }
+        override fun doWork(state: PokemonWorkerState, context: JobContext, pokemonEntity: PokemonEntity): WorkResult {
+            val pos = state.targetPos ?: return WorkResult.Done()
+            val searchArea = Box(pos).expand(2.0)
+            val mapItem = context.world.getEntitiesByClass(ItemEntity::class.java, searchArea) { true }
+                .firstOrNull { it.isOnGround && it.stack.item == Items.MAP } ?: return WorkResult.Done()
+
+            val singleItem = mapItem.stack.split(1)
+            if (mapItem.stack.isEmpty) mapItem.discard()
+            val map = createStructureMap(context.world as ServerWorld, context.origin)
+
+            val baseCd = (config.cooldownSeconds.takeIf { it > 0 } ?: 600) * 20L
+            state.lastActionTime = WorkSpeedBoostManager.adjustCooldown(baseCd, context.origin, context.world.time)
+            return WorkResult.Done(listOf(map ?: singleItem))
+        }
+
+        override fun getCooldownTicks(state: PokemonWorkerState): Long {
+            val cd = state.lastActionTime
+            if (cd > 0) { state.lastActionTime = 0L; return cd }
+            return 0L
         }
 
         private fun createStructureMap(world: ServerWorld, origin: BlockPos): ItemStack? {
@@ -291,13 +274,6 @@ object SupportJobs {
             rawName.substringAfterLast(":").substringAfterLast("/")
                 .replace("_", " ").split(" ")
                 .joinToString(" ") { it.replaceFirstChar { c -> c.uppercase() } }
-
-        override fun hasActiveState(pokemonId: UUID) = pokemonId in heldItems
-        override fun cleanup(pokemonId: UUID) {
-            heldItems.remove(pokemonId)
-            failedDeposits.remove(pokemonId)
-            lastGenTime.remove(pokemonId)
-        }
     }
 
     fun register() {

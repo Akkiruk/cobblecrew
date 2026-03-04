@@ -14,6 +14,7 @@ import akkiruk.cobblecrew.commands.CobbleCrewCommand
 import akkiruk.cobblecrew.fabric.integration.FabricIntegrationHelper
 import akkiruk.cobblecrew.integration.CobbleCrewIntegrationHandler
 import akkiruk.cobblecrew.jobs.PartyWorkerManager
+import akkiruk.cobblecrew.jobs.WorkerDispatcher
 import akkiruk.cobblecrew.network.JobSyncPayload
 import akkiruk.cobblecrew.network.JobSyncSerializer
 import net.fabricmc.api.ModInitializer
@@ -60,8 +61,9 @@ object CobbleCrewFabric : ModInitializer {
             }
         }
 
-        // Tick party workers every server tick
+        // Tick party workers + periodic maintenance every server tick
         ServerTickEvents.END_SERVER_TICK.register { server ->
+            WorkerDispatcher.tickMaintenance(server.overworld.time)
             PartyWorkerManager.tick(server)
         }
 
