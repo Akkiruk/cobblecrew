@@ -1,3 +1,8 @@
+## 3.0.46
+- Fixed stale config override: server config files now auto-migrate when code defaults change (schemaVersion tracking)
+- Fixed growth_accelerator spinning: Pokémon now stay on the same crop until it's mature instead of release/re-find cycling
+- Growth Accelerator validates target is still an immature crop each tick (releases mature/transformed blocks immediately)
+
 ## 3.0.45
 - Fixed critical self-sabotage bug: Pokémon's own claim no longer blocks isAvailable(), restoring full harvester throughput
 - Added dynamic priority matching: berry harvesters with Pluck now correctly land in MOVE tier instead of TYPE

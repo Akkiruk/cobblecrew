@@ -19,6 +19,7 @@ data class JobConfig(
     val qualifyingMoves: List<String> = emptyList(),
     val fallbackType: String = "",
     val fallbackSpecies: List<String> = emptyList(),
+    val schemaVersion: Int = 0,
     // Job-specific overrides (null = use DSL default)
     val replant: Boolean? = null,
     val lootTables: List<String>? = null,

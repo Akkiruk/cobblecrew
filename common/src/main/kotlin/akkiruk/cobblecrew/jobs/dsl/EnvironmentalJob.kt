@@ -65,6 +65,7 @@ open class EnvironmentalJob(
     val findTarget: (World, BlockPos) -> BlockPos?,
     val action: (World, BlockPos) -> Unit,
     val validate: ((World, BlockPos) -> Boolean)? = null,
+    val shouldContinue: ((World, BlockPos) -> Boolean)? = null,
 ) : Worker {
 
     val config get() = JobConfigManager.get(name)
@@ -134,8 +135,13 @@ open class EnvironmentalJob(
         if (WorkerVisualUtils.handleArrival(pokemonEntity, target, world, particle, 3.0, WorkPhase.ENVIRONMENTAL)) {
             action(world, target)
             if (defaultCooldownSeconds > 0) lastActionTime[pid] = now
-            CobbleCrewNavigationUtils.releaseTarget(pid, world, blacklist = false)
-            targets.remove(pid)
+            // Stay on target if shouldContinue says so (avoids release/refind spinning)
+            if (shouldContinue?.invoke(world, target) == true) {
+                CobbleCrewNavigationUtils.renewClaim(pid, world)
+            } else {
+                CobbleCrewNavigationUtils.releaseTarget(pid, world, blacklist = false)
+                targets.remove(pid)
+            }
         }
     }
 

@@ -27,6 +27,12 @@ object JobConfigManager {
     private val gson: Gson = GsonBuilder().setPrettyPrinting().create()
     private val mapType = object : TypeToken<Map<String, JobConfig>>() {}.type
 
+    /**
+     * Schema version for job configs. Bump when qualifyingMoves or fallbackSpecies
+     * defaults change in code, so stale disk configs get migrated automatically.
+     */
+    private const val CURRENT_SCHEMA_VERSION = 1
+
     /** Default configs registered by DSL jobs before load() is called. */
     private val defaults = mutableMapOf<String, MutableMap<String, JobConfig>>()
 
@@ -35,7 +41,7 @@ object JobConfigManager {
      * Called by DSL builders during registration, before load().
      */
     fun registerDefault(category: String, jobName: String, config: JobConfig) {
-        defaults.getOrPut(category) { mutableMapOf() }[jobName] = config
+        defaults.getOrPut(category) { mutableMapOf() }[jobName] = config.copy(schemaVersion = CURRENT_SCHEMA_VERSION)
     }
 
     /**
@@ -74,13 +80,25 @@ object JobConfigManager {
 
         try {
             val loaded: Map<String, JobConfig> = gson.fromJson(file.reader(), mapType)
-            // Merge: loaded values override defaults
+            // Merge: loaded values override defaults, then migrate stale schemas
             val merged = categoryDefaults.toMutableMap()
             merged.putAll(loaded)
+
+            var dirty = merged.size > loaded.size
+            for ((name, cfg) in merged.toMap()) {
+                if (cfg.schemaVersion < CURRENT_SCHEMA_VERSION) {
+                    val codeDef = categoryDefaults[name] ?: continue
+                    merged[name] = cfg.copy(
+                        qualifyingMoves = codeDef.qualifyingMoves,
+                        fallbackSpecies = codeDef.fallbackSpecies,
+                        schemaVersion = CURRENT_SCHEMA_VERSION,
+                    )
+                    dirty = true
+                }
+            }
             configs.putAll(merged)
 
-            // Re-write if defaults added new jobs not in the file
-            if (merged.size > loaded.size) {
+            if (dirty) {
                 file.writeText(gson.toJson(merged))
             }
         } catch (e: Exception) {
