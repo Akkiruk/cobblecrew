@@ -1,3 +1,11 @@
+## 4.1.1 — Stability & Cleanup
+- Fix memory leak: server shutdown now clears all singleton state (StateManager, ClaimManager, CacheManager, DeferredBlockScanner, WorkSpeedBoostManager, PartyWorkerManager)
+- Fix party worker cleanup ordering bug that could orphan state when player context was missing
+- Fix BATTLE_STARTED_PRE error handler using debug level instead of error
+- Debug logger now uses LOGGER.debug instead of LOGGER.info to avoid flooding server logs
+- Remove 129 no-op cleanup() calls per Pokémon recall (BaseJob.cleanup is handled by StateManager)
+- Remove deprecated mob targeting stubs from CobbleCrewNavigationUtils
+
 ## 4.1.0 — Party Job Controls
 - Per-player party job blocking: /cobblecrew party block job <name> / category <name>
 - Per-player party job allowing: /cobblecrew party allow job <name> / category <name>

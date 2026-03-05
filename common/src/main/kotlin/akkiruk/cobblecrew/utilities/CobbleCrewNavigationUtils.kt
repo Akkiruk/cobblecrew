@@ -130,13 +130,6 @@ object CobbleCrewNavigationUtils {
     fun markUnreachable(pokemonId: UUID, pos: BlockPos, currentTick: Long) =
         ClaimManager.markUnreachable(pokemonId, pos, currentTick)
 
-    // --- Mob targeting (deprecated — only old BaseDefender used these) ---
-
-    fun claimMobTarget(pokemonId: UUID, entityId: Int, world: World) {}
-    fun releaseMobTarget(pokemonId: UUID) {}
-    fun getMobTarget(pokemonId: UUID): Int? = null
-    fun isMobTargeted(entityId: Int): Boolean = false
-
     // --- Cleanup ---
 
     fun cleanupPokemon(pokemonId: UUID, world: World) {

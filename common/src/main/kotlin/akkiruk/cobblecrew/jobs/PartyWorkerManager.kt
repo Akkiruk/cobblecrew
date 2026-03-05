@@ -73,7 +73,7 @@ object PartyWorkerManager {
             try {
                 onBattleStartPre(event)
             } catch (e: Exception) {
-                CobbleCrew.LOGGER.debug("[CobbleCrew] Error in BATTLE_STARTED_PRE handler", e)
+                CobbleCrew.LOGGER.error("[CobbleCrew] Error in BATTLE_STARTED_PRE handler", e)
             }
         }
 
@@ -327,10 +327,13 @@ object PartyWorkerManager {
     }
 
     private fun cleanupWorker(pokemonId: UUID, playerId: UUID) {
+        val world = playerContexts[playerId]?.world
         activePartyWorkers.remove(pokemonId)
-        WorkerDispatcher.cleanupPokemon(pokemonId, 
-            playerContexts[playerId]?.world 
-            ?: return)
+        if (world != null) {
+            WorkerDispatcher.cleanupPokemon(pokemonId, world)
+        } else {
+            StateManager.remove(pokemonId)
+        }
     }
 
     /** Full cleanup for a player (disconnect/death). */
@@ -389,4 +392,12 @@ object PartyWorkerManager {
     }
 
     fun isPartyEnabled(playerId: UUID): Boolean = !PartyJobPreferences.isOptedOut(playerId)
+
+    /** Clear all party worker state (server shutdown). */
+    fun clearAll() {
+        activePartyWorkers.clear()
+        playerContexts.clear()
+        playersInBattle.clear()
+        lastScanTick.clear()
+    }
 }

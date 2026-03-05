@@ -15,7 +15,12 @@ import akkiruk.cobblecrew.integration.CobbleCrewIntegrationHandler
 import akkiruk.cobblecrew.jobs.PartyWorkerManager
 import akkiruk.cobblecrew.jobs.PastureWorkerManager
 import akkiruk.cobblecrew.jobs.WorkerDispatcher
+import akkiruk.cobblecrew.cache.CobbleCrewCacheManager
+import akkiruk.cobblecrew.state.ClaimManager
+import akkiruk.cobblecrew.state.StateManager
+import akkiruk.cobblecrew.utilities.DeferredBlockScanner
 import akkiruk.cobblecrew.utilities.HostileScanCache
+import akkiruk.cobblecrew.utilities.WorkSpeedBoostManager
 import akkiruk.cobblecrew.network.JobSyncPayload
 import akkiruk.cobblecrew.network.JobSyncSerializer
 import akkiruk.cobblecrew.neoforge.client.config.CobbleCrewModListScreen
@@ -63,6 +68,12 @@ object CobbleCrewNeoForge {
 
         NeoForge.EVENT_BUS.addListener { _: net.neoforged.neoforge.event.server.ServerStoppingEvent ->
             PastureWorkerManager.clearAll()
+            PartyWorkerManager.clearAll()
+            StateManager.clearAll()
+            ClaimManager.clearAll()
+            CobbleCrewCacheManager.clearAll()
+            DeferredBlockScanner.clearAll()
+            WorkSpeedBoostManager.cleanup()
             HostileScanCache.clear()
         }
 

@@ -80,7 +80,7 @@ object CobbleCrewDebugLogger {
 
     fun log(category: Category, message: String) {
         if (!isEnabled(category)) return
-        CobbleCrew.LOGGER.info("[CobbleCrew:${category.name}] $message")
+        CobbleCrew.LOGGER.debug("[CobbleCrew:${category.name}] $message")
     }
 
     // -- Convenience methods for common patterns --
@@ -88,7 +88,7 @@ object CobbleCrewDebugLogger {
     fun log(category: Category, species: String?, pokemonId: UUID?, message: String) {
         if (!isEnabled(category)) return
         if (!passesFilter(species, pokemonId)) return
-        CobbleCrew.LOGGER.info("[CobbleCrew:${category.name}] ${pokemonTag(species, pokemonId)} $message")
+        CobbleCrew.LOGGER.debug("[CobbleCrew:${category.name}] ${pokemonTag(species, pokemonId)} $message")
     }
 
     fun log(category: Category, entity: PokemonEntity, message: String) {

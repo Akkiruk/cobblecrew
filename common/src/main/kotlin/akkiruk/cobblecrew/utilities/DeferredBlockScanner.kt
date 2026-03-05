@@ -117,6 +117,13 @@ object DeferredBlockScanner {
         lastScanCompletion.remove(origin)
     }
 
+    /** Clear all scan state (server shutdown). */
+    fun clearAll() {
+        activeScans.clear()
+        lastScanCompletion.clear()
+        neededCategories = null
+    }
+
     /**
      * Classifies a single block position into matching categories.
      * Shared by both deferred (pasture) and eager (party) scanners.

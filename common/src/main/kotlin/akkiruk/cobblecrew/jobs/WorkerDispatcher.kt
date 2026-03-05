@@ -187,7 +187,6 @@ object WorkerDispatcher {
         val state = StateManager.get(pokemonId)
         val species = state?.profile?.species
 
-        workers.forEach { it.cleanup(pokemonId) }
         ClaimManager.cleanupPokemon(pokemonId, world)
         StateManager.remove(pokemonId)
 
