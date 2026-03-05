@@ -1,3 +1,13 @@
+## 4.1.0 — Party Job Controls
+- Per-player party job blocking: /cobblecrew party block job <name> / category <name>
+- Per-player party job allowing: /cobblecrew party allow job <name> / category <name>
+- /cobblecrew party jobs — view your blocked jobs/categories and server-wide blocks
+- /cobblecrew party reset — clear all personal blocks
+- Server-wide party blocklists in config (blockedJobs / blockedCategories in party group)
+- Party opt-out now persisted to disk (survives server restarts)
+- All preferences saved to config/cobblecrew/party-preferences.json
+- Blocking a job immediately resets active party workers so changes take effect instantly
+
 ## 4.0.0 — V4 Architecture Refactor
 - Complete internal rewrite: unified BaseJob state machine replaces 7 separate base classes
 - PokemonWorkerState: all per-Pokémon state in one data class (no more scattered UUID maps)

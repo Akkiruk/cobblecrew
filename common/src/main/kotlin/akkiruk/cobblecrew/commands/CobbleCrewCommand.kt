@@ -17,6 +17,7 @@ import akkiruk.cobblecrew.config.JobConfigManager
 import akkiruk.cobblecrew.jobs.PartyWorkerManager
 import akkiruk.cobblecrew.jobs.WorkerDispatcher
 import akkiruk.cobblecrew.jobs.WorkerRegistry
+import akkiruk.cobblecrew.state.PartyJobPreferences
 import akkiruk.cobblecrew.utilities.CobbleCrewDebugLogger
 import com.mojang.brigadier.CommandDispatcher
 import com.mojang.brigadier.arguments.IntegerArgumentType
@@ -219,11 +220,31 @@ object CobbleCrewCommand {
                     .then(literal("invalidate").requires(requiresOp()).executes(::runProfilesInvalidate))
                 )
 
-                // ── party (view party worker status, toggle per-player) ──
+                // ── party (view party worker status, toggle per-player, block/allow jobs) ──
                 .then(literal("party")
                     .executes(::runPartyStatus)
                     .then(literal("status").executes(::runPartyStatus))
                     .then(literal("toggle").executes(::runPartyToggle))
+                    .then(literal("jobs").executes(::runPartyJobs))
+                    .then(literal("block")
+                        .then(literal("job")
+                            .then(argument("job", StringArgumentType.word())
+                                .suggests(JOB_SUGGESTIONS)
+                                .executes(::runPartyBlockJob)))
+                        .then(literal("category")
+                            .then(argument("category", StringArgumentType.word())
+                                .suggests(CATEGORY_SUGGESTIONS)
+                                .executes(::runPartyBlockCategory))))
+                    .then(literal("allow")
+                        .then(literal("job")
+                            .then(argument("job", StringArgumentType.word())
+                                .suggests(JOB_SUGGESTIONS)
+                                .executes(::runPartyAllowJob)))
+                        .then(literal("category")
+                            .then(argument("category", StringArgumentType.word())
+                                .suggests(CATEGORY_SUGGESTIONS)
+                                .executes(::runPartyAllowCategory))))
+                    .then(literal("reset").executes(::runPartyReset))
                 )
 
                 // ── moves (analyze all species learnsets) ──
@@ -245,7 +266,7 @@ object CobbleCrewCommand {
         s.sendFeedback({ bullet("/cobblecrew config", Formatting.YELLOW).append(info(" — View/change general config")) }, false)
         s.sendFeedback({ bullet("/cobblecrew cache", Formatting.YELLOW).append(info(" — View/clear block scan caches")) }, false)
         s.sendFeedback({ bullet("/cobblecrew profiles", Formatting.YELLOW).append(info(" — View/invalidate Pokémon profiles")) }, false)
-        s.sendFeedback({ bullet("/cobblecrew party", Formatting.YELLOW).append(info(" — View party worker status, toggle on/off")) }, false)
+        s.sendFeedback({ bullet("/cobblecrew party", Formatting.YELLOW).append(info(" — Toggle, block/allow jobs, view status")) }, false)
         s.sendFeedback({ bullet("/cobblecrew moves", Formatting.YELLOW).append(info(" — Analyze all species moves (uploads to mclo.gs)")) }, false)
         return 1
     }
@@ -607,6 +628,105 @@ object CobbleCrewCommand {
         return 1
     }
 
+    private fun runPartyJobs(ctx: CommandContext<ServerCommandSource>): Int {
+        val s = ctx.source
+        val player = s.playerOrThrow
+        val prefs = PartyJobPreferences.getPrefs(player.uuid)
+        val globalConfig = CobbleCrewConfigHolder.config.party
+
+        s.sendFeedback({ header("Party Job Controls") }, false)
+
+        // Global blocks (server-wide)
+        if (globalConfig.blockedJobs.isNotEmpty() || globalConfig.blockedCategories.isNotEmpty()) {
+            s.sendFeedback({ Text.literal("  §7Server-wide blocks:").formatted(Formatting.GRAY) }, false)
+            if (globalConfig.blockedCategories.isNotEmpty()) {
+                s.sendFeedback({ Text.literal("    Categories: §c${globalConfig.blockedCategories.joinToString(", ")}") }, false)
+            }
+            if (globalConfig.blockedJobs.isNotEmpty()) {
+                s.sendFeedback({ Text.literal("    Jobs: §c${globalConfig.blockedJobs.joinToString(", ")}") }, false)
+            }
+        }
+
+        // Personal blocks
+        s.sendFeedback({ Text.empty() }, false)
+        s.sendFeedback({ Text.literal("  §bYour personal blocks:").formatted(Formatting.AQUA) }, false)
+
+        if (prefs.blockedCategories.isEmpty() && prefs.blockedJobs.isEmpty()) {
+            s.sendFeedback({ info("    None — all jobs allowed") }, false)
+        } else {
+            if (prefs.blockedCategories.isNotEmpty()) {
+                s.sendFeedback({ Text.literal("    Categories: §c${prefs.blockedCategories.joinToString(", ")}") }, false)
+            }
+            if (prefs.blockedJobs.isNotEmpty()) {
+                s.sendFeedback({ Text.literal("    Jobs: §c${prefs.blockedJobs.joinToString(", ")}") }, false)
+            }
+        }
+
+        s.sendFeedback({ Text.empty() }, false)
+        s.sendFeedback({ info("  /cobblecrew party block job <name>     — block a specific job") }, false)
+        s.sendFeedback({ info("  /cobblecrew party block category <name> — block an entire category") }, false)
+        s.sendFeedback({ info("  /cobblecrew party allow job <name>     — unblock a job") }, false)
+        s.sendFeedback({ info("  /cobblecrew party allow category <name> — unblock a category") }, false)
+        s.sendFeedback({ info("  /cobblecrew party reset                — clear all personal blocks") }, false)
+        return 1
+    }
+
+    private fun runPartyBlockJob(ctx: CommandContext<ServerCommandSource>): Int {
+        val player = ctx.source.playerOrThrow
+        val jobName = StringArgumentType.getString(ctx, "job").lowercase()
+        if (!JobConfigManager.allJobNames().any { it.equals(jobName, ignoreCase = true) }) {
+            ctx.source.sendFeedback({ error("Unknown job: $jobName") }, false)
+            return 0
+        }
+        PartyJobPreferences.blockJob(player.uuid, jobName)
+        // Reset any active assignment so blocked job stops immediately
+        resetActivePartyWorkers(player.uuid)
+        ctx.source.sendFeedback({ success("Blocked '$jobName' for your party Pokémon.") }, false)
+        return 1
+    }
+
+    private fun runPartyBlockCategory(ctx: CommandContext<ServerCommandSource>): Int {
+        val player = ctx.source.playerOrThrow
+        val category = StringArgumentType.getString(ctx, "category").lowercase()
+        PartyJobPreferences.blockCategory(player.uuid, category)
+        resetActivePartyWorkers(player.uuid)
+        ctx.source.sendFeedback({ success("Blocked category '$category' for your party Pokémon.") }, false)
+        return 1
+    }
+
+    private fun runPartyAllowJob(ctx: CommandContext<ServerCommandSource>): Int {
+        val player = ctx.source.playerOrThrow
+        val jobName = StringArgumentType.getString(ctx, "job").lowercase()
+        PartyJobPreferences.allowJob(player.uuid, jobName)
+        ctx.source.sendFeedback({ success("Allowed '$jobName' for your party Pokémon.") }, false)
+        return 1
+    }
+
+    private fun runPartyAllowCategory(ctx: CommandContext<ServerCommandSource>): Int {
+        val player = ctx.source.playerOrThrow
+        val category = StringArgumentType.getString(ctx, "category").lowercase()
+        PartyJobPreferences.allowCategory(player.uuid, category)
+        ctx.source.sendFeedback({ success("Allowed category '$category' for your party Pokémon.") }, false)
+        return 1
+    }
+
+    private fun runPartyReset(ctx: CommandContext<ServerCommandSource>): Int {
+        val player = ctx.source.playerOrThrow
+        PartyJobPreferences.resetPlayer(player.uuid)
+        ctx.source.sendFeedback({ success("Cleared all personal party job blocks.") }, false)
+        return 1
+    }
+
+    /** Reset active jobs for all party Pokémon owned by this player. */
+    private fun resetActivePartyWorkers(playerId: UUID) {
+        val workers = PartyWorkerManager.getActivePartyWorkers()
+        for ((pokemonId, entry) in workers) {
+            if (entry.owner.uuid == playerId) {
+                WorkerDispatcher.resetAssignment(pokemonId)
+            }
+        }
+    }
+
     private fun runPartyStatus(ctx: CommandContext<ServerCommandSource>): Int {
         val s = ctx.source
         val partyConfig = CobbleCrewConfigHolder.config.party
@@ -620,6 +740,11 @@ object CobbleCrewCommand {
         if (player != null) {
             val personal = PartyWorkerManager.isPartyEnabled(player.uuid)
             s.sendFeedback({ label("Your party jobs", if (personal) "§aOn" else "§cOff §7(/cobblecrew party toggle)") }, false)
+            val prefs = PartyJobPreferences.getPrefs(player.uuid)
+            val blockedCount = prefs.blockedJobs.size + prefs.blockedCategories.size
+            if (blockedCount > 0) {
+                s.sendFeedback({ label("Your blocked", "§c$blockedCount §7(/cobblecrew party jobs)") }, false)
+            }
         }
         s.sendFeedback({ label("Active party workers", workers.size.toString()) }, false)
         s.sendFeedback({ label("Max work distance", "${partyConfig.maxWorkDistance} blocks") }, false)

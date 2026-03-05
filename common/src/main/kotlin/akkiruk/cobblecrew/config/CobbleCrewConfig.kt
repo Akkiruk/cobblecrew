@@ -79,6 +79,19 @@ class CobbleCrewConfig : ConfigData {
         /** Distance at which auto-teleport triggers. */
         @ConfigEntry.BoundedDiscrete(min = 32, max = 128)
         var teleportDistance = 64
+
+        /**
+         * Jobs blocked from running on ANY player's party Pokémon (server-wide).
+         * Use exact job names, e.g. ["logger", "miner", "sapling_placer"].
+         * Players can add their own blocks on top of these via /cobblecrew party block.
+         */
+        var blockedJobs: List<String> = listOf()
+
+        /**
+         * Job categories blocked from running on ANY player's party Pokémon (server-wide).
+         * Categories: gathering, production, processing, placement, defense, support, environmental, logistics, combo.
+         */
+        var blockedCategories: List<String> = listOf()
     }
 
     class DebugGroup {

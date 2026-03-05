@@ -13,6 +13,7 @@ import akkiruk.cobblecrew.cache.CobbleCrewCacheManager
 import akkiruk.cobblecrew.config.CobbleCrewConfigHolder
 import akkiruk.cobblecrew.enums.BlockCategory
 import akkiruk.cobblecrew.state.ClaimManager
+import akkiruk.cobblecrew.state.PartyJobPreferences
 import akkiruk.cobblecrew.state.StateManager
 import akkiruk.cobblecrew.utilities.BlockCategoryValidators
 import akkiruk.cobblecrew.utilities.CobbleCrewInventoryUtils
@@ -50,9 +51,6 @@ object PartyWorkerManager {
     // Players currently in battle — skip their workers during tick
     private val playersInBattle = mutableSetOf<UUID>()
 
-    // Players who opted out of party jobs via /cobblecrew party toggle
-    private val optedOutPlayers = mutableSetOf<UUID>()
-
     fun init() {
         CobblemonEvents.POKEMON_SENT_POST.subscribe { event ->
             try {
@@ -87,6 +85,9 @@ object PartyWorkerManager {
             onBattleEnd(event.battle)
         }
 
+        // Load persisted party preferences
+        PartyJobPreferences.load()
+
         CobbleCrew.LOGGER.info("[CobbleCrew] Party worker events registered")
     }
 
@@ -100,8 +101,8 @@ object PartyWorkerManager {
         val pokemon = pokemonEntity.pokemon
         val owner = pokemon.getOwnerPlayer() as? ServerPlayerEntity ?: return
 
-        // Player opted out of party jobs
-        if (owner.uuid in optedOutPlayers) return
+        // Player opted out of party jobs (persisted)
+        if (PartyJobPreferences.isOptedOut(owner.uuid)) return
 
         // Only register party Pokémon (not tethered to a pasture)
         if (pokemonEntity.tethering != null) return
@@ -169,7 +170,7 @@ object PartyWorkerManager {
 
         for ((playerId, entries) in playerGroups) {
             if (playerId in playersInBattle) continue
-            if (playerId in optedOutPlayers) continue
+            if (PartyJobPreferences.isOptedOut(playerId)) continue
 
             val first = entries.firstOrNull() ?: continue
             if (first.owner.isRemoved) {
@@ -363,11 +364,12 @@ object PartyWorkerManager {
 
     /** Toggle party jobs for a player. Returns true if now enabled, false if now disabled. */
     fun togglePartyJobs(playerId: UUID): Boolean {
-        return if (playerId in optedOutPlayers) {
-            optedOutPlayers.remove(playerId)
-            true
+        val wasOptedOut = PartyJobPreferences.isOptedOut(playerId)
+        if (wasOptedOut) {
+            PartyJobPreferences.setOptedOut(playerId, false)
+            return true
         } else {
-            optedOutPlayers.add(playerId)
+            PartyJobPreferences.setOptedOut(playerId, true)
             // Clean up any active party workers for this player
             val pokemonIds = activePartyWorkers.values
                 .filter { it.owner.uuid == playerId }
@@ -382,9 +384,9 @@ object PartyWorkerManager {
                 CobbleCrewCacheManager.removeCache(context.origin)
             }
             lastScanTick.remove(playerId)
-            false
+            return false
         }
     }
 
-    fun isPartyEnabled(playerId: UUID): Boolean = playerId !in optedOutPlayers
+    fun isPartyEnabled(playerId: UUID): Boolean = !PartyJobPreferences.isOptedOut(playerId)
 }

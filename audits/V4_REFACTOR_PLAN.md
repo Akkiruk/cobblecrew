@@ -197,6 +197,11 @@ object DepositHelper {
 }
 ```
 
+
+
+
+
+
 ### Migration Strategy
 1. Create `DepositHelper.kt`
 2. Refactor `CobbleCrewInventoryUtils.handleDepositing` to accept `PokemonWorkerState` instead of raw maps
@@ -220,7 +225,8 @@ object DepositHelper {
 
 ## Phase 3 — Unified BaseJob Lifecycle
 
-### Problem
+### Problem 
+
 6 abstract base classes (BaseHarvester, BaseProducer, BaseProcessor, BasePlacer, BaseDefender, BaseSupport) each implement their own tick state machine, navigation, cleanup, and arrival animations independently. Total: ~800 lines of duplicated lifecycle logic.
 
 ### Solution

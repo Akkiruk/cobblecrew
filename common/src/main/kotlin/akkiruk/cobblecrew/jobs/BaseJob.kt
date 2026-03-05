@@ -16,6 +16,7 @@ import akkiruk.cobblecrew.enums.JobPhase
 import akkiruk.cobblecrew.enums.WorkPhase
 import akkiruk.cobblecrew.interfaces.Worker
 import akkiruk.cobblecrew.state.ClaimManager
+import akkiruk.cobblecrew.state.PartyJobPreferences
 import akkiruk.cobblecrew.state.PokemonWorkerState
 import akkiruk.cobblecrew.state.StateManager
 import akkiruk.cobblecrew.utilities.DepositHelper
@@ -243,6 +244,10 @@ abstract class BaseJob : Worker {
 
     override fun isAvailable(context: JobContext, pokemonId: UUID): Boolean {
         if (!config.enabled) return false
+        // Party Pokémon: check player-level and server-level blocked jobs/categories
+        if (context is JobContext.Party) {
+            if (PartyJobPreferences.isBlocked(context.player.uuid, name, category)) return false
+        }
         if (!requiresTarget) return true
         // Lightweight: just check if the cache has ANY targets for our category
         val cat = targetCategory ?: return true
