@@ -32,9 +32,10 @@ class CobbleCrewConfig : ConfigData {
         @ConfigEntry.BoundedDiscrete(min = 1, max = 8)
         var searchHeight = 5
 
-        /** Seconds between full area rescans (lower = less idle time, higher = less CPU). */
-        @ConfigEntry.BoundedDiscrete(min = 5, max = 120)
-        var scanCooldownSeconds = 8
+        /** Seconds between full area rescans. Live block-change detection handles most updates;
+         *  this is a safety net for edge cases (e.g. pistons, world edits). */
+        @ConfigEntry.BoundedDiscrete(min = 5, max = 300)
+        var scanCooldownSeconds = 60
 
         /** Seconds a target is ignored after a failed claim (prevents immediate re-claim). */
         @ConfigEntry.BoundedDiscrete(min = 1, max = 30)

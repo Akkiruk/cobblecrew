@@ -10,6 +10,7 @@ package akkiruk.cobblecrew.jobs
 
 import akkiruk.cobblecrew.CobbleCrew
 import akkiruk.cobblecrew.cache.CobbleCrewCacheManager
+import akkiruk.cobblecrew.listeners.BlockChangeNotifier
 import akkiruk.cobblecrew.utilities.CobbleCrewInventoryUtils
 import akkiruk.cobblecrew.utilities.DeferredBlockScanner
 import com.cobblemon.mod.common.block.entity.PokemonPastureBlockEntity
@@ -38,6 +39,9 @@ object PastureWorkerManager {
         if (world.isClient) return
 
         val context = JobContext.Pasture(pos, world)
+
+        // Register this pasture for live block-change notifications
+        BlockChangeNotifier.registerPasture(pos)
 
         // Area scan runs every tick (deferred scanner internally throttles via cooldown)
         try {
@@ -105,11 +109,13 @@ object PastureWorkerManager {
             }
         }
         CobbleCrewCacheManager.removeCache(pasture.pos)
+        BlockChangeNotifier.unregisterPasture(pasture.pos)
         previousTethered.remove(pasture.pos)
     }
 
     /** Clear all tracked pasture state (server shutdown). */
     fun clearAll() {
         previousTethered.clear()
+        BlockChangeNotifier.clearAll()
     }
 }

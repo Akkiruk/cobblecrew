@@ -9,7 +9,8 @@
     "PokemonPastureBlockEntityMixin",
     "FarmlandBlockMixin",
     "AbstractFurnaceBlockEntityAccessor",
-    "BrewingStandBlockEntityAccessor"
+    "BrewingStandBlockEntityAccessor",
+    "WorldSetBlockStateMixin"
   ],
   "injectors": {
     "defaultRequire": 1

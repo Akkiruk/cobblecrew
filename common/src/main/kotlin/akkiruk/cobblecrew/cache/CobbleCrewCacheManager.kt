@@ -39,6 +39,17 @@ object CobbleCrewCacheManager {
         caches.values.forEach { it[category]?.remove(pos) }
     }
 
+    /** Add a single position to a specific origin's cache (live block change updates). */
+    fun addTarget(origin: BlockPos, category: BlockCategory, pos: BlockPos) {
+        val cache = caches[origin] ?: return
+        cache.getOrPut(category) { mutableSetOf() }.add(pos)
+    }
+
+    /** Remove a single position from a specific origin's cache. */
+    fun removeTarget(origin: BlockPos, category: BlockCategory, pos: BlockPos) {
+        caches[origin]?.get(category)?.remove(pos)
+    }
+
     /** Atomically replace all category targets for an origin with new scan results. */
     fun replaceAllCategoryTargets(origin: BlockPos, newTargets: Map<BlockCategory, Set<BlockPos>>) {
         val cache = caches.getOrPut(origin) { newCategoryMap() }

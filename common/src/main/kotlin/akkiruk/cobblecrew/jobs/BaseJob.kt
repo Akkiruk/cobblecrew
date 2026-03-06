@@ -11,6 +11,7 @@ package akkiruk.cobblecrew.jobs
 import akkiruk.cobblecrew.cache.CobbleCrewCacheManager
 import akkiruk.cobblecrew.config.JobConfig
 import akkiruk.cobblecrew.config.JobConfigManager
+import akkiruk.cobblecrew.enums.ArrivalStyle
 import akkiruk.cobblecrew.enums.BlockCategory
 import akkiruk.cobblecrew.enums.JobPhase
 import akkiruk.cobblecrew.enums.WorkPhase
@@ -54,6 +55,9 @@ abstract class BaseJob : Worker {
     abstract val arrivalParticle: ParticleEffect
     open val arrivalTolerance: Double = 3.0
     open val workPhase: WorkPhase = WorkPhase.HARVESTING
+
+    /** How long to pause at the target before starting work. */
+    open val arrivalStyle: ArrivalStyle = ArrivalStyle.ANIMATED
 
     /** False for defense, support, environmental — jobs that don't produce items. */
     open val producesItems: Boolean = true
@@ -181,7 +185,7 @@ abstract class BaseJob : Worker {
      */
     protected open fun checkArrival(state: PokemonWorkerState, context: JobContext, entity: PokemonEntity): Boolean {
         val targetPos = state.targetPos ?: return false
-        return WorkerVisualUtils.handleArrival(entity, targetPos, context.world, arrivalParticle, arrivalTolerance, workPhase)
+        return WorkerVisualUtils.handleArrival(entity, targetPos, context.world, arrivalParticle, arrivalTolerance, workPhase, arrivalStyle.delayTicks)
     }
 
     private fun tickWorking(state: PokemonWorkerState, context: JobContext, entity: PokemonEntity) {

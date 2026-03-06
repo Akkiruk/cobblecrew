@@ -10,6 +10,7 @@ package akkiruk.cobblecrew.jobs.dsl
 
 import akkiruk.cobblecrew.config.JobConfig
 import akkiruk.cobblecrew.enums.BlockCategory
+import akkiruk.cobblecrew.enums.ArrivalStyle
 import akkiruk.cobblecrew.enums.JobImportance
 import akkiruk.cobblecrew.enums.WorkPhase
 import akkiruk.cobblecrew.enums.WorkerPriority
@@ -47,6 +48,7 @@ open class ProcessingJob(
     override val arrivalParticle: ParticleEffect = particle
     override val targetCategory: BlockCategory? = null
     override val workPhase: WorkPhase = WorkPhase.PROCESSING
+    override val arrivalStyle: ArrivalStyle = ArrivalStyle.QUICK
     open val minExtractAmount: Int = 1
 
     override fun buildDefaultConfig() = JobConfig(

@@ -10,6 +10,7 @@ package akkiruk.cobblecrew.jobs.dsl
 
 import akkiruk.cobblecrew.config.JobConfig
 import akkiruk.cobblecrew.enums.BlockCategory
+import akkiruk.cobblecrew.enums.ArrivalStyle
 import akkiruk.cobblecrew.enums.JobImportance
 import akkiruk.cobblecrew.enums.WorkPhase
 import akkiruk.cobblecrew.enums.WorkerPriority
@@ -46,6 +47,7 @@ open class ProductionJob(
     override val targetCategory: BlockCategory? = null
     override val requiresTarget: Boolean = false
     override val workPhase: WorkPhase = WorkPhase.PRODUCING
+    override val arrivalStyle: ArrivalStyle = ArrivalStyle.INSTANT
 
     override fun buildDefaultConfig() = JobConfig(
         enabled = true,

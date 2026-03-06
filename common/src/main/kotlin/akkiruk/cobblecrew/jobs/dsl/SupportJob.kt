@@ -11,6 +11,7 @@ package akkiruk.cobblecrew.jobs.dsl
 import akkiruk.cobblecrew.config.CobbleCrewConfigHolder
 import akkiruk.cobblecrew.config.JobConfig
 import akkiruk.cobblecrew.enums.BlockCategory
+import akkiruk.cobblecrew.enums.ArrivalStyle
 import akkiruk.cobblecrew.enums.JobImportance
 import akkiruk.cobblecrew.enums.WorkPhase
 import akkiruk.cobblecrew.enums.WorkerPriority
@@ -59,6 +60,7 @@ open class SupportJob(
     override val targetCategory: BlockCategory? = null
     override val workPhase: WorkPhase = WorkPhase.HEALING
     override val producesItems: Boolean = false
+    override val arrivalStyle: ArrivalStyle = ArrivalStyle.QUICK
 
     protected val effectDurationTicks: Int get() =
         (config.effectDurationSeconds ?: defaultDurationSeconds) * 20
@@ -107,7 +109,7 @@ open class SupportJob(
         val playerTarget = claim.target as? Target.Player ?: return false
         val player = (context.world as? ServerWorld)?.getEntity(playerTarget.playerId) as? PlayerEntity
             ?: return false
-        return WorkerVisualUtils.handlePlayerArrival(entity, player, context.world, arrivalParticle, workPhase)
+        return WorkerVisualUtils.handlePlayerArrival(entity, player, context.world, arrivalParticle, workPhase, arrivalStyle.delayTicks)
     }
 
     override fun doWork(state: PokemonWorkerState, context: JobContext, pokemonEntity: PokemonEntity): WorkResult {

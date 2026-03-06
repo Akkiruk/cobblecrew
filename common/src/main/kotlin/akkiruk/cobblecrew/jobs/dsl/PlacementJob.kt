@@ -10,6 +10,7 @@ package akkiruk.cobblecrew.jobs.dsl
 
 import akkiruk.cobblecrew.config.JobConfig
 import akkiruk.cobblecrew.enums.BlockCategory
+import akkiruk.cobblecrew.enums.ArrivalStyle
 import akkiruk.cobblecrew.enums.JobImportance
 import akkiruk.cobblecrew.enums.WorkPhase
 import akkiruk.cobblecrew.enums.WorkerPriority
@@ -55,6 +56,7 @@ class PlacementJob(
     override val targetCategory: BlockCategory? = null
     override val workPhase: WorkPhase = WorkPhase.PLACING
     override val producesItems: Boolean = false
+    override val arrivalStyle: ArrivalStyle = ArrivalStyle.QUICK
 
     override fun buildDefaultConfig() = JobConfig(
         enabled = true,

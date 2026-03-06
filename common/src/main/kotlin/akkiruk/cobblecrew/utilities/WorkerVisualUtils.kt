@@ -25,7 +25,6 @@ import java.util.UUID
  * Timing state (arrivalTick, graceTick) lives in [StateManager].
  */
 object WorkerVisualUtils {
-    private const val WORK_DELAY_TICKS = 30L
     private const val GRACE_PERIOD_TICKS = 10L
 
     fun handleArrival(
@@ -35,6 +34,7 @@ object WorkerVisualUtils {
         particleType: ParticleEffect? = null,
         offset: Double = 3.0,
         workPhase: WorkPhase = WorkPhase.HARVESTING,
+        delayTicks: Long = 30L,
     ): Boolean {
         val state = StateManager.getOrCreate(pokemonEntity.pokemon.uuid)
         val now = world.time
@@ -54,6 +54,15 @@ object WorkerVisualUtils {
 
         state.graceTick = null
         pokemonEntity.navigation.stop()
+
+        if (delayTicks <= 0L) {
+            state.arrivalTick = null
+            CobbleCrewDebugLogger.arrivedAtTarget(pokemonEntity, targetPos)
+            WorkerAnimationUtils.playImmediate(pokemonEntity, WorkPhase.WORK_COMPLETE, world)
+            if (particleType != null) spawnParticles(world, targetPos, particleType)
+            return true
+        }
+
         val arrived = state.arrivalTick
 
         if (arrived == null) {
@@ -63,7 +72,7 @@ object WorkerVisualUtils {
             return false
         }
 
-        if (now - arrived < WORK_DELAY_TICKS) {
+        if (now - arrived < delayTicks) {
             lookAt(pokemonEntity, targetPos)
             return false
         }
@@ -81,6 +90,7 @@ object WorkerVisualUtils {
         world: World,
         particleType: ParticleEffect? = null,
         workPhase: WorkPhase = WorkPhase.HEALING,
+        delayTicks: Long = 30L,
     ): Boolean {
         val state = StateManager.getOrCreate(pokemonEntity.pokemon.uuid)
 
@@ -91,6 +101,14 @@ object WorkerVisualUtils {
 
         pokemonEntity.navigation.stop()
         val now = world.time
+
+        if (delayTicks <= 0L) {
+            state.arrivalTick = null
+            WorkerAnimationUtils.playImmediate(pokemonEntity, WorkPhase.WORK_COMPLETE, world)
+            if (particleType != null) spawnParticles(world, player.blockPos, particleType)
+            return true
+        }
+
         val arrived = state.arrivalTick
 
         if (arrived == null) {
@@ -100,7 +118,7 @@ object WorkerVisualUtils {
             return false
         }
 
-        if (now - arrived < WORK_DELAY_TICKS) {
+        if (now - arrived < delayTicks) {
             pokemonEntity.lookControl.lookAt(player.x, player.eyeY, player.z)
             return false
         }

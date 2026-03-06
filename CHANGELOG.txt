@@ -1,3 +1,9 @@
+## 4.2.0 — Responsive Workers
+- Per-job arrival delay: production, support, environmental jobs now start working instantly instead of waiting 1.5 seconds
+- Processing and placement jobs use a short 0.5s delay; gathering and combat keep the full animation
+- Live block-change detection: workers now react to broken/placed blocks within 1-2 ticks instead of waiting up to 30 seconds for a full area rescan
+- Full area rescans still run as a safety net (default cooldown increased from 8s to 60s)
+
 ## 4.1.1 — Stability & Cleanup
 - Fix memory leak: server shutdown now clears all singleton state (StateManager, ClaimManager, CacheManager, DeferredBlockScanner, WorkSpeedBoostManager, PartyWorkerManager)
 - Fix party worker cleanup ordering bug that could orphan state when player context was missing
