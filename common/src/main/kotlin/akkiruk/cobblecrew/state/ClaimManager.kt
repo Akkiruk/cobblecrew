@@ -22,8 +22,6 @@ import java.util.concurrent.ConcurrentHashMap
  * Claims live in [PokemonWorkerState]; this object maintains the
  * reverse index for O(1) "is this targeted?" checks plus the
  * shared escalating blacklist.
- *
- * Replaces the 295-line CobbleCrewNavigationUtils.
  */
 object ClaimManager {
 
