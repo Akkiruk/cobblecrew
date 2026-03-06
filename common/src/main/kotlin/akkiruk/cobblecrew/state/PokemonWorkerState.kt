@@ -16,23 +16,57 @@ import net.minecraft.item.ItemStack
 import net.minecraft.util.math.BlockPos
 import java.util.UUID
 
-/**
- * All mutable per-Pokémon state, centralized in one place.
- * Eliminates the 77 scattered UUID-keyed maps across singletons.
- * Created on first tick, removed on cleanup — one call wipes everything.
- */
-class PokemonWorkerState(val pokemonId: UUID) {
+// ── Focused sub-state containers ─────────────────────────────────────
 
-    // --- Job assignment ---
+/** Job assignment & profile caching. */
+class JobState {
     var activeJob: Worker? = null
     var profile: PokemonProfile? = null
     var jobAssignedTick: Long = 0L
     var lastMoveSet: Set<String> = emptySet()
-
-    // --- Lifecycle phase (driven by BaseJob state machine) ---
     var phase: JobPhase = JobPhase.IDLE
+    var cooldownUntil: Long = 0L
 
-    // --- Idle behavior ---
+    fun reset(hasOrphanItems: Boolean) {
+        phase = if (hasOrphanItems) JobPhase.DEPOSITING else JobPhase.IDLE
+        cooldownUntil = 0L
+    }
+}
+
+/** Navigation claims and pathfinding throttle. */
+class NavState {
+    var claim: NavigationClaim? = null
+    var targetPos: BlockPos? = null
+    var secondaryTargetPos: BlockPos? = null
+    var lastPathfindTick: Long = 0L
+
+    fun reset() {
+        targetPos = null
+        secondaryTargetPos = null
+    }
+}
+
+/** Items held by Pokémon, awaiting deposit/delivery. */
+class DepositState {
+    val heldItems: MutableList<ItemStack> = mutableListOf()
+    val failedDeposits: MutableSet<BlockPos> = mutableSetOf()
+    var heldSinceTick: Long = 0L
+    var depositRetryTick: Long = 0L
+    var depositArrivalTick: Long? = null
+    var lastDepositWarning: Long = 0L
+
+    fun clear() {
+        heldItems.clear()
+        failedDeposits.clear()
+        depositRetryTick = 0L
+        depositArrivalTick = null
+        heldSinceTick = 0L
+        lastDepositWarning = 0L
+    }
+}
+
+/** Idle behavior timing. */
+class IdleState {
     var idleSinceTick: Long = 0L
     var idleLogTick: Long = 0L
     var lastWanderTick: Long = 0L
@@ -41,40 +75,83 @@ class PokemonWorkerState(val pokemonId: UUID) {
     var returningHome: Boolean = false
     var lastReturnNavTick: Long = 0L
 
-    // --- Items (held by Pokémon, awaiting deposit/delivery) ---
-    val heldItems: MutableList<ItemStack> = mutableListOf()
-    val failedDeposits: MutableSet<BlockPos> = mutableSetOf()
-    var heldSinceTick: Long = 0L
-    var depositRetryTick: Long = 0L
-    var depositArrivalTick: Long? = null
-    var lastDepositWarning: Long = 0L
+    fun resetOnJobAssign() {
+        idleSinceTick = 0L
+        returningHome = false
+        lastReturnNavTick = 0L
+    }
+}
 
-    // --- Navigation / Claims ---
-    var claim: NavigationClaim? = null
-    var targetPos: BlockPos? = null
-    var lastPathfindTick: Long = 0L
-
-    // --- Visual feedback ---
+/** Visual feedback timing (arrival animations, grace period). */
+class VisualState {
     var arrivalTick: Long? = null
     var graceTick: Long? = null
     var lastAnimationTick: Long = 0L
 
-    // --- Job-specific scratch space ---
-    var secondaryTargetPos: BlockPos? = null
+    fun resetArrival() {
+        arrivalTick = null
+        graceTick = null
+    }
+}
+
+// ── Main state class ─────────────────────────────────────────────────
+
+/**
+ * All mutable per-Pokémon state, centralized in one place.
+ * Composed of focused sub-states for clear separation of concerns.
+ * Created on first tick, removed on cleanup — one call wipes everything.
+ */
+class PokemonWorkerState(val pokemonId: UUID) {
+    val job = JobState()
+    val nav = NavState()
+    val deposit = DepositState()
+    val idle = IdleState()
+    val visual = VisualState()
+
+    /** Job-specific scratch space for custom per-job data. */
     var lastActionTime: Long = 0L
-    var cooldownUntil: Long = 0L
+
+    // ── Convenience delegates (keep call sites concise) ──────────────
+
+    var activeJob: Worker? by job::activeJob
+    var profile: PokemonProfile? by job::profile
+    var jobAssignedTick: Long by job::jobAssignedTick
+    var lastMoveSet: Set<String> by job::lastMoveSet
+    var phase: JobPhase by job::phase
+    var cooldownUntil: Long by job::cooldownUntil
+
+    var claim: NavigationClaim? by nav::claim
+    var targetPos: BlockPos? by nav::targetPos
+    var secondaryTargetPos: BlockPos? by nav::secondaryTargetPos
+    var lastPathfindTick: Long by nav::lastPathfindTick
+
+    val heldItems: MutableList<ItemStack> get() = deposit.heldItems
+    val failedDeposits: MutableSet<BlockPos> get() = deposit.failedDeposits
+    var heldSinceTick: Long by deposit::heldSinceTick
+    var depositRetryTick: Long by deposit::depositRetryTick
+    var depositArrivalTick: Long? by deposit::depositArrivalTick
+    var lastDepositWarning: Long by deposit::lastDepositWarning
+
+    var idleSinceTick: Long by idle::idleSinceTick
+    var idleLogTick: Long by idle::idleLogTick
+    var lastWanderTick: Long by idle::lastWanderTick
+    var lastPickupAttemptTick: Long by idle::lastPickupAttemptTick
+    var idlePickupClaimTick: Long by idle::idlePickupClaimTick
+    var returningHome: Boolean by idle::returningHome
+    var lastReturnNavTick: Long by idle::lastReturnNavTick
+
+    var arrivalTick: Long? by visual::arrivalTick
+    var graceTick: Long? by visual::graceTick
+    var lastAnimationTick: Long by visual::lastAnimationTick
 
     /**
      * Reset job-related state without destroying idle/navigation state.
-     * Called when switching jobs.
+     * Called when switching jobs or transitioning to idle.
      */
     fun resetJobState() {
-        // Keep DEPOSITING if we have orphan items — they must be delivered
-        phase = if (heldItems.isNotEmpty()) JobPhase.DEPOSITING else JobPhase.IDLE
-        targetPos = null
-        secondaryTargetPos = null
-        arrivalTick = null
-        graceTick = null
+        job.reset(hasOrphanItems = deposit.heldItems.isNotEmpty())
+        nav.reset()
+        visual.resetArrival()
         lastActionTime = 0L
     }
 }

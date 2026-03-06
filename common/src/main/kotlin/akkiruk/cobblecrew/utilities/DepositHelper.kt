@@ -59,12 +59,7 @@ object DepositHelper {
     }
 
     private fun clearDeposit(state: PokemonWorkerState) {
-        state.heldItems.clear()
-        state.failedDeposits.clear()
-        state.depositRetryTick = 0L
-        state.depositArrivalTick = null
-        state.heldSinceTick = 0L
-        state.lastDepositWarning = 0L
+        state.deposit.clear()
     }
 
     private fun dropItems(world: World, entity: PokemonEntity, items: MutableList<ItemStack>) {
