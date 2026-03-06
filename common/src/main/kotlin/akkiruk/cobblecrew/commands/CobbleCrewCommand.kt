@@ -8,7 +8,6 @@
 
 package akkiruk.cobblecrew.commands
 
-import akkiruk.cobblecrew.CobbleCrew
 import akkiruk.cobblecrew.api.CobbleCrewApi
 import akkiruk.cobblecrew.cache.CobbleCrewCacheManager
 import akkiruk.cobblecrew.config.CobbleCrewConfig
@@ -17,7 +16,6 @@ import akkiruk.cobblecrew.config.JobConfigManager
 import akkiruk.cobblecrew.jobs.PartyWorkerManager
 import akkiruk.cobblecrew.jobs.WorkerDispatcher
 import akkiruk.cobblecrew.jobs.WorkerRegistry
-import akkiruk.cobblecrew.state.PartyJobPreferences
 import akkiruk.cobblecrew.utilities.CobbleCrewDebugLogger
 import com.mojang.brigadier.CommandDispatcher
 import com.mojang.brigadier.arguments.IntegerArgumentType
@@ -28,45 +26,12 @@ import me.shedaniel.autoconfig.AutoConfig
 import net.minecraft.server.command.CommandManager.argument
 import net.minecraft.server.command.CommandManager.literal
 import net.minecraft.server.command.ServerCommandSource
-import net.minecraft.text.ClickEvent
-import net.minecraft.text.HoverEvent
-import net.minecraft.text.MutableText
-import net.minecraft.text.Style
 import net.minecraft.text.Text
 import net.minecraft.util.Formatting
 import net.minecraft.util.math.BlockPos
-import java.net.URI
-import java.net.URLEncoder
-import java.net.http.HttpClient
-import java.net.http.HttpRequest
-import java.net.http.HttpResponse
-import java.nio.charset.StandardCharsets
 import java.util.UUID
-import java.util.concurrent.CompletableFuture
 
 object CobbleCrewCommand {
-
-    // -- Text helpers --
-
-    private fun header(text: String): MutableText =
-        Text.literal("═══ $text ═══").formatted(Formatting.GOLD)
-
-    private fun info(text: String): MutableText =
-        Text.literal(text).formatted(Formatting.GRAY)
-
-    private fun success(text: String): MutableText =
-        Text.literal("[CobbleCrew] $text").formatted(Formatting.GREEN)
-
-    private fun error(text: String): MutableText =
-        Text.literal("[CobbleCrew] $text").formatted(Formatting.RED)
-
-    private fun label(key: String, value: String): MutableText =
-        Text.literal("  $key: ").formatted(Formatting.AQUA)
-            .append(Text.literal(value).formatted(Formatting.WHITE))
-
-    private fun bullet(text: String, color: Formatting = Formatting.WHITE): MutableText =
-        Text.literal("  • ").formatted(Formatting.DARK_GRAY)
-            .append(Text.literal(text).formatted(color))
 
     // -- Suggestion providers --
 
@@ -114,19 +79,19 @@ object CobbleCrewCommand {
 
                 // ── debug (view = anyone, mutate = op) ──
                 .then(literal("debug")
-                    .executes(::runDebugStatus)
-                    .then(literal("dump").executes(::runDebugDump))
+                    .executes(DebugCommands::runStatus)
+                    .then(literal("dump").executes(DebugCommands::runDump))
                     .then(literal("toggle").requires(requiresOp())
                         .then(argument("category", StringArgumentType.word())
                             .suggests(DEBUG_CATEGORY_SUGGESTIONS)
-                            .executes(::runDebugToggle)))
-                    .then(literal("verbose").requires(requiresOp()).executes(::runDebugVerbose))
+                            .executes(DebugCommands::runToggle)))
+                    .then(literal("verbose").requires(requiresOp()).executes(DebugCommands::runVerbose))
                     .then(literal("filter").requires(requiresOp())
-                        .executes(::runDebugFilterClear)
+                        .executes(DebugCommands::runFilterClear)
                         .then(argument("filter", StringArgumentType.greedyString())
-                            .executes(::runDebugFilterSet)))
-                    .then(literal("on").requires(requiresOp()).executes(::runDebugOn))
-                    .then(literal("off").requires(requiresOp()).executes(::runDebugOff))
+                            .executes(DebugCommands::runFilterSet)))
+                    .then(literal("on").requires(requiresOp()).executes(DebugCommands::runOn))
+                    .then(literal("off").requires(requiresOp()).executes(DebugCommands::runOff))
                 )
 
                 // ── jobs (list/info = anyone, enable/disable/reload = op) ──
@@ -222,33 +187,33 @@ object CobbleCrewCommand {
 
                 // ── party (view party worker status, toggle per-player, block/allow jobs) ──
                 .then(literal("party")
-                    .executes(::runPartyStatus)
-                    .then(literal("status").executes(::runPartyStatus))
-                    .then(literal("toggle").executes(::runPartyToggle))
-                    .then(literal("jobs").executes(::runPartyJobs))
+                    .executes(PartyCommands::runStatus)
+                    .then(literal("status").executes(PartyCommands::runStatus))
+                    .then(literal("toggle").executes(PartyCommands::runToggle))
+                    .then(literal("jobs").executes(PartyCommands::runJobs))
                     .then(literal("block")
                         .then(literal("job")
                             .then(argument("job", StringArgumentType.word())
                                 .suggests(JOB_SUGGESTIONS)
-                                .executes(::runPartyBlockJob)))
+                                .executes(PartyCommands::runBlockJob)))
                         .then(literal("category")
                             .then(argument("category", StringArgumentType.word())
                                 .suggests(CATEGORY_SUGGESTIONS)
-                                .executes(::runPartyBlockCategory))))
+                                .executes(PartyCommands::runBlockCategory))))
                     .then(literal("allow")
                         .then(literal("job")
                             .then(argument("job", StringArgumentType.word())
                                 .suggests(JOB_SUGGESTIONS)
-                                .executes(::runPartyAllowJob)))
+                                .executes(PartyCommands::runAllowJob)))
                         .then(literal("category")
                             .then(argument("category", StringArgumentType.word())
                                 .suggests(CATEGORY_SUGGESTIONS)
-                                .executes(::runPartyAllowCategory))))
-                    .then(literal("reset").executes(::runPartyReset))
+                                .executes(PartyCommands::runAllowCategory))))
+                    .then(literal("reset").executes(PartyCommands::runReset))
                 )
 
                 // ── moves (analyze all species learnsets) ──
-                .then(literal("moves").requires(requiresOp()).executes(::runMoveAnalysis))
+                .then(literal("moves").requires(requiresOp()).executes(MoveAnalysisCommand::run))
         )
     }
 
@@ -268,155 +233,6 @@ object CobbleCrewCommand {
         s.sendFeedback({ bullet("/cobblecrew profiles", Formatting.YELLOW).append(info(" — View/invalidate Pokémon profiles")) }, false)
         s.sendFeedback({ bullet("/cobblecrew party", Formatting.YELLOW).append(info(" — Toggle, block/allow jobs, view status")) }, false)
         s.sendFeedback({ bullet("/cobblecrew moves", Formatting.YELLOW).append(info(" — Analyze all species moves (uploads to mclo.gs)")) }, false)
-        return 1
-    }
-
-    // ══════════════════════════════════════════
-    //  DEBUG
-    // ══════════════════════════════════════════
-
-    private fun runDebugStatus(ctx: CommandContext<ServerCommandSource>): Int {
-        val s = ctx.source
-        val cfg = CobbleCrewConfigHolder.config.debug
-        s.sendFeedback({ header("Debug Logging") }, false)
-        s.sendFeedback({ label("Master", if (cfg.enabled) "§aON" else "§cOFF") }, false)
-        s.sendFeedback({ label("Verbose", if (cfg.verbose) "§aON" else "§cOFF") }, false)
-        s.sendFeedback({ label("Filter", cfg.pokemonFilter.ifEmpty { "(none)" }) }, false)
-        s.sendFeedback({ Text.empty() }, false)
-        s.sendFeedback({ info("  Category toggles:") }, false)
-        val toggles = mapOf(
-            "PROFILE" to cfg.logProfile, "DISPATCH" to cfg.logDispatch,
-            "NAVIGATION" to cfg.logNavigation, "HARVEST" to cfg.logHarvest,
-            "DEPOSIT" to cfg.logDeposit, "PRODUCTION" to cfg.logProduction,
-            "PROCESSING" to cfg.logProcessing, "PLACEMENT" to cfg.logPlacement,
-            "DEFENSE" to cfg.logDefense, "SUPPORT" to cfg.logSupport,
-            "SCANNER" to cfg.logScanner, "CLEANUP" to cfg.logCleanup,
-        )
-        for ((name, on) in toggles) {
-            val icon = if (on) "§a✓" else "§c✗"
-            s.sendFeedback({ Text.literal("    $icon §7$name") }, false)
-        }
-        return 1
-    }
-
-    private fun runDebugOn(ctx: CommandContext<ServerCommandSource>): Int {
-        CobbleCrewConfigHolder.config.debug.enabled = true
-        saveConfig()
-        ctx.source.sendFeedback({ success("Debug logging enabled.") }, true)
-        return 1
-    }
-
-    private fun runDebugOff(ctx: CommandContext<ServerCommandSource>): Int {
-        CobbleCrewConfigHolder.config.debug.enabled = false
-        saveConfig()
-        ctx.source.sendFeedback({ success("Debug logging disabled.") }, true)
-        return 1
-    }
-
-    private fun runDebugToggle(ctx: CommandContext<ServerCommandSource>): Int {
-        val category = StringArgumentType.getString(ctx, "category").uppercase()
-        val cfg = CobbleCrewConfigHolder.config.debug
-
-        if (category == "ALL") {
-            val allOn = listOf(
-                cfg.logProfile, cfg.logDispatch, cfg.logNavigation, cfg.logHarvest,
-                cfg.logDeposit, cfg.logProduction, cfg.logProcessing, cfg.logPlacement,
-                cfg.logDefense, cfg.logSupport, cfg.logScanner, cfg.logCleanup
-            ).all { it }
-            val newState = !allOn
-            cfg.logProfile = newState; cfg.logDispatch = newState
-            cfg.logNavigation = newState; cfg.logHarvest = newState
-            cfg.logDeposit = newState; cfg.logProduction = newState
-            cfg.logProcessing = newState; cfg.logPlacement = newState
-            cfg.logDefense = newState; cfg.logSupport = newState
-            cfg.logScanner = newState; cfg.logCleanup = newState
-            saveConfig()
-            val state = if (newState) "ON" else "OFF"
-            ctx.source.sendFeedback({ success("All debug categories set to $state.") }, true)
-            return 1
-        }
-
-        val parsed = try { CobbleCrewDebugLogger.Category.valueOf(category) } catch (_: Exception) {
-            ctx.source.sendFeedback({ error("Unknown category: $category") }, false)
-            return 0
-        }
-
-        val newState = when (parsed) {
-            CobbleCrewDebugLogger.Category.PROFILE -> { cfg.logProfile = !cfg.logProfile; cfg.logProfile }
-            CobbleCrewDebugLogger.Category.DISPATCH -> { cfg.logDispatch = !cfg.logDispatch; cfg.logDispatch }
-            CobbleCrewDebugLogger.Category.NAVIGATION -> { cfg.logNavigation = !cfg.logNavigation; cfg.logNavigation }
-            CobbleCrewDebugLogger.Category.HARVEST -> { cfg.logHarvest = !cfg.logHarvest; cfg.logHarvest }
-            CobbleCrewDebugLogger.Category.DEPOSIT -> { cfg.logDeposit = !cfg.logDeposit; cfg.logDeposit }
-            CobbleCrewDebugLogger.Category.PRODUCTION -> { cfg.logProduction = !cfg.logProduction; cfg.logProduction }
-            CobbleCrewDebugLogger.Category.PROCESSING -> { cfg.logProcessing = !cfg.logProcessing; cfg.logProcessing }
-            CobbleCrewDebugLogger.Category.PLACEMENT -> { cfg.logPlacement = !cfg.logPlacement; cfg.logPlacement }
-            CobbleCrewDebugLogger.Category.DEFENSE -> { cfg.logDefense = !cfg.logDefense; cfg.logDefense }
-            CobbleCrewDebugLogger.Category.SUPPORT -> { cfg.logSupport = !cfg.logSupport; cfg.logSupport }
-            CobbleCrewDebugLogger.Category.SCANNER -> { cfg.logScanner = !cfg.logScanner; cfg.logScanner }
-            CobbleCrewDebugLogger.Category.CLEANUP -> { cfg.logCleanup = !cfg.logCleanup; cfg.logCleanup }
-        }
-        saveConfig()
-        val state = if (newState) "ON" else "OFF"
-        ctx.source.sendFeedback({ success("Debug category ${parsed.name} set to $state.") }, true)
-        return 1
-    }
-
-    private fun runDebugVerbose(ctx: CommandContext<ServerCommandSource>): Int {
-        val cfg = CobbleCrewConfigHolder.config.debug
-        cfg.verbose = !cfg.verbose
-        saveConfig()
-        val state = if (cfg.verbose) "ON" else "OFF"
-        ctx.source.sendFeedback({ success("Verbose debug mode set to $state.") }, true)
-        return 1
-    }
-
-    private fun runDebugFilterSet(ctx: CommandContext<ServerCommandSource>): Int {
-        val filter = StringArgumentType.getString(ctx, "filter")
-        CobbleCrewConfigHolder.config.debug.pokemonFilter = filter
-        saveConfig()
-        ctx.source.sendFeedback({ success("Debug filter set to \"$filter\".") }, true)
-        return 1
-    }
-
-    private fun runDebugFilterClear(ctx: CommandContext<ServerCommandSource>): Int {
-        CobbleCrewConfigHolder.config.debug.pokemonFilter = ""
-        saveConfig()
-        ctx.source.sendFeedback({ success("Debug filter cleared.") }, true)
-        return 1
-    }
-
-    private fun runDebugDump(ctx: CommandContext<ServerCommandSource>): Int {
-        val source = ctx.source
-        source.sendFeedback({ info("[CobbleCrew] Generating diagnostic report...") }, false)
-
-        CompletableFuture.runAsync {
-            try {
-                val report = CobbleCrewApi.generateDiagnosticReport()
-                val url = uploadToMclogs(report)
-                source.server.execute {
-                    if (url != null) {
-                        val clickable = Text.literal(url).setStyle(
-                            Style.EMPTY
-                                .withColor(Formatting.AQUA)
-                                .withUnderline(true)
-                                .withClickEvent(ClickEvent(ClickEvent.Action.OPEN_URL, url))
-                                .withHoverEvent(HoverEvent(HoverEvent.Action.SHOW_TEXT, Text.literal("Click to open")))
-                        )
-                        source.sendFeedback({
-                            success("Diagnostic report uploaded: ").append(clickable)
-                        }, false)
-                    } else {
-                        source.sendFeedback({ error("Upload failed — report saved to logs instead.") }, false)
-                        CobbleCrew.LOGGER.info(report)
-                    }
-                }
-            } catch (e: Exception) {
-                CobbleCrew.LOGGER.error("[CobbleCrew] Debug dump failed", e)
-                source.server.execute {
-                    source.sendFeedback({ error("Debug dump failed: ${e.message}") }, false)
-                }
-            }
-        }
         return 1
     }
 
@@ -609,168 +425,6 @@ object CobbleCrewCommand {
         val count = WorkerDispatcher.getActiveWorkerCount()
         WorkerDispatcher.resetAllAssignments()
         ctx.source.sendFeedback({ success("Reset $count worker assignments.") }, true)
-        return 1
-    }
-
-    // ══════════════════════════════════════════
-    //  PARTY
-    // ══════════════════════════════════════════
-
-    private fun runPartyToggle(ctx: CommandContext<ServerCommandSource>): Int {
-        val s = ctx.source
-        val player = s.playerOrThrow
-        val nowEnabled = PartyWorkerManager.togglePartyJobs(player.uuid)
-        if (nowEnabled) {
-            s.sendFeedback({ success("Party jobs enabled. Your sent-out Pokémon will work.") }, false)
-        } else {
-            s.sendFeedback({ error("Party jobs disabled. Your sent-out Pokémon will idle.") }, false)
-        }
-        return 1
-    }
-
-    private fun runPartyJobs(ctx: CommandContext<ServerCommandSource>): Int {
-        val s = ctx.source
-        val player = s.playerOrThrow
-        val prefs = PartyJobPreferences.getPrefs(player.uuid)
-        val globalConfig = CobbleCrewConfigHolder.config.party
-
-        s.sendFeedback({ header("Party Job Controls") }, false)
-
-        // Global blocks (server-wide)
-        if (globalConfig.blockedJobs.isNotEmpty() || globalConfig.blockedCategories.isNotEmpty()) {
-            s.sendFeedback({ Text.literal("  §7Server-wide blocks:").formatted(Formatting.GRAY) }, false)
-            if (globalConfig.blockedCategories.isNotEmpty()) {
-                s.sendFeedback({ Text.literal("    Categories: §c${globalConfig.blockedCategories.joinToString(", ")}") }, false)
-            }
-            if (globalConfig.blockedJobs.isNotEmpty()) {
-                s.sendFeedback({ Text.literal("    Jobs: §c${globalConfig.blockedJobs.joinToString(", ")}") }, false)
-            }
-        }
-
-        // Personal blocks
-        s.sendFeedback({ Text.empty() }, false)
-        s.sendFeedback({ Text.literal("  §bYour personal blocks:").formatted(Formatting.AQUA) }, false)
-
-        if (prefs.blockedCategories.isEmpty() && prefs.blockedJobs.isEmpty()) {
-            s.sendFeedback({ info("    None — all jobs allowed") }, false)
-        } else {
-            if (prefs.blockedCategories.isNotEmpty()) {
-                s.sendFeedback({ Text.literal("    Categories: §c${prefs.blockedCategories.joinToString(", ")}") }, false)
-            }
-            if (prefs.blockedJobs.isNotEmpty()) {
-                s.sendFeedback({ Text.literal("    Jobs: §c${prefs.blockedJobs.joinToString(", ")}") }, false)
-            }
-        }
-
-        s.sendFeedback({ Text.empty() }, false)
-        s.sendFeedback({ info("  /cobblecrew party block job <name>     — block a specific job") }, false)
-        s.sendFeedback({ info("  /cobblecrew party block category <name> — block an entire category") }, false)
-        s.sendFeedback({ info("  /cobblecrew party allow job <name>     — unblock a job") }, false)
-        s.sendFeedback({ info("  /cobblecrew party allow category <name> — unblock a category") }, false)
-        s.sendFeedback({ info("  /cobblecrew party reset                — clear all personal blocks") }, false)
-        return 1
-    }
-
-    private fun runPartyBlockJob(ctx: CommandContext<ServerCommandSource>): Int {
-        val player = ctx.source.playerOrThrow
-        val jobName = StringArgumentType.getString(ctx, "job").lowercase()
-        if (!JobConfigManager.allJobNames().any { it.equals(jobName, ignoreCase = true) }) {
-            ctx.source.sendFeedback({ error("Unknown job: $jobName") }, false)
-            return 0
-        }
-        PartyJobPreferences.blockJob(player.uuid, jobName)
-        // Reset any active assignment so blocked job stops immediately
-        resetActivePartyWorkers(player.uuid)
-        ctx.source.sendFeedback({ success("Blocked '$jobName' for your party Pokémon.") }, false)
-        return 1
-    }
-
-    private fun runPartyBlockCategory(ctx: CommandContext<ServerCommandSource>): Int {
-        val player = ctx.source.playerOrThrow
-        val category = StringArgumentType.getString(ctx, "category").lowercase()
-        PartyJobPreferences.blockCategory(player.uuid, category)
-        resetActivePartyWorkers(player.uuid)
-        ctx.source.sendFeedback({ success("Blocked category '$category' for your party Pokémon.") }, false)
-        return 1
-    }
-
-    private fun runPartyAllowJob(ctx: CommandContext<ServerCommandSource>): Int {
-        val player = ctx.source.playerOrThrow
-        val jobName = StringArgumentType.getString(ctx, "job").lowercase()
-        PartyJobPreferences.allowJob(player.uuid, jobName)
-        ctx.source.sendFeedback({ success("Allowed '$jobName' for your party Pokémon.") }, false)
-        return 1
-    }
-
-    private fun runPartyAllowCategory(ctx: CommandContext<ServerCommandSource>): Int {
-        val player = ctx.source.playerOrThrow
-        val category = StringArgumentType.getString(ctx, "category").lowercase()
-        PartyJobPreferences.allowCategory(player.uuid, category)
-        ctx.source.sendFeedback({ success("Allowed category '$category' for your party Pokémon.") }, false)
-        return 1
-    }
-
-    private fun runPartyReset(ctx: CommandContext<ServerCommandSource>): Int {
-        val player = ctx.source.playerOrThrow
-        PartyJobPreferences.resetPlayer(player.uuid)
-        ctx.source.sendFeedback({ success("Cleared all personal party job blocks.") }, false)
-        return 1
-    }
-
-    /** Reset active jobs for all party Pokémon owned by this player. */
-    private fun resetActivePartyWorkers(playerId: UUID) {
-        val workers = PartyWorkerManager.getActivePartyWorkers()
-        for ((pokemonId, entry) in workers) {
-            if (entry.owner.uuid == playerId) {
-                WorkerDispatcher.resetAssignment(pokemonId)
-            }
-        }
-    }
-
-    private fun runPartyStatus(ctx: CommandContext<ServerCommandSource>): Int {
-        val s = ctx.source
-        val partyConfig = CobbleCrewConfigHolder.config.party
-        val workers = PartyWorkerManager.getActivePartyWorkers()
-
-        s.sendFeedback({ header("Party Workers") }, false)
-        s.sendFeedback({ label("Enabled", if (partyConfig.enabled) "§aYes" else "§cNo") }, false)
-
-        // Show per-player opt-out status if run by a player
-        val player = s.player
-        if (player != null) {
-            val personal = PartyWorkerManager.isPartyEnabled(player.uuid)
-            s.sendFeedback({ label("Your party jobs", if (personal) "§aOn" else "§cOff §7(/cobblecrew party toggle)") }, false)
-            val prefs = PartyJobPreferences.getPrefs(player.uuid)
-            val blockedCount = prefs.blockedJobs.size + prefs.blockedCategories.size
-            if (blockedCount > 0) {
-                s.sendFeedback({ label("Your blocked", "§c$blockedCount §7(/cobblecrew party jobs)") }, false)
-            }
-        }
-        s.sendFeedback({ label("Active party workers", workers.size.toString()) }, false)
-        s.sendFeedback({ label("Max work distance", "${partyConfig.maxWorkDistance} blocks") }, false)
-        s.sendFeedback({ label("Scan interval", "${partyConfig.scanIntervalTicks} ticks") }, false)
-        s.sendFeedback({ label("Scan radius", "${partyConfig.searchRadius} blocks") }, false)
-        s.sendFeedback({ label("Teleport distance", "${partyConfig.teleportDistance} blocks") }, false)
-
-        if (workers.isEmpty()) {
-            s.sendFeedback({ info("  No party Pokémon currently working.") }, false)
-            return 1
-        }
-
-        val byPlayer = workers.values.groupBy { it.owner.name.string }
-        for ((playerName, entries) in byPlayer) {
-            s.sendFeedback({ Text.empty() }, false)
-            s.sendFeedback({ Text.literal("  §b$playerName §7(${entries.size} Pokémon):") }, false)
-            val activeJobs = WorkerDispatcher.getActiveJobsSnapshot()
-            for (entry in entries) {
-                val species = entry.pokemonEntity.pokemon.species.name
-                val job = activeJobs[entry.pokemonId] ?: "idle"
-                val shortId = entry.pokemonId.toString().take(8)
-                s.sendFeedback({
-                    Text.literal("    §e$species§7(§8$shortId§7) → §a$job")
-                }, false)
-            }
-        }
         return 1
     }
 
@@ -997,203 +651,5 @@ object CobbleCrewCommand {
         WorkerDispatcher.invalidateProfiles()
         ctx.source.sendFeedback({ success("Invalidated $count profiles. Will rebuild on next tick.") }, true)
         return 1
-    }
-
-    // ══════════════════════════════════════════
-    //  UTILITIES
-    // ══════════════════════════════════════════
-
-    // ══════════════════════════════════════════
-    //  MOVES ANALYSIS
-    // ══════════════════════════════════════════
-
-    private fun runMoveAnalysis(ctx: CommandContext<ServerCommandSource>): Int {
-        val source = ctx.source
-        source.sendFeedback({ info("[CobbleCrew] Analyzing all species learnsets — this may take a moment...") }, false)
-
-        CompletableFuture.runAsync {
-            try {
-                val report = buildMoveReport()
-                val url = uploadToMclogs(report)
-                source.server.execute {
-                    if (url != null) {
-                        val clickable = Text.literal(url).setStyle(
-                            Style.EMPTY
-                                .withColor(Formatting.AQUA)
-                                .withUnderline(true)
-                                .withClickEvent(ClickEvent(ClickEvent.Action.OPEN_URL, url))
-                                .withHoverEvent(HoverEvent(HoverEvent.Action.SHOW_TEXT, Text.literal("Click to open")))
-                        )
-                        source.sendFeedback({
-                            success("Move analysis uploaded: ").append(clickable)
-                        }, false)
-                    } else {
-                        source.sendFeedback({ error("Upload failed — report saved to server log instead.") }, false)
-                        CobbleCrew.LOGGER.info(report)
-                    }
-                }
-            } catch (e: Exception) {
-                CobbleCrew.LOGGER.error("[CobbleCrew] Move analysis failed", e)
-                source.server.execute {
-                    source.sendFeedback({ error("Move analysis failed: ${e.message}") }, false)
-                }
-            }
-        }
-        return 1
-    }
-
-    @Suppress("UNCHECKED_CAST")
-    private fun buildMoveReport(): String {
-        val sb = StringBuilder()
-        sb.appendLine("═══ CobbleCrew Move Analysis ═══")
-        sb.appendLine()
-
-        // 1. Collect job -> moves mapping from WorkerRegistry
-        val jobMoves = mutableMapOf<String, Set<String>>()  // job name -> moves
-        val moveToJobs = mutableMapOf<String, MutableList<String>>()  // move -> jobs using it
-        for (worker in WorkerRegistry.workers) {
-            val moves = try {
-                val field = worker.javaClass.getDeclaredField("qualifyingMoves")
-                field.isAccessible = true
-                (field.get(worker) as? Set<*>)?.filterIsInstance<String>()?.map { it.lowercase() }?.toSet()
-            } catch (_: Exception) { null }
-            if (moves != null && moves.isNotEmpty()) {
-                jobMoves[worker.name] = moves
-                for (m in moves) {
-                    moveToJobs.getOrPut(m) { mutableListOf() }.add(worker.name)
-                }
-            }
-        }
-
-        // 2. Iterate all implemented species via reflection
-        val moveSpecies = mutableMapOf<String, MutableSet<String>>()  // move -> species names
-        var speciesCount = 0
-
-        try {
-            val psClass = Class.forName("com.cobblemon.mod.common.api.pokemon.PokemonSpecies")
-            val instance = psClass.kotlin.objectInstance ?: throw Exception("No PokemonSpecies instance")
-
-            // getImplemented() -> List<Species>
-            val getImpl = psClass.getMethod("getImplemented")
-            val implemented = getImpl.invoke(instance) as? List<*> ?: emptyList<Any>()
-
-            for (species in implemented) {
-                if (species == null) continue
-                speciesCount++
-                val speciesName = try {
-                    species.javaClass.getMethod("getName").invoke(species) as? String ?: "unknown"
-                } catch (_: Exception) { "unknown" }
-
-                // Get Learnset: species.getMoves()
-                val learnset = try {
-                    species.javaClass.getMethod("getMoves").invoke(species) ?: continue
-                } catch (_: Exception) { continue }
-
-                // Collect all move templates from different learn methods
-                val allTemplates = mutableSetOf<Any>()
-                for (getter in listOf("getTmMoves", "getTutorMoves", "getEggMoves", "getEvolutionMoves", "getFormChangeMoves")) {
-                    try {
-                        val result = learnset.javaClass.getMethod(getter).invoke(learnset)
-                        when (result) {
-                            is Collection<*> -> result.filterNotNull().forEach { allTemplates.add(it) }
-                        }
-                    } catch (_: Exception) {}
-                }
-                // Level-up moves: Map<Int, List<MoveTemplate>>
-                try {
-                    val levelMoves = learnset.javaClass.getMethod("getLevelUpMoves").invoke(learnset)
-                    if (levelMoves is Map<*, *>) {
-                        for ((_, templates) in levelMoves) {
-                            if (templates is Collection<*>) {
-                                templates.filterNotNull().forEach { allTemplates.add(it) }
-                            }
-                        }
-                    }
-                } catch (_: Exception) {}
-
-                // Extract names
-                for (template in allTemplates) {
-                    val moveName = try {
-                        (template.javaClass.getMethod("getName").invoke(template) as? String)?.lowercase()
-                    } catch (_: Exception) { null }
-                    if (moveName != null) {
-                        moveSpecies.getOrPut(moveName) { mutableSetOf() }.add(speciesName)
-                    }
-                }
-            }
-        } catch (e: Exception) {
-            sb.appendLine("ERROR: Could not access Cobblemon species registry: ${e.message}")
-            sb.appendLine()
-            return sb.toString()
-        }
-
-        // 3. Build the report
-        val sorted = moveSpecies.entries.sortedByDescending { it.value.size }
-
-        sb.appendLine("Species analyzed: $speciesCount")
-        sb.appendLine("Total learnable moves: ${sorted.size}")
-        sb.appendLine("Total CobbleCrew jobs: ${jobMoves.size}")
-        sb.appendLine()
-
-        // Conflicts
-        val conflicts = moveToJobs.filter { it.value.size > 1 }
-        if (conflicts.isNotEmpty()) {
-            sb.appendLine("=== MOVE CONFLICTS (used by multiple jobs) ===")
-            for ((move, jobs) in conflicts.entries.sortedBy { it.key }) {
-                val count = moveSpecies[move]?.size ?: 0
-                sb.appendLine("  $move ($count species) -> ${jobs.joinToString(", ")}")
-            }
-            sb.appendLine()
-        }
-
-        // Job moves summary
-        sb.appendLine("=== MOVES USED BY COBBLECREW JOBS ===")
-        for ((move, jobs) in moveToJobs.entries.sortedBy { it.key }) {
-            val count = moveSpecies[move]?.size ?: 0
-            sb.appendLine("  $move ($count species) -> ${jobs.joinToString(", ")}")
-        }
-        sb.appendLine()
-
-        // All moves sorted by species count
-        sb.appendLine("=== ALL MOVES BY SPECIES COUNT ===")
-        sb.appendLine("(* = used by a CobbleCrew job)")
-        for ((move, species) in sorted) {
-            val marker = if (move in moveToJobs) " *" else ""
-            sb.appendLine("  $move: ${species.size}$marker")
-        }
-
-        return sb.toString()
-    }
-
-    private fun saveConfig() {
-        try {
-            AutoConfig.getConfigHolder(CobbleCrewConfig::class.java).save()
-        } catch (e: Exception) {
-            CobbleCrew.LOGGER.error("[CobbleCrew] Failed to save config: ${e.message}")
-        }
-    }
-
-    private fun uploadToMclogs(content: String): String? {
-        return try {
-            val client = HttpClient.newBuilder().build()
-            val body = "content=" + URLEncoder.encode(content, StandardCharsets.UTF_8)
-            val request = HttpRequest.newBuilder()
-                .uri(URI.create("https://api.mclo.gs/1/log"))
-                .header("Content-Type", "application/x-www-form-urlencoded")
-                .POST(HttpRequest.BodyPublishers.ofString(body))
-                .build()
-
-            val response = client.send(request, HttpResponse.BodyHandlers.ofString())
-            if (response.statusCode() == 200) {
-                val urlMatch = Regex(""""url"\s*:\s*"([^"]+)"""").find(response.body())
-                urlMatch?.groupValues?.get(1)?.replace("\\/", "/")
-            } else {
-                CobbleCrew.LOGGER.warn("[CobbleCrew] mclo.gs returned status ${response.statusCode()}: ${response.body()}")
-                null
-            }
-        } catch (e: Exception) {
-            CobbleCrew.LOGGER.warn("[CobbleCrew] Failed to upload to mclo.gs: ${e.message}")
-            null
-        }
     }
 }
