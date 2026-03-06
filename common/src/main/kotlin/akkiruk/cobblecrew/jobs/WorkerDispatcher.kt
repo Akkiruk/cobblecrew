@@ -8,10 +8,7 @@
 
 package akkiruk.cobblecrew.jobs
 
-import akkiruk.cobblecrew.enums.WorkerPriority
-import akkiruk.cobblecrew.interfaces.Worker
 import akkiruk.cobblecrew.state.ClaimManager
-import akkiruk.cobblecrew.state.PokemonWorkerState
 import akkiruk.cobblecrew.state.StateManager
 import akkiruk.cobblecrew.utilities.CobbleCrewDebugLogger
 import akkiruk.cobblecrew.utilities.HostileScanCache
@@ -22,16 +19,12 @@ import net.minecraft.world.World
 import java.util.UUID
 
 /**
- * Central dispatcher — assigns jobs to Pokémon, delegates idle behavior
- * to [IdleBehaviorHandler].
- *
- * All per-Pokémon state lives in [StateManager]. This object holds only
- * constants and stateless logic (profile building, job selection).
+ * Central dispatcher — orchestrates job assignment per tick.
+ * Profile building is delegated to [ProfileManager],
+ * job selection to [JobSelector], idle behavior to [IdleBehaviorHandler].
  */
 object WorkerDispatcher {
-    private val workers: List<Worker> get() = WorkerRegistry.workers
 
-    private const val JOB_STICKINESS_TICKS = 100L
     private const val IDLE_LOG_INTERVAL = 600L
     private const val SWEEP_INTERVAL = 200L
     private var lastSweepTick = 0L
@@ -48,43 +41,11 @@ object WorkerDispatcher {
         }
     }
 
-    private fun getOrBuildProfile(pokemonEntity: PokemonEntity, state: PokemonWorkerState): PokemonProfile {
-        val pokemon = pokemonEntity.pokemon
-        val pokemonId = pokemon.uuid
-
-        val active = pokemon.moveSet.getMoves().map { it.name.lowercase() }
-        val benched = pokemon.benchedMoves.map { it.moveTemplate.name.lowercase() }
-        val moves = (active + benched).toSet()
-
-        val cached = state.profile
-        if (cached != null && state.lastMoveSet == moves) return cached
-
-        if (cached != null) {
-            CobbleCrewDebugLogger.log(CobbleCrewDebugLogger.Category.DISPATCH,
-                "${pokemon.species.name}($pokemonId) moves changed, rebuilding profile")
-            state.activeJob?.cleanup(pokemonId)
-            state.activeJob = null
-            state.jobAssignedTick = 0L
-        }
-
-        val types = pokemon.types.map { it.name.uppercase() }.toSet()
-        val species = pokemon.species.name.lowercase()
-        val ability = pokemon.ability.name.lowercase()
-
-        return PokemonProfile.build(pokemonId, moves, types, species, ability, workers)
-            .also {
-                state.profile = it
-                state.lastMoveSet = moves
-                val eligible = it.allEligible()
-                CobbleCrewDebugLogger.profileBuilt(species, pokemonId, moves, types, eligible.map { w -> w.name })
-            }
-    }
-
     fun tickPokemon(context: JobContext, pokemonEntity: PokemonEntity) {
         val world = context.world
         val pokemonId = pokemonEntity.pokemon.uuid
         val state = StateManager.getOrCreate(pokemonId)
-        val profile = getOrBuildProfile(pokemonEntity, state)
+        val profile = ProfileManager.getOrBuild(pokemonEntity, state)
         val eligible = profile.allEligible()
 
         if (eligible.isEmpty()) {
@@ -103,25 +64,16 @@ object WorkerDispatcher {
         val now = world.time
         state.idleSinceTick = 0L
 
-        if (current != null && current in eligible) {
-            val hasRealWork = current.hasActiveState(pokemonId) || state.claim != null
-            val stickyAndAvailable = !hasRealWork
-                && now - state.jobAssignedTick < JOB_STICKINESS_TICKS
-                && current.isAvailable(context, pokemonId)
-            if (hasRealWork || stickyAndAvailable) {
-                val reason = when {
-                    current.hasActiveState(pokemonId) -> "activeState"
-                    state.claim != null -> "hasClaim"
-                    else -> "stickiness"
-                }
-                CobbleCrewDebugLogger.jobSticking(pokemonEntity.pokemon.species.name, pokemonId, current.name, reason)
-                WorkerVisualUtils.setExcited(pokemonEntity, true)
-                current.tick(context, pokemonEntity)
-                return
-            }
+        // Stick with current job if it has real work or is within stickiness window
+        if (current != null && current in eligible && JobSelector.shouldStick(current, state, context, pokemonId, now)) {
+            val reason = JobSelector.stickReason(current, state, pokemonId)
+            CobbleCrewDebugLogger.jobSticking(pokemonEntity.pokemon.species.name, pokemonId, current.name, reason)
+            WorkerVisualUtils.setExcited(pokemonEntity, true)
+            current.tick(context, pokemonEntity)
+            return
         }
 
-        val job = selectBestAvailableJob(profile, context, pokemonId)
+        val job = JobSelector.selectBest(profile, context, pokemonId)
 
         if (current != null && job != current) {
             current.cleanup(pokemonId)
@@ -151,9 +103,7 @@ object WorkerDispatcher {
 
         state.activeJob = job
         state.jobAssignedTick = now
-        state.idleSinceTick = 0L
-        state.returningHome = false
-        state.lastReturnNavTick = 0L
+        state.idle.resetOnJobAssign()
         // Release stale idle-pickup claims when transitioning from idle to job
         if (current == null) {
             ClaimManager.release(state, world, blacklist = false)
@@ -169,20 +119,6 @@ object WorkerDispatcher {
         job.tick(context, pokemonEntity)
     }
 
-    private fun selectBestAvailableJob(profile: PokemonProfile, context: JobContext, pokemonId: UUID): Worker? {
-        for (priority in WorkerPriority.entries) {
-            val candidates = profile.getByPriority(priority)
-            if (candidates.isEmpty()) continue
-            val sorted = candidates
-                .groupBy { it.importance }
-                .toSortedMap()
-                .flatMap { (_, workers) -> workers.shuffled() }
-            val available = sorted.firstOrNull { it.isAvailable(context, pokemonId) }
-            if (available != null) return available
-        }
-        return null
-    }
-
     fun cleanupPokemon(pokemonId: UUID, world: World) {
         val state = StateManager.get(pokemonId)
         val species = state?.profile?.species
@@ -195,11 +131,7 @@ object WorkerDispatcher {
 
     fun invalidateProfiles() {
         resetAllAssignments()
-        for (state in StateManager.all()) {
-            state.profile = null
-            state.lastMoveSet = emptySet()
-        }
-        CobbleCrewDebugLogger.profileInvalidated()
+        ProfileManager.invalidateAll()
     }
 
     // -- Command accessors --
