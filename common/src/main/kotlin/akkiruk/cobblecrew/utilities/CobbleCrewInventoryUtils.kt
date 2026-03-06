@@ -10,10 +10,8 @@ package akkiruk.cobblecrew.utilities
 
 import akkiruk.cobblecrew.cache.CobbleCrewCacheManager
 import akkiruk.cobblecrew.enums.BlockCategory
-import akkiruk.cobblecrew.enums.WorkPhase
 import com.cobblemon.mod.common.CobblemonBlocks
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
-import net.minecraft.block.BarrelBlock
 import net.minecraft.block.Block
 import net.minecraft.block.Blocks
 import net.minecraft.block.ChestBlock
@@ -22,14 +20,16 @@ import net.minecraft.entity.ItemEntity
 import net.minecraft.inventory.Inventory
 import net.minecraft.item.ItemStack
 import net.minecraft.server.network.ServerPlayerEntity
-import net.minecraft.sound.SoundCategory
-import net.minecraft.sound.SoundEvents
 import net.minecraft.util.math.BlockPos
 import net.minecraft.world.World
-import java.util.UUID
-import kotlin.collections.mutableSetOf
-import kotlin.collections.set
 
+/**
+ * Pure stateless inventory utilities — finding containers, inserting/extracting
+ * items, validating blocks. No mutable state lives here.
+ *
+ * Animation state → [ContainerAnimations]
+ * Deposit orchestration → [DepositHelper]
+ */
 object CobbleCrewInventoryUtils {
     private val validInventoryBlocks: MutableSet<Block> = mutableSetOf(
         Blocks.CHEST,
@@ -44,78 +44,19 @@ object CobbleCrewInventoryUtils {
         CobblemonBlocks.YELLOW_GILDED_CHEST,
     )
 
-    // Chest open/close animation tracking
-    private data class PendingClose(val pos: BlockPos, val closeTick: Long)
-    private val pendingCloses = mutableListOf<PendingClose>()
-    private const val CHEST_OPEN_DURATION = 20L // ticks chest stays open
-    private const val DEPOSIT_DELAY = 15L // ticks before depositing after arrival
-    private const val DEPOSIT_RETRY_COOLDOWN = 200L // 10 seconds before retrying all containers
-
-    /**
-     * Ticks pending chest close animations. Call once per server tick.
-     */
-    fun tickAnimations(world: World) {
-        if (pendingCloses.isEmpty()) return
-        val now = world.time
-        val iter = pendingCloses.iterator()
-        while (iter.hasNext()) {
-            val pending = iter.next()
-            if (now >= pending.closeTick) {
-                closeContainer(world, pending.pos)
-                iter.remove()
-            }
-        }
-    }
-
-    private fun openContainer(world: World, pos: BlockPos) {
-        val state = world.getBlockState(pos)
-        val block = state.block
-        when (block) {
-            is ChestBlock -> {
-                world.addSyncedBlockEvent(pos, block, 1, 1)
-                world.playSound(null, pos, SoundEvents.BLOCK_CHEST_OPEN, SoundCategory.BLOCKS, 0.5f, 1.0f)
-            }
-            is BarrelBlock -> {
-                world.setBlockState(pos, state.with(BarrelBlock.OPEN, true))
-                world.playSound(null, pos, SoundEvents.BLOCK_BARREL_OPEN, SoundCategory.BLOCKS, 0.5f, 1.0f)
-            }
-        }
-    }
-
-    private fun closeContainer(world: World, pos: BlockPos) {
-        val state = world.getBlockState(pos)
-        val block = state.block
-        when (block) {
-            is ChestBlock -> {
-                world.addSyncedBlockEvent(pos, block, 1, 0)
-                world.playSound(null, pos, SoundEvents.BLOCK_CHEST_CLOSE, SoundCategory.BLOCKS, 0.5f, 1.0f)
-            }
-            is BarrelBlock -> {
-                world.setBlockState(pos, state.with(BarrelBlock.OPEN, false))
-                world.playSound(null, pos, SoundEvents.BLOCK_BARREL_CLOSE, SoundCategory.BLOCKS, 0.5f, 1.0f)
-            }
-        }
-    }
-
-    /**
-     * Add inventory integrations dynamically at runtime
-     */
+    /** Add inventory integrations dynamically at runtime. */
     fun addCompatibility(externalBlocks: Set<Block>) {
         validInventoryBlocks.addAll(externalBlocks)
     }
 
-    /**
-     * Validates whether the block is a valid inventory block.
-     */
+    /** Validates whether the block at [pos] is a valid inventory block. */
     fun blockValidator(world: World, pos: BlockPos): Boolean {
         val state = world.getBlockState(pos)
         return state.block in validInventoryBlocks
     }
 
-    /**
-     * Fast block-identity check for the scanner (no world/pos needed).
-     */
-    fun isValidInventoryBlock(block: net.minecraft.block.Block): Boolean = block in validInventoryBlocks
+    /** Fast block-identity check for the scanner (no world/pos needed). */
+    fun isValidInventoryBlock(block: Block): Boolean = block in validInventoryBlocks
 
     /**
      * Finds closest inventory that has space for at least one of the given items.
@@ -142,7 +83,7 @@ object CobbleCrewInventoryUtils {
     /**
      * Returns true if the container at [pos] can accept at least one item from [items].
      */
-    private fun hasSpaceFor(world: World, pos: BlockPos, items: List<ItemStack>): Boolean {
+    internal fun hasSpaceFor(world: World, pos: BlockPos, items: List<ItemStack>): Boolean {
         val inv = world.getBlockEntity(pos) as? Inventory ?: return false
         val actual = getActualInventory(inv)
         for (i in 0 until actual.size()) {
@@ -257,99 +198,6 @@ object CobbleCrewInventoryUtils {
         }
 
         return stack
-    }
-
-    /**
-     * Handles depositing items into the nearest container using centralized [PokemonWorkerState].
-     */
-    fun handleDepositing(
-        world: World,
-        origin: BlockPos,
-        pokemonEntity: PokemonEntity,
-        state: akkiruk.cobblecrew.state.PokemonWorkerState,
-    ) {
-        val pokemonId = pokemonEntity.pokemon.uuid
-        val itemsToDeposit = state.heldItems.toList()
-        val allContainers = CobbleCrewCacheManager.getTargets(origin, BlockCategory.CONTAINER)
-        val inventoryPos = findClosestInventory(world, origin, state.failedDeposits, itemsToDeposit)
-
-        if (inventoryPos == null) {
-            val now = world.time
-            if (now - state.lastDepositWarning >= 200L) {
-                CobbleCrewDebugLogger.depositNoContainers(pokemonEntity, allContainers.size, state.failedDeposits.size)
-                state.lastDepositWarning = now
-            }
-            if (DeferredBlockScanner.isScanActive(origin)) return
-
-            if (state.depositRetryTick == 0L) state.depositRetryTick = now
-            if (now - state.depositRetryTick >= DEPOSIT_RETRY_COOLDOWN) {
-                CobbleCrewDebugLogger.depositRetryReset(pokemonEntity)
-                state.failedDeposits.clear()
-                state.depositRetryTick = 0L
-            }
-
-            akkiruk.cobblecrew.state.ClaimManager.navigateTo(pokemonEntity, origin, state)
-            return
-        }
-
-        if (akkiruk.cobblecrew.state.ClaimManager.isPokemonAtPosition(pokemonEntity, inventoryPos, 2.0)) {
-            val now = world.time
-            val arrived = state.depositArrivalTick
-
-            if (arrived == null) {
-                if (!hasSpaceFor(world, inventoryPos, itemsToDeposit)) {
-                    CobbleCrewDebugLogger.depositContainerFull(pokemonEntity, inventoryPos)
-                    state.failedDeposits.add(inventoryPos)
-                    return
-                }
-                state.depositArrivalTick = now
-                pokemonEntity.navigation.stop()
-                WorkerAnimationUtils.playImmediate(pokemonEntity, WorkPhase.DEPOSITING, world)
-                pokemonEntity.lookControl.lookAt(inventoryPos.x + 0.5, inventoryPos.y + 0.5, inventoryPos.z + 0.5)
-                openContainer(world, inventoryPos)
-                return
-            }
-
-            if (now - arrived < DEPOSIT_DELAY) {
-                pokemonEntity.lookControl.lookAt(inventoryPos.x + 0.5, inventoryPos.y + 0.5, inventoryPos.z + 0.5)
-                return
-            }
-
-            state.depositArrivalTick = null
-
-            val inventory = world.getBlockEntity(inventoryPos) as? Inventory
-            if (inventory == null) {
-                CobbleCrewDebugLogger.log(
-                    CobbleCrewDebugLogger.Category.DEPOSIT, pokemonEntity,
-                    "no block entity at (${inventoryPos.x},${inventoryPos.y},${inventoryPos.z}), marking tried"
-                )
-                state.failedDeposits.add(inventoryPos)
-                pendingCloses.add(PendingClose(inventoryPos.toImmutable(), now + 5L))
-                return
-            }
-
-            WorkerAnimationUtils.playImmediate(pokemonEntity, WorkPhase.DEPOSIT_SUCCESS, world)
-            val remainingDrops = insertStacks(inventory, itemsToDeposit)
-
-            if (remainingDrops.size == itemsToDeposit.size) {
-                state.failedDeposits.add(inventoryPos)
-            }
-
-            pendingCloses.add(PendingClose(inventoryPos.toImmutable(), now + CHEST_OPEN_DURATION))
-
-            state.heldItems.clear()
-            if (remainingDrops.isNotEmpty()) {
-                state.heldItems.addAll(remainingDrops)
-            } else {
-                CobbleCrewDebugLogger.depositSuccess(pokemonEntity, inventoryPos, itemsToDeposit)
-                state.failedDeposits.clear()
-                state.depositRetryTick = 0L
-                state.lastDepositWarning = 0L
-                pokemonEntity.navigation.stop()
-            }
-        } else {
-            akkiruk.cobblecrew.state.ClaimManager.navigateTo(pokemonEntity, inventoryPos, state)
-        }
     }
 
     // --- Input container extraction (barrels = input, chests = output) ---

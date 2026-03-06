@@ -11,7 +11,7 @@ package akkiruk.cobblecrew.jobs
 import akkiruk.cobblecrew.CobbleCrew
 import akkiruk.cobblecrew.cache.CobbleCrewCacheManager
 import akkiruk.cobblecrew.listeners.BlockChangeNotifier
-import akkiruk.cobblecrew.utilities.CobbleCrewInventoryUtils
+import akkiruk.cobblecrew.utilities.ContainerAnimations
 import akkiruk.cobblecrew.utilities.DeferredBlockScanner
 import com.cobblemon.mod.common.block.entity.PokemonPastureBlockEntity
 import com.cobblemon.mod.common.entity.PoseType
@@ -55,7 +55,7 @@ object PastureWorkerManager {
         // Per-pasture offset so pastures don't all tick the same frame.
         if ((world.time + (pos.hashCode() and 0x7FFFFFFF)) % POKEMON_TICK_INTERVAL != 0L) return
 
-        CobbleCrewInventoryUtils.tickAnimations(world)
+        ContainerAnimations.tickAnimations(world)
 
         val tethered = pasture.tetheredPokemon
 

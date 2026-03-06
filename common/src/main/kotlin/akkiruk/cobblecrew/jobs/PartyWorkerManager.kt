@@ -17,6 +17,7 @@ import akkiruk.cobblecrew.state.PartyJobPreferences
 import akkiruk.cobblecrew.state.StateManager
 import akkiruk.cobblecrew.utilities.BlockCategoryValidators
 import akkiruk.cobblecrew.utilities.CobbleCrewInventoryUtils
+import akkiruk.cobblecrew.utilities.ContainerAnimations
 import akkiruk.cobblecrew.utilities.DeferredBlockScanner
 import com.cobblemon.mod.common.api.events.CobblemonEvents
 import com.cobblemon.mod.common.api.events.pokemon.PokemonSentEvent
@@ -186,7 +187,7 @@ object PartyWorkerManager {
             runEagerScan(context)
 
             // Drive chest animations for party workers
-            CobbleCrewInventoryUtils.tickAnimations(context.world)
+            ContainerAnimations.tickAnimations(context.world)
 
             for (entry in entries.toList()) {
                 if (entry.pokemonEntity.isRemoved) {
