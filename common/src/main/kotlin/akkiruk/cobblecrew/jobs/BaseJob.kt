@@ -194,23 +194,6 @@ abstract class BaseJob : Worker {
             return
         }
 
-        // Stuck check every 60 ticks — if haven't moved >1 block, force work
-        if (now - state.navCheckTick >= NAV_STUCK_CHECK_TICKS) {
-            val checkPos = state.navCheckPos
-            if (checkPos != null) {
-                val dx = entity.x - (checkPos.x + 0.5)
-                val dz = entity.z - (checkPos.z + 0.5)
-                if (dx * dx + dz * dz <= 1.0) {
-                    entity.navigation.stop()
-                    state.nav.resetNav()
-                    state.phase = JobPhase.WORKING
-                    return
-                }
-            }
-            state.navCheckPos = entity.blockPos
-            state.navCheckTick = now
-        }
-
         ClaimManager.navigateTo(entity, targetPos, state)
     }
 
