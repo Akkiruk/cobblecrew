@@ -10,7 +10,8 @@
     "FarmlandBlockMixin",
     "AbstractFurnaceBlockEntityAccessor",
     "BrewingStandBlockEntityAccessor",
-    "WorldSetBlockStateMixin"
+    "WorldSetBlockStateMixin",
+    "LeavesBlockCollisionMixin"
   ],
   "injectors": {
     "defaultRequire": 1

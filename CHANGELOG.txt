@@ -1,3 +1,9 @@
+## 4.7.0 — Workers Pass Through Leaves
+- Worker Pokémon can now walk through leaf blocks (collision removed via mixin, only affects Pokémon with active jobs)
+- Workers are slowed to 40% horizontal speed while inside leaves
+- Pathfinder penalty for leaves set to 0 so workers route through them naturally
+- Normalise walk speed across species (cap at 0.35 to prevent zoomers)
+
 ## 4.6.0 — Remove Blacklist, Add Stuck Detection + Force-Work
 - Remove the entire blacklist system (config fields, commands, data structures, all filter checks)
 - Add stuck detection: if a Pokémon hasn't moved >1 block in 3 seconds while navigating, skip to working from distance

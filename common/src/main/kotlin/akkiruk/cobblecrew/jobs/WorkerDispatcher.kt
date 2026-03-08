@@ -46,6 +46,20 @@ object WorkerDispatcher {
         val world = context.world
         val pokemonId = pokemonEntity.pokemon.uuid
         val state = StateManager.getOrCreate(pokemonId)
+
+        // Slow workers pushing through leaves (collision removed by mixin)
+        if (state.activeJob != null) {
+            // Ensure pathfinder knows it can route through leaves
+            if (pokemonEntity.getPathfindingPenalty(net.minecraft.entity.ai.pathing.PathNodeType.LEAVES) < 0f) {
+                pokemonEntity.setPathfindingPenalty(net.minecraft.entity.ai.pathing.PathNodeType.LEAVES, 0f)
+            }
+            val feetBlock = world.getBlockState(pokemonEntity.blockPos)
+            if (feetBlock.block is net.minecraft.block.LeavesBlock) {
+                val vel = pokemonEntity.velocity
+                pokemonEntity.velocity = vel.multiply(0.4, 1.0, 0.4)
+            }
+        }
+
         val profile = ProfileManager.getOrBuild(pokemonEntity, state)
         val eligible = profile.allEligible()
 
