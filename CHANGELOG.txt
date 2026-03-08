@@ -1,3 +1,7 @@
+## 4.4.1 — Logger Tree Fix
+- Fix logger harvesting multiple trees at once: remove leaf-peek BFS that bridged adjacent tree canopies
+- Tree harvest now uses simple face-connected log BFS (vanilla/Cobblemon trees are always face-connected)
+
 ## 4.4.0 — Job Reassignment Overhaul
 - Remove 35 underperforming/exploitable jobs (all logistics, most combos, most processing, scout, etc.)
 - Reassign qualifying moves across all 50 surviving jobs for better thematic fit
