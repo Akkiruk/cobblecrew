@@ -8,6 +8,7 @@
 
 package akkiruk.cobblecrew.jobs
 
+import akkiruk.cobblecrew.enums.JobPhase
 import akkiruk.cobblecrew.state.ClaimManager
 import akkiruk.cobblecrew.state.StateManager
 import akkiruk.cobblecrew.utilities.CobbleCrewDebugLogger
@@ -60,15 +61,26 @@ object WorkerDispatcher {
             return
         }
 
-        val current = state.activeJob
+        var current = state.activeJob
         val now = world.time
         state.idleSinceTick = 0L
 
-        // Ground-item pickup takes priority over any job when the Pokémon is between jobs
-        if (current == null && IdleBehaviorHandler.handlePickup(state, context, pokemonEntity)) {
+        // Ground-item pickup takes priority during cooldown/idle windows.
+        // Don't preempt a freshly-assigned job (give it 20 ticks to start navigating).
+        val pickupInProgress = state.idlePickupClaimTick > 0L
+        val canTryPickup = pickupInProgress || current == null ||
+            (state.phase == JobPhase.IDLE && now - state.jobAssignedTick > 20L)
+
+        if (canTryPickup && IdleBehaviorHandler.handlePickup(state, context, pokemonEntity)) {
+            if (current != null) {
+                // handlePickup's claim() auto-released the old job claim
+                state.activeJob = null
+                state.resetJobState()
+            }
             WorkerVisualUtils.setExcited(pokemonEntity, false)
             return
         }
+        current = state.activeJob // re-read in case pickup block nulled it
 
         // Stick with current job if it has real work or is within stickiness window
         if (current != null && current in eligible && JobSelector.shouldStick(current, state, context, pokemonId, now)) {

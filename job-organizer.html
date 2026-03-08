@@ -33,17 +33,13 @@
   .stat b { color: var(--accent2); }
 
   /* Tables */
-  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-  @media (max-width: 1100px) { .cols { grid-template-columns: 1fr; } }
   .panel { background: var(--surface); border-radius: 6px; padding: 12px; max-height: 75vh; overflow-y: auto; }
   .panel h2 { position: sticky; top: 0; background: var(--surface); padding: 4px 0 8px; z-index: 2; }
   table { width: 100%; border-collapse: collapse; font-size: 0.85em; }
   th, td { padding: 5px 8px; text-align: left; border-bottom: 1px solid var(--surface2); }
   th { position: sticky; top: 32px; background: var(--surface); color: var(--accent2); cursor: pointer; user-select: none; z-index: 1; }
   th:hover { color: #fff; }
-  th .arrow { font-size: 0.7em; margin-left: 3px; }
   tr:hover { background: var(--surface2); }
-  tr.selected { background: #3a3a6a; }
   tr.combo-row { border-left: 3px solid var(--orange); }
   tr.changed { border-left: 3px solid var(--green); }
   .count-high { color: var(--green); font-weight: bold; }
@@ -53,20 +49,59 @@
   .move-tag { display: inline-block; background: var(--surface2); border-radius: 3px; padding: 1px 6px; margin: 1px; font-size: 0.8em; }
   .move-tag.assigned { background: #3a4a3a; border: 1px solid var(--green); }
 
-  /* Edit panel */
-  .edit-panel { background: var(--surface); border-radius: 6px; padding: 12px; margin-top: 12px; display: none; }
-  .edit-panel.active { display: block; }
-  .edit-panel h2 { margin-top: 0; }
-  .edit-row { display: flex; gap: 8px; align-items: center; margin: 6px 0; flex-wrap: wrap; }
-  .edit-row label { min-width: 100px; color: var(--text-dim); font-size: 0.85em; }
-  .edit-row input, .edit-row select { background: var(--surface2); color: var(--text); border: 1px solid var(--border); padding: 4px 8px; border-radius: 4px; font-size: 0.85em; }
-  .edit-row input { width: 200px; }
-  .move-picker { display: flex; flex-wrap: wrap; gap: 4px; max-height: 200px; overflow-y: auto; padding: 6px; background: var(--surface2); border-radius: 4px; margin: 6px 0; }
-  .move-chip { padding: 3px 8px; border-radius: 3px; background: var(--bg); cursor: pointer; font-size: 0.8em; border: 1px solid transparent; transition: all 0.15s; }
-  .move-chip:hover { border-color: var(--accent); }
-  .move-chip.picked { background: var(--accent); color: #fff; }
-  .move-chip .cnt { color: var(--text-dim); font-size: 0.75em; margin-left: 3px; }
-  .move-chip.picked .cnt { color: rgba(255,255,255,0.7); }
+  /* ═══ EDIT OVERLAY ═══ */
+  .edit-overlay { display: none; position: fixed; inset: 0; z-index: 100; background: rgba(0,0,0,0.6); backdrop-filter: blur(3px); }
+  .edit-overlay.active { display: flex; justify-content: center; align-items: stretch; padding: 24px; }
+  .edit-modal { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; width: 100%; max-width: 1100px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 8px 40px rgba(0,0,0,0.5); }
+
+  .edit-header { padding: 16px 24px; background: var(--surface); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
+  .edit-header h2 { margin: 0; font-size: 1.3em; }
+  .edit-header .close-btn { background: none; border: none; color: var(--text-dim); font-size: 1.6em; cursor: pointer; padding: 0 6px; line-height: 1; }
+  .edit-header .close-btn:hover { color: var(--text); }
+
+  .edit-body { display: flex; flex: 1; overflow: hidden; min-height: 0; }
+
+  /* Left sidebar */
+  .edit-sidebar { width: 360px; flex-shrink: 0; padding: 20px; background: var(--surface); border-right: 1px solid var(--border); overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
+  .edit-sidebar h3 { color: var(--accent2); font-size: 1em; margin-bottom: 6px; }
+
+  .setting-group { display: flex; flex-direction: column; gap: 8px; }
+  .setting-row { display: flex; align-items: center; gap: 10px; }
+  .setting-row label { color: var(--text-dim); font-size: 0.9em; min-width: 70px; }
+  .setting-row select { background: var(--surface2); color: var(--text); border: 1px solid var(--border); padding: 6px 10px; border-radius: 4px; font-size: 0.9em; flex: 1; }
+  .setting-row input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent); }
+  .setting-row .cb-label { color: var(--text); font-size: 0.9em; }
+
+  .selected-moves { display: flex; flex-direction: column; gap: 6px; }
+  .selected-move { display: flex; align-items: center; gap: 8px; background: var(--accent); color: #fff; border-radius: 5px; padding: 6px 10px; font-size: 0.95em; }
+  .selected-move .sm-name { flex: 1; font-weight: 600; }
+  .selected-move .sm-count { opacity: 0.7; font-size: 0.85em; }
+  .selected-move .sm-remove { background: none; border: none; color: rgba(255,255,255,0.7); cursor: pointer; font-size: 1.2em; padding: 0 4px; line-height: 1; }
+  .selected-move .sm-remove:hover { color: #fff; }
+  .no-moves-msg { color: var(--text-dim); font-size: 0.9em; font-style: italic; }
+
+  /* Right: move picker */
+  .edit-main { flex: 1; display: flex; flex-direction: column; padding: 20px; overflow: hidden; min-width: 0; }
+
+  .picker-toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; flex-shrink: 0; }
+  .picker-toolbar input[type="text"] { background: var(--surface); color: var(--text); border: 1px solid var(--border); padding: 8px 12px; border-radius: 4px; font-size: 0.95em; flex: 1; min-width: 180px; }
+  .picker-toolbar label { color: var(--text-dim); font-size: 0.9em; white-space: nowrap; display: flex; align-items: center; gap: 5px; }
+  .picker-toolbar label input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--accent); flex: 0; min-width: auto; }
+  .picker-toolbar input[type="number"] { background: var(--surface); color: var(--text); border: 1px solid var(--border); padding: 5px 6px; border-radius: 4px; font-size: 0.9em; width: 55px; }
+  .picker-toolbar select { background: var(--surface); color: var(--text); border: 1px solid var(--border); padding: 6px 10px; border-radius: 4px; font-size: 0.9em; }
+
+  .move-grid { flex: 1; overflow-y: auto; display: flex; flex-wrap: wrap; align-content: flex-start; gap: 6px; padding: 4px; }
+  .move-chip { padding: 6px 12px; border-radius: 5px; background: var(--surface); cursor: pointer; font-size: 0.95em; border: 2px solid transparent; transition: all 0.12s; user-select: none; display: flex; align-items: center; gap: 6px; }
+  .move-chip:hover { border-color: var(--accent); background: var(--surface2); }
+  .move-chip .cnt { color: var(--text-dim); font-size: 0.85em; }
+  .move-chip.used-elsewhere { opacity: 0.5; }
+  .move-chip.used-elsewhere .used-badge { background: var(--orange); color: #fff; font-size: 0.7em; padding: 1px 5px; border-radius: 3px; margin-left: 2px; }
+
+  .edit-footer { padding: 14px 24px; background: var(--surface); border-top: 1px solid var(--border); display: flex; gap: 10px; align-items: center; flex-shrink: 0; }
+  .edit-footer button { font-size: 0.95em; padding: 8px 18px; }
+  .edit-footer .spacer { flex: 1; }
+  .edit-footer .change-hint { color: var(--text-dim); font-size: 0.85em; }
+  .edit-footer .change-hint.has-changes { color: var(--green); }
 
   /* Export area */
   .export-area { margin-top: 16px; }
@@ -81,21 +116,30 @@
   .tab { padding: 6px 16px; background: var(--surface); border-radius: 4px 4px 0 0; cursor: pointer; font-size: 0.85em; color: var(--text-dim); }
   .tab.active { background: var(--surface2); color: var(--text); border-bottom: 2px solid var(--accent); }
 
-  /* Move search in picker */
-  .move-search { width: 100%; margin-bottom: 6px; }
+  /* Save indicator */
+  .save-indicator { display: inline-block; color: var(--green); font-size: 0.8em; margin-left: 12px; opacity: 0; transition: opacity 0.3s; }
+  .save-indicator.show { opacity: 1; }
 
-  /* Unassigned highlight */
-  .unassigned-moves .move-chip { border: 1px solid var(--text-dim); }
-
-  /* Tooltip */
-  .tooltip { position: relative; }
-  .tooltip:hover::after { content: attr(data-tip); position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); background: #222; color: #eee; padding: 4px 8px; border-radius: 3px; font-size: 0.75em; white-space: nowrap; z-index: 10; }
+  /* Job description panel */
+  .job-desc { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 12px; font-size: 0.85em; }
+  .job-desc .jd-summary { color: var(--text); margin-bottom: 8px; font-weight: 600; }
+  .job-desc .jd-timeline { list-style: none; padding: 0; }
+  .job-desc .jd-timeline li { position: relative; padding: 4px 0 4px 22px; color: var(--text-dim); line-height: 1.4; }
+  .job-desc .jd-timeline li::before { content: ''; position: absolute; left: 6px; top: 10px; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+  .job-desc .jd-timeline li::after { content: ''; position: absolute; left: 9px; top: 18px; width: 2px; height: calc(100% - 8px); background: var(--surface2); }
+  .job-desc .jd-timeline li:last-child::after { display: none; }
+  .job-desc .jd-timeline li b { color: var(--text); }
+  .job-desc .jd-timeline li .jd-note { color: var(--orange); font-size: 0.9em; }
+  .job-desc .jd-meta { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+  .job-desc .jd-meta span { background: var(--surface2); padding: 2px 8px; border-radius: 3px; font-size: 0.85em; }
+  .job-desc-toggle { background: none; border: 1px solid var(--border); color: var(--accent2); padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 0.85em; width: 100%; text-align: left; }
+  .job-desc-toggle:hover { background: var(--surface2); }
 </style>
 </head>
 <body>
 
-<h1>CobbleCrew Job/Move Organizer</h1>
-<p class="subtitle">Reassign moves to jobs. Changes are tracked. Export when done.</p>
+<h1>CobbleCrew Job/Move Organizer <span class="save-indicator" id="saveIndicator">&#10003; Saved</span></h1>
+<p class="subtitle">Reassign moves to jobs. Changes auto-save to browser and survive refresh. Export when done.</p>
 
 <div class="stats" id="statsBar"></div>
 
@@ -114,8 +158,8 @@
     <select id="jobSort" onchange="renderJobs()">
       <option value="name">Sort: Name</option>
       <option value="category">Sort: Category</option>
-      <option value="species-asc">Sort: Species (Low→High)</option>
-      <option value="species-desc">Sort: Species (High→Low)</option>
+      <option value="species-asc">Sort: Species (Low&rarr;High)</option>
+      <option value="species-desc">Sort: Species (High&rarr;Low)</option>
       <option value="move-count">Sort: # Moves</option>
     </select>
     <label style="font-size:0.85em;color:var(--text-dim)"><input type="checkbox" id="showComboOnly" onchange="renderJobs()"> Combos only</label>
@@ -124,10 +168,10 @@
   <div class="panel" id="jobsPanel">
     <table>
       <thead><tr>
-        <th onclick="sortJobsBy('name')">Job <span class="arrow" id="arrow-name"></span></th>
-        <th onclick="sortJobsBy('category')">Category <span class="arrow" id="arrow-category"></span></th>
-        <th onclick="sortJobsBy('moves')">Move(s) <span class="arrow" id="arrow-moves"></span></th>
-        <th onclick="sortJobsBy('species')" style="text-align:right">Species <span class="arrow" id="arrow-species"></span></th>
+        <th onclick="sortJobsBy('name')">Job</th>
+        <th onclick="sortJobsBy('category')">Category</th>
+        <th onclick="sortJobsBy('moves')">Move(s)</th>
+        <th onclick="sortJobsBy('species')" style="text-align:right">Species</th>
         <th>Actions</th>
       </tr></thead>
       <tbody id="jobsBody"></tbody>
@@ -140,8 +184,8 @@
   <div class="top-bar">
     <input id="moveSearch" placeholder="Search moves..." oninput="renderMoves()">
     <select id="moveSort" onchange="renderMoves()">
-      <option value="species-desc">Sort: Species (High→Low)</option>
-      <option value="species-asc">Sort: Species (Low→High)</option>
+      <option value="species-desc">Sort: Species (High&rarr;Low)</option>
+      <option value="species-asc">Sort: Species (Low&rarr;High)</option>
       <option value="name">Sort: Name</option>
     </select>
     <select id="moveFilter" onchange="renderMoves()">
@@ -186,36 +230,62 @@
   </div>
 </div>
 
-<!-- EDIT MODAL -->
-<div class="edit-panel" id="editPanel">
-  <h2>Edit Job: <span id="editJobName" style="color:var(--accent)"></span></h2>
-  <div class="edit-row">
-    <label>Category:</label>
-    <select id="editCategory"></select>
-  </div>
-  <div class="edit-row">
-    <label>Combo:</label>
-    <label style="min-width:auto"><input type="checkbox" id="editCombo"> Requires ALL moves</label>
-  </div>
-  <div>
-    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
-      <label style="font-size:0.85em;color:var(--text-dim)">Pick moves (click to toggle):</label>
-      <label style="font-size:0.85em;color:var(--text-dim)"><input type="checkbox" id="hideAssigned" onchange="renderMovePicker()"> Hide already-assigned moves</label>
+<!-- ═══ FULL-SCREEN EDIT OVERLAY ═══ -->
+<div class="edit-overlay" id="editOverlay" onclick="if(event.target===this)cancelEdit()">
+  <div class="edit-modal">
+    <div class="edit-header">
+      <h2>Editing: <span id="editJobName" style="color:var(--accent)"></span></h2>
+      <button class="close-btn" onclick="cancelEdit()" title="Close">&times;</button>
     </div>
-    <input class="move-search" id="editMoveSearch" placeholder="Filter moves..." oninput="renderMovePicker()">
-    <div class="move-picker" id="movePicker"></div>
-  </div>
-  <div style="margin-top:8px; display:flex; gap:8px;">
-    <button onclick="saveEdit()">Save Changes</button>
-    <button class="secondary" onclick="cancelEdit()">Cancel</button>
-    <button class="danger" onclick="revertJob()">Revert to Original</button>
+    <div class="edit-body">
+      <div class="edit-sidebar">
+        <div class="setting-group">          <h3>How This Job Works</h3>
+          <div id="jobDescPanel"></div>
+        </div>
+        <div class="setting-group">          <h3>Job Settings</h3>
+          <div class="setting-row">
+            <label>Category</label>
+            <select id="editCategory"></select>
+          </div>
+          <div class="setting-row">
+            <input type="checkbox" id="editCombo">
+            <span class="cb-label">Combo (requires ALL moves)</span>
+          </div>
+        </div>
+        <div class="setting-group">
+          <h3>Selected Moves (<span id="selectedMoveCount">0</span>)</h3>
+          <div class="selected-moves" id="selectedMovesList"></div>
+        </div>
+        <div class="setting-group" style="margin-top:auto">
+          <h3 style="color:var(--text-dim)">Original Moves</h3>
+          <div id="originalMovesList" style="font-size:0.85em;color:var(--text-dim)"></div>
+        </div>
+      </div>
+      <div class="edit-main">
+        <div class="picker-toolbar">
+          <input type="text" id="editMoveSearch" placeholder="Search moves..." oninput="renderMovePicker()">
+          <label><input type="checkbox" id="hideAssigned" onchange="renderMovePicker()"> Hide assigned</label>
+          <select id="pickerSort" onchange="renderMovePicker()">
+            <option value="species-desc">Species: High&rarr;Low</option>
+            <option value="species-asc">Species: Low&rarr;High</option>
+            <option value="name">Alphabetical</option>
+          </select>
+          <label>Min: <input id="pickerMin" type="number" value="0" min="0" oninput="renderMovePicker()"></label>
+        </div>
+        <div class="move-grid" id="movePicker"></div>
+      </div>
+    </div>
+    <div class="edit-footer">
+      <button onclick="saveEdit()">&#10003; Save Changes</button>
+      <button class="secondary" onclick="cancelEdit()">Cancel</button>
+      <span class="spacer"></span>
+      <span class="change-hint" id="editChangeHint"></span>
+      <button class="danger" onclick="revertJob()">Revert to Original</button>
+    </div>
   </div>
 </div>
 
 <script>
-// ═══════════════════════════════════════════
-// DATA: All moves with species counts
-// ═══════════════════════════════════════════
 const ALL_MOVES = {
   "terablast":1015,"protect":1002,"sleeptalk":1002,"substitute":1001,"rest":1000,"endure":999,"facade":987,
   "raindance":691,"sunnyday":676,"takedown":664,"gigaimpact":576,"helpinghand":562,"hyperbeam":562,
@@ -346,13 +416,1055 @@ const ALL_MOVES = {
   "relicsong":1,"lovelykiss":1,"psyblade":1
 };
 
-// ═══════════════════════════════════════════
-// DATA: Original job definitions
-// ═══════════════════════════════════════════
 const CATEGORIES = ["gathering","production","processing","placement","defense","support","environmental","logistics","combo"];
 
+const JOB_DESCRIPTIONS = {
+  // ── GATHERING ──
+  logger: {
+    summary: "Chops trees using BFS — breaks up to 128 connected logs",
+    steps: [
+      "Scans block cache for <b>Log</b> blocks in range",
+      "Claims closest unclaimed log & pathfinds to it",
+      "Arrives → 1.5s delay with work animation + particles",
+      "<b>Tree harvest BFS</b>: breaks up to 128 connected log blocks (diamond axe loot table)",
+      "Purges each broken position from block cache",
+      "Collects all wood drops → navigates to container → deposits"
+    ],
+    meta: ["Tool: Diamond Axe", "Particles: Campfire Smoke"]
+  },
+  bamboo_chopper: {
+    summary: "Harvests top bamboo segments one at a time",
+    steps: [
+      "Scans cache for <b>Bamboo</b> blocks",
+      "<b>Ready check</b>: only targets top segment (block above is NOT bamboo)",
+      "Claims target & pathfinds to it",
+      "Arrives → 1.5s delay → breaks single bamboo block to air",
+      "Drops bamboo item → deposits to container"
+    ],
+    meta: ["Species: Pancham, Pangoro", "Particles: Composter"]
+  },
+  sugar_cane_cutter: {
+    summary: "Cuts top sugar cane segments",
+    steps: [
+      "Scans cache for <b>Sugar Cane</b> blocks",
+      "<b>Ready check</b>: top segment only (block above ≠ sugar cane)",
+      "Claims & navigates → 1.5s arrival delay",
+      "Breaks single block → drops sugar cane item → deposits"
+    ],
+    meta: ["Particles: Composter"]
+  },
+  cactus_pruner: {
+    summary: "Prunes top cactus segments",
+    steps: [
+      "Scans cache for <b>Cactus</b> blocks",
+      "<b>Ready check</b>: top segment only",
+      "Claims & navigates → 1.5s arrival delay",
+      "Breaks single block → deposits cactus item"
+    ],
+    meta: ["Species: Cacnea, Cacturne, Maractus", "Particles: Crit"]
+  },
+  vine_trimmer: {
+    summary: "Trims vines using shears loot table",
+    steps: [
+      "Scans cache for <b>Vine</b> blocks",
+      "Claims & navigates → 1.5s arrival delay",
+      "Breaks with <b>shears</b> tool override → drops vine item",
+      "Deposits to container"
+    ],
+    meta: ["Species: Tangela, Tangrowth", "Tool: Shears", "Particles: Composter"]
+  },
+  sweet_berry_harvester: {
+    summary: "Harvests mature sweet berry bushes, leaves bush alive",
+    steps: [
+      "Scans cache for <b>Sweet Berry Bush</b> blocks",
+      "<b>Ready check</b>: bush age ≥ 3 (mature)",
+      "Claims & navigates → 1.5s arrival delay",
+      "Harvests berries via loot table",
+      "<b>Resets bush to age 1</b> (keeps bush for regrowth)",
+      "Deposits berries to container"
+    ],
+    meta: ["Species: Greedent", "Particles: Composter"]
+  },
+  pumpkin_melon_harvester: {
+    summary: "Breaks pumpkin and melon blocks",
+    steps: [
+      "Scans cache for <b>Pumpkin/Melon</b> blocks",
+      "Claims & navigates → 1.5s arrival delay",
+      "Breaks block to air with loot table drops",
+      "Deposits items to container"
+    ],
+    meta: ["Particles: Composter"]
+  },
+  cocoa_harvester: {
+    summary: "Harvests mature cocoa pods, resets for regrowth",
+    steps: [
+      "Scans cache for <b>Cocoa</b> blocks",
+      "<b>Ready check</b>: cocoa age ≥ 2 (mature)",
+      "Claims & navigates → 1.5s arrival delay",
+      "Harvests cocoa → <b>resets to age 0</b> (stays on jungle log)",
+      "Deposits cocoa beans to container"
+    ],
+    meta: ["Particles: Composter"]
+  },
+  chorus_fruit_harvester: {
+    summary: "Breaks chorus plant blocks",
+    steps: [
+      "Scans cache for <b>Chorus</b> blocks",
+      "Claims & navigates → 1.5s arrival delay",
+      "Breaks with standard loot table",
+      "Deposits chorus fruit to container"
+    ],
+    meta: ["Particles: Portal"]
+  },
+  glowberry_picker: {
+    summary: "Picks glow berries without breaking the vine",
+    steps: [
+      "Scans cache for <b>Cave Vine</b> blocks",
+      "<b>Ready check</b>: vine must have berries (CaveVines.hasBerries)",
+      "Claims & navigates → 1.5s arrival delay",
+      "<b>Uses CaveVines.pickBerries()</b> — picks without breaking vine",
+      "Returns 1× Glow Berries → deposits to container"
+    ],
+    meta: ["Particles: Glow"]
+  },
+  dripleaf_harvester: {
+    summary: "Breaks dripleaf blocks",
+    steps: [
+      "Scans cache for <b>Dripleaf</b> blocks",
+      "Claims & navigates → 1.5s arrival delay",
+      "Breaks with standard loot table → deposits"
+    ],
+    meta: ["Particles: Composter"]
+  },
+  stone_breaker: {
+    summary: "Mines stone blocks with diamond pickaxe",
+    steps: [
+      "Scans cache for <b>Stone</b> blocks (stone, cobblestone)",
+      "Claims & navigates → 1.5s arrival delay",
+      "Breaks with <b>diamond pickaxe</b> loot table",
+      "Deposits cobblestone/stone to container"
+    ],
+    meta: ["Tool: Diamond Pickaxe", "Particles: Crit"]
+  },
+  igneous_miner: {
+    summary: "Mines igneous rock (granite, diorite, andesite, etc.)",
+    steps: [
+      "Scans cache for <b>Igneous</b> blocks",
+      "Claims & navigates → 1.5s arrival delay",
+      "Breaks with <b>diamond pickaxe</b> loot table → deposits"
+    ],
+    meta: ["Tool: Diamond Pickaxe", "Particles: Crit"]
+  },
+  deepslate_excavator: {
+    summary: "Mines deepslate blocks",
+    steps: [
+      "Scans cache for <b>Deepslate</b> blocks",
+      "Claims & navigates → 1.5s arrival delay",
+      "Breaks with <b>diamond pickaxe</b> loot table → deposits"
+    ],
+    meta: ["Tool: Diamond Pickaxe", "Particles: Crit"]
+  },
+  excavator: {
+    summary: "Digs dirt blocks",
+    steps: [
+      "Scans cache for <b>Dirt</b> blocks",
+      "Claims & navigates → 1.5s arrival delay",
+      "Breaks block with loot table → deposits dirt"
+    ],
+    meta: ["Particles: Crit"]
+  },
+  sand_miner: {
+    summary: "Mines sand blocks",
+    steps: [
+      "Scans cache for <b>Sand</b> blocks",
+      "Claims & navigates → 1.5s arrival delay",
+      "Breaks with loot table → deposits sand"
+    ],
+    meta: ["Particles: Crit"]
+  },
+  clay_digger: {
+    summary: "Digs clay blocks",
+    steps: [
+      "Scans cache for <b>Clay</b> blocks",
+      "Claims & navigates → 1.5s arrival delay",
+      "Breaks with loot table → deposits clay balls"
+    ],
+    meta: ["Particles: Splash"]
+  },
+  sculk_harvester: {
+    summary: "Harvests sculk blocks (drops block item directly)",
+    steps: [
+      "Scans cache for <b>Sculk</b> blocks",
+      "Claims & navigates → 1.5s arrival delay",
+      "<b>Gets block item directly</b> (sculk has no standard loot table)",
+      "Breaks block → deposits sculk to container"
+    ],
+    meta: ["Particles: Sculk Soul"]
+  },
+  ice_miner: {
+    summary: "Mines ice blocks (drops block item directly)",
+    steps: [
+      "Scans cache for <b>Ice</b> blocks",
+      "Claims & navigates → 1.5s arrival delay",
+      "<b>Gets block item directly</b> (ice normally drops nothing)",
+      "Deposits ice blocks to container"
+    ],
+    meta: ["Particles: Snowflake"]
+  },
+  mushroom_forager: {
+    summary: "Forages mushroom blocks",
+    steps: [
+      "Scans cache for <b>Mushroom</b> blocks",
+      "Claims & navigates → 1.5s arrival delay",
+      "Breaks with loot table → deposits mushrooms"
+    ],
+    meta: ["Species: Foongus, Amoonguss, Shroomish, Breloom", "Particles: Spore Blossom"]
+  },
+  flower_picker: {
+    summary: "Picks flowers",
+    steps: [
+      "Scans cache for <b>Flower</b> blocks",
+      "Claims & navigates → 1.5s arrival delay",
+      "Breaks with loot table → deposits flowers"
+    ],
+    meta: ["Species: Comfey", "Particles: Cherry Leaves"]
+  },
+  snow_scraper: {
+    summary: "Scrapes snow blocks with diamond shovel",
+    steps: [
+      "Scans cache for <b>Snow Block</b> blocks",
+      "Claims & navigates → 1.5s arrival delay",
+      "Breaks with <b>diamond shovel</b> loot table → deposits snowballs"
+    ],
+    meta: ["Tool: Diamond Shovel", "Particles: Snowflake"]
+  },
+  moss_scraper: {
+    summary: "Scrapes moss blocks",
+    steps: [
+      "Scans cache for <b>Moss</b> blocks",
+      "Claims & navigates → 1.5s arrival delay",
+      "Breaks with loot table → deposits moss"
+    ],
+    meta: ["Particles: Composter"]
+  },
+  decomposer: {
+    summary: "Breaks leaves → always produces bone meal",
+    steps: [
+      "Scans cache for <b>Leaves</b> blocks",
+      "Claims & navigates → 1.5s arrival delay",
+      "Breaks leaves → <b>always returns 1× Bone Meal</b> (not normal leaf drops)",
+      "Deposits bone meal to container"
+    ],
+    meta: ["Particles: Composter"]
+  },
+  terrain_flattener: {
+    summary: "Clears vegetation (tall grass, ferns, etc.)",
+    steps: [
+      "Scans cache for <b>Vegetation</b> blocks (tall grass, ferns)",
+      "Claims & navigates → 1.5s arrival delay",
+      "Breaks vegetation with loot table → deposits any drops"
+    ],
+    meta: ["Particles: Crit"]
+  },
+  ore_miner: {
+    summary: "Mines ore blocks with diamond pickaxe",
+    steps: [
+      "Scans cache for <b>Ore</b> blocks (coal, iron, gold, etc.)",
+      "Claims & navigates → 1.5s arrival delay",
+      "Breaks with <b>diamond pickaxe</b> loot table",
+      "Deposits ore drops to container"
+    ],
+    meta: ["Species: Rhyhorn, Rhydon, Rhyperior, Onix, Steelix", "Tool: Diamond Pickaxe", "Particles: Crit"]
+  },
+  apricorn_harvester: {
+    summary: "Harvests mature Cobblemon apricorns, resets for regrowth",
+    steps: [
+      "Scans cache for <b>Apricorn</b> blocks (Cobblemon)",
+      "<b>Ready check</b>: apricorn must be at MAX_AGE",
+      "Claims & navigates → 1.5s arrival delay",
+      "Harvests apricorn → <b>resets age to 0</b> for regrowth",
+      "Deposits apricorns to container"
+    ],
+    meta: ["Particles: Happy Villager"]
+  },
+  berry_harvester: {
+    summary: "Harvests mature Cobblemon berries using proper harvest method",
+    steps: [
+      "Scans cache for <b>Berry</b> blocks (Cobblemon)",
+      "<b>Ready check</b>: berry must be at FRUIT_AGE",
+      "Claims & navigates → 1.5s arrival delay",
+      "<b>Calls BerryBlockEntity.harvest()</b> — properly resets age + restarts growth timers",
+      "Deposits berry items to container"
+    ],
+    meta: ["Species: Tropius", "Particles: Happy Villager"]
+  },
+  mint_harvester: {
+    summary: "Harvests mature Cobblemon mints, resets for regrowth",
+    steps: [
+      "Scans cache for <b>Mint</b> blocks (Cobblemon)",
+      "<b>Ready check</b>: mint must be at MATURE_AGE",
+      "Claims & navigates → 1.5s arrival delay",
+      "Harvests mint → <b>resets age to 0</b> for regrowth",
+      "Deposits mint items to container"
+    ],
+    meta: ["Particles: Happy Villager"]
+  },
+  amethyst_harvester: {
+    summary: "Mines amethyst clusters (tighter arrival tolerance)",
+    steps: [
+      "Scans cache for <b>Amethyst</b> cluster blocks",
+      "Claims & navigates → arrives within <b>1.5 blocks</b> (tighter than default 3)",
+      "1.5s arrival delay",
+      "Breaks with <b>diamond pickaxe</b> loot table → deposits amethyst shards"
+    ],
+    meta: ["Tool: Diamond Pickaxe", "Tolerance: 1.5 blocks", "Particles: End Rod"]
+  },
+  tumblestone_harvester: {
+    summary: "Mines tumblestone clusters, replants small budding variant",
+    steps: [
+      "Scans cache for <b>Tumblestone</b> cluster blocks (Cobblemon)",
+      "Claims & navigates → arrives within <b>1.5 blocks</b>",
+      "1.5s arrival delay",
+      "Breaks with <b>diamond pickaxe</b> loot table",
+      "<b>Replants</b>: replaces with SMALL_BUDDING variant (preserves facing direction)",
+      "Deposits tumblestone items to container"
+    ],
+    meta: ["Tool: Diamond Pickaxe", "Tolerance: 1.5 blocks", "Replants: Yes", "Particles: Composter"]
+  },
+  netherwart_harvester: {
+    summary: "Harvests mature nether wart, replants",
+    steps: [
+      "Scans cache for <b>Nether Wart</b> blocks",
+      "<b>Ready check</b>: must be at MAX_AGE",
+      "Claims & navigates → 1.5s arrival delay",
+      "Harvests wart → <b>resets age to 0</b> (replants)",
+      "Deposits nether wart to container"
+    ],
+    meta: ["Replants: Yes", "Particles: Smoke"]
+  },
+  crop_harvester: {
+    summary: "Harvests mature grain crops (wheat, beetroot, etc.), replants",
+    steps: [
+      "Scans cache for <b>Crop Grain</b> blocks (wheat, beetroot)",
+      "<b>Ready check</b>: CobbleCrewCropUtils.isMatureCrop()",
+      "Claims & navigates → 1.5s arrival delay",
+      "<b>CobbleCrewCropUtils.harvestCropDsl()</b> — handles harvest + replanting",
+      "Deposits crop drops to container"
+    ],
+    meta: ["Replants: Yes", "Particles: Happy Villager"]
+  },
+  root_harvester: {
+    summary: "Harvests mature root crops (potatoes, carrots), replants",
+    steps: [
+      "Scans cache for <b>Crop Root</b> blocks (potatoes, carrots)",
+      "<b>Ready check</b>: CropBlock at maxAge",
+      "Claims & navigates → 1.5s arrival delay",
+      "<b>CobbleCrewCropUtils.harvestCropDsl()</b> — handles harvest + replanting",
+      "Deposits root drops to container"
+    ],
+    meta: ["Replants: Yes", "Particles: Composter"]
+  },
+  honey_harvester: {
+    summary: "Harvests full beehives → honeycomb or honey bottles",
+    steps: [
+      "Scans cache for <b>Beehive/Bee Nest</b> blocks",
+      "<b>Ready check</b>: honey level must be FULL (5)",
+      "Claims & navigates → 1.5s arrival delay",
+      "Resets honey level to 0",
+      "<b>50% chance</b>: 3× Honeycomb <b>or</b> 3× Honey Bottle",
+      "Deposits to container"
+    ],
+    meta: ["Species: Combee, Vespiquen", "Particles: Happy Villager"]
+  },
+
+  // ── PRODUCTION ──
+  fishing_looter: {
+    summary: "Generates fishing loot on a cooldown (must be in water)",
+    steps: [
+      "<b>No target needed</b> — skips navigation entirely",
+      "<b>Condition</b>: Pokémon must be touching water",
+      "Waits for cooldown (default 120s, adjusted by work speed boost)",
+      "Rolls MC fishing loot tables",
+      "<b>10% chance</b>: treasure table (enchanted items, nautilus shells) vs normal fish",
+      "Deposits loot to container"
+    ],
+    meta: ["Cooldown: 120s", "Requires: Water"]
+  },
+  dive_collector: {
+    summary: "Generates pickup-style loot on a cooldown (must be in water)",
+    steps: [
+      "<b>No target needed</b> — skips navigation",
+      "<b>Condition</b>: Pokémon must be touching water",
+      "Waits for cooldown (default 210s)",
+      "Rolls loot table (same system as pickup)",
+      "Deposits loot to container"
+    ],
+    meta: ["Cooldown: 210s", "Requires: Water"]
+  },
+  dig_site_excavator: {
+    summary: "Excavates suspicious sand/gravel blocks for loot",
+    steps: [
+      "Scans cache for <b>Suspicious</b> blocks (suspicious sand/gravel)",
+      "<b>Ready check</b>: block above must be air",
+      "Claims & navigates → 1.5s arrival delay",
+      "Generates loot from configurable loot tables",
+      "Deposits archaeological finds to container"
+    ],
+    meta: ["Cooldown: 120s", "Priority: TYPE"]
+  },
+
+  // ── PROCESSING ──
+  ore_smelter: {
+    summary: "Smelts raw ore from barrels into ingots (1:1)",
+    steps: [
+      "Scans for <b>Barrels</b> containing Raw Iron, Raw Gold, or Raw Copper",
+      "Claims closest barrel & navigates to it",
+      "Arrives → <b>QUICK delay (0.5s)</b> → extracts raw ore",
+      "<b>Transforms</b>: Raw Iron→Iron Ingot, Raw Gold→Gold Ingot, Raw Copper→Copper Ingot (1:1)",
+      "Navigates to output container → deposits ingots"
+    ],
+    meta: ["Input: Barrels only", "Ratio: 1:1", "Particles: Flame"]
+  },
+  food_cooker: {
+    summary: "Cooks raw food from barrels into cooked versions (1:1)",
+    steps: [
+      "Scans for <b>Barrels</b> containing raw Beef, Porkchop, Mutton, Chicken, Cod, Salmon, Rabbit, Potato, or Kelp",
+      "Claims closest barrel & navigates",
+      "QUICK delay (0.5s) → extracts raw food",
+      "<b>Transforms</b>: each raw item → cooked version (1:1)",
+      "Deposits cooked food to output container"
+    ],
+    meta: ["Input: Barrels only", "Ratio: 1:1", "Particles: Flame"]
+  },
+  glass_maker: {
+    summary: "Smelts sand from barrels into glass (1:1)",
+    steps: [
+      "Scans for <b>Barrels</b> containing Sand or Red Sand",
+      "Claims barrel & navigates → QUICK delay (0.5s)",
+      "Extracts sand → <b>transforms to Glass</b> (1:1)",
+      "Deposits glass to output container"
+    ],
+    meta: ["Input: Barrels only", "Ratio: 1:1", "Particles: Flame"]
+  },
+  brick_baker: {
+    summary: "Bakes clay balls from barrels into bricks (1:1)",
+    steps: [
+      "Scans for <b>Barrels</b> containing Clay Balls",
+      "Claims barrel & navigates → QUICK delay (0.5s)",
+      "Extracts clay → <b>transforms to Brick</b> (1:1)",
+      "Deposits bricks to output container"
+    ],
+    meta: ["Input: Barrels only", "Ratio: 1:1", "Particles: Flame"]
+  },
+  charcoal_burner: {
+    summary: "Burns logs from barrels into charcoal (1:1)",
+    steps: [
+      "Scans for <b>Barrels</b> containing any overworld log (oak, spruce, birch, etc.)",
+      "Claims barrel & navigates → QUICK delay (0.5s)",
+      "Extracts log → <b>transforms to Charcoal</b> (1:1)",
+      "Deposits charcoal to output container"
+    ],
+    meta: ["Input: Barrels only", "Ratio: 1:1", "Particles: Campfire Smoke"]
+  },
+  bone_grinder: {
+    summary: "Grinds bones from barrels into bone meal (1:3)",
+    steps: [
+      "Scans for <b>Barrels</b> containing Bones",
+      "Claims barrel & navigates → QUICK delay (0.5s)",
+      "Extracts bone → <b>transforms to 3× Bone Meal</b> per bone",
+      "Deposits bone meal to output container"
+    ],
+    meta: ["Input: Barrels only", "Ratio: 1:3", "Particles: Crit"]
+  },
+  flint_knapper: {
+    summary: "Knaps gravel from barrels into guaranteed flint (1:1)",
+    steps: [
+      "Scans for <b>Barrels</b> containing Gravel",
+      "Claims barrel & navigates → QUICK delay (0.5s)",
+      "Extracts gravel → <b>guaranteed Flint</b> (not random like mining)",
+      "Deposits flint to output container"
+    ],
+    meta: ["Input: Barrels only", "Ratio: 1:1 (guaranteed)", "Particles: Crit"]
+  },
+  pigment_presser: {
+    summary: "Presses flowers from barrels into matching dyes (1:1)",
+    steps: [
+      "Scans for <b>Barrels</b> containing any of 19 supported flower types",
+      "Claims barrel & navigates → QUICK delay (0.5s)",
+      "Extracts flower → <b>transforms to matching dye color</b>",
+      "Maps: Dandelion→Yellow, Poppy→Red, Cornflower→Blue, etc.",
+      "Deposits dye to output container"
+    ],
+    meta: ["Input: Barrels only", "19 flower types", "Ratio: 1:1", "Particles: Composter"]
+  },
+
+  // ── PLACEMENT ──
+  torch_lighter: {
+    summary: "Fetches torches from containers → places in dark spots",
+    steps: [
+      "<b>Phase 1 — Fetch</b>: finds container with Torches nearby (8 block radius)",
+      "Navigates to container → extracts 1× Torch",
+      "<b>Phase 2 — Place</b>: finds air block with light level ≤7 on solid ground",
+      "Navigates to placement spot → places Torch",
+      "<span class='jd-note'>Two-phase job: container visit then placement</span>"
+    ],
+    meta: ["Radius: 8 blocks", "Particles: Flame"]
+  },
+  tree_planter: {
+    summary: "Fetches saplings from containers → plants with spacing",
+    steps: [
+      "<b>Phase 1</b>: finds container with any Sapling",
+      "Navigates to container → extracts 1× sapling",
+      "<b>Phase 2</b>: finds air block on dirt-type, sky visible, <b>no saplings/logs within 4 blocks</b>",
+      "Navigates to spot → places matching sapling type",
+      "<span class='jd-note'>Spacing check prevents overcrowding</span>"
+    ],
+    meta: ["Radius: 8 blocks", "Spacing: 4 blocks", "Particles: Happy Villager"]
+  },
+  crop_sower: {
+    summary: "Fetches seeds from containers → plants on farmland",
+    steps: [
+      "<b>Phase 1</b>: finds container with seeds (Wheat, Beetroot, Carrot, Potato, Melon, Pumpkin, Torchflower, Pitcher Pod)",
+      "Navigates to container → extracts seeds",
+      "<b>Phase 2</b>: finds air block above Farmland",
+      "Navigates to farmland → places corresponding crop block",
+      "<span class='jd-note'>Maps seed type to correct crop block</span>"
+    ],
+    meta: ["Radius: 8 blocks", "Particles: Happy Villager"]
+  },
+  bonemeal_applicator: {
+    summary: "Fetches bone meal from containers → applies to crops/saplings",
+    steps: [
+      "<b>Phase 1</b>: finds container with Bone Meal",
+      "Navigates to container → extracts 1× Bone Meal",
+      "<b>Phase 2</b>: finds crop below max age or any Sapling",
+      "Navigates to target → <b>calls BoneMealItem.useOnFertilizable()</b>",
+      "<span class='jd-note'>Same effect as right-clicking bone meal</span>"
+    ],
+    meta: ["Radius: 8 blocks", "Particles: Composter"]
+  },
+
+  // ── DEFENSE ──
+  guard: {
+    summary: "Attacks hostile mobs for 4 damage",
+    steps: [
+      "Scans for <b>hostile mobs</b> within search radius (height-adjusted box)",
+      "Targets closest hostile → claims & navigates (tolerance: <b>2.0 blocks</b>)",
+      "Arrival delay → <b>deals 4.0 damage</b> (mob attack type)",
+      "Releases target → cooldown → scans again"
+    ],
+    meta: ["Damage: 4.0", "Tolerance: 2.0 blocks", "Particles: Crit"]
+  },
+  sentry: {
+    summary: "Applies Glowing + Weakness to hostiles (marks & weakens)",
+    steps: [
+      "Scans for <b>hostile mobs</b> within search radius",
+      "Navigates to hostile (tolerance: 2.0 blocks)",
+      "Arrival delay → applies <b>Glowing 20s</b> + <b>Weakness 10s</b>",
+      "Releases target → cooldown"
+    ],
+    meta: ["Debuff: Glowing 20s + Weakness 10s", "Particles: Electric Spark"]
+  },
+  repeller: {
+    summary: "Knocks back and slows hostile mobs",
+    steps: [
+      "Scans for <b>hostile mobs</b> within search radius",
+      "Navigates to hostile (tolerance: 2.0 blocks)",
+      "Arrival delay → <b>knockback</b> (2.0 blocks away, 0.5 up) + <b>Slowness II 10s</b>",
+      "Releases target → cooldown"
+    ],
+    meta: ["Knockback: 2.0 blocks", "Debuff: Slowness II 10s", "Particles: Poof"]
+  },
+  fearmonger: {
+    summary: "Strong knockback + weakness on hostile mobs",
+    steps: [
+      "Scans for <b>hostile mobs</b> within search radius",
+      "Navigates to hostile (tolerance: 2.0 blocks)",
+      "Arrival delay → <b>strong knockback</b> (4.0 blocks away, 0.8 up) + <b>Weakness III 20s</b>",
+      "Releases target → cooldown"
+    ],
+    meta: ["Knockback: 4.0 blocks", "Debuff: Weakness III 20s", "Particles: Witch"]
+  },
+  fire_trap: {
+    summary: "Sets hostile mobs on fire",
+    steps: [
+      "Scans for <b>hostile mobs</b> within search radius",
+      "Navigates to hostile (tolerance: 2.0 blocks)",
+      "Arrival delay → <b>sets mob on fire for 5 seconds</b>",
+      "Releases target → cooldown"
+    ],
+    meta: ["Effect: 5s fire", "Particles: Flame"]
+  },
+  poison_trap: {
+    summary: "Poisons hostile mobs",
+    steps: [
+      "Scans for <b>hostile mobs</b> within search radius",
+      "Navigates to hostile (tolerance: 2.0 blocks)",
+      "Arrival delay → applies <b>Poison II for 10s</b>",
+      "Releases target → cooldown"
+    ],
+    meta: ["Debuff: Poison II 10s", "Particles: Slime"]
+  },
+  ice_trap: {
+    summary: "Slows and fatigues hostile mobs severely",
+    steps: [
+      "Scans for <b>hostile mobs</b> within search radius",
+      "Navigates to hostile (tolerance: 2.0 blocks)",
+      "Arrival delay → applies <b>Slowness IV 15s</b> + <b>Mining Fatigue III 15s</b>",
+      "Releases target → cooldown"
+    ],
+    meta: ["Debuff: Slowness IV + Mining Fatigue III 15s", "Particles: Snowflake"]
+  },
+
+  // ── SUPPORT ──
+  healer: {
+    summary: "Heals damaged players with Regeneration",
+    steps: [
+      "Scans for <b>players</b> within search radius",
+      "<b>Condition</b>: player must be below max HP + not already have Regen",
+      "Navigates to player (tracks player movement)",
+      "Player-targeted arrival delay",
+      "Applies <b>Regeneration I for 30s</b>",
+      "Cooldown → scans again"
+    ],
+    meta: ["Species: Chansey, Blissey, Happiny, Audino", "Importance: CRITICAL", "Work boost: 5%", "Particles: Heart"]
+  },
+  speed_booster: {
+    summary: "Gives nearby players Speed I",
+    steps: [
+      "Scans for <b>players</b> without Speed effect",
+      "Navigates to player (tracks movement)",
+      "Player-targeted arrival delay",
+      "Applies <b>Speed I for 30s</b>",
+      "Cooldown (15s) → scans again"
+    ],
+    meta: ["Work boost: 15%", "Particles: Cloud"]
+  },
+  strength_booster: {
+    summary: "Gives nearby players Strength I",
+    steps: [
+      "Scans for <b>players</b> without Strength effect",
+      "Navigates to player (tracks movement)",
+      "Player-targeted arrival delay",
+      "Applies <b>Strength I for 30s</b>",
+      "Cooldown → scans again"
+    ],
+    meta: ["Work boost: 5%", "Particles: Crit"]
+  },
+  resistance_provider: {
+    summary: "Gives nearby players Resistance I",
+    steps: [
+      "Scans for <b>players</b> without Resistance effect",
+      "Navigates to player → arrival delay",
+      "Applies <b>Resistance I for 30s</b>",
+      "Cooldown → scans again"
+    ],
+    meta: ["Work boost: 5%", "Particles: Enchant"]
+  },
+  haste_provider: {
+    summary: "Gives nearby players Haste I",
+    steps: [
+      "Scans for <b>players</b> without Haste effect",
+      "Navigates to player → arrival delay",
+      "Applies <b>Haste I for 30s</b>",
+      "Cooldown → scans again"
+    ],
+    meta: ["Work boost: 15%", "Particles: Enchant"]
+  },
+  jump_booster: {
+    summary: "Gives nearby players Jump Boost I",
+    steps: [
+      "Scans for <b>players</b> without Jump Boost",
+      "Navigates to player → arrival delay",
+      "Applies <b>Jump Boost I for 30s</b>",
+      "Cooldown → scans again"
+    ],
+    meta: ["Importance: LOW", "Particles: Cloud"]
+  },
+  night_vision_provider: {
+    summary: "Gives nearby players Night Vision",
+    steps: [
+      "Scans for <b>players</b> without Night Vision",
+      "Navigates to player → arrival delay",
+      "Applies <b>Night Vision for 60s</b>",
+      "Cooldown → scans again"
+    ],
+    meta: ["Importance: LOW", "Particles: End Rod"]
+  },
+  water_breather: {
+    summary: "Gives nearby players Water Breathing",
+    steps: [
+      "Scans for <b>players</b> without Water Breathing",
+      "Navigates to player → arrival delay",
+      "Applies <b>Water Breathing for 60s</b>",
+      "Cooldown → scans again"
+    ],
+    meta: ["Importance: LOW", "Particles: Bubble"]
+  },
+  hunger_restorer: {
+    summary: "Restores hunger with Saturation effect",
+    steps: [
+      "Scans for <b>players</b> without Saturation effect",
+      "Navigates to player → arrival delay",
+      "Applies <b>Saturation II for 10s</b>",
+      "Cooldown → scans again"
+    ],
+    meta: ["Work boost: 5%", "Particles: Happy Villager"]
+  },
+  scout: {
+    summary: "Picks up blank maps → converts to treasure maps pointing to structures",
+    steps: [
+      "Scans for <b>dropped Map items</b> on the ground within 8 blocks",
+      "Navigates to map item → picks it up",
+      "<b>Async structure search</b>: queries server for nearest configured structure (villages, shipwrecks, etc.)",
+      "If search pending → waits for next tick (non-blocking)",
+      "<b>Converts blank map to treasure map</b> with red X decoration, purple color (0xCC84ED)",
+      "Map name cleaned to readable form (\"Village\", \"Shipwreck\")",
+      "Deposits treasure map to container"
+    ],
+    meta: ["Cooldown: 600s (10min)", "Radius: 8 blocks", "Configurable: structureTags list"]
+  },
+
+  // ── ENVIRONMENTAL ──
+  frost_former: {
+    summary: "Chain-converts water → ice → packed ice → blue ice",
+    steps: [
+      "Scans cache for <b>Water</b> or <b>Ice</b> blocks",
+      "Claims & navigates → QUICK delay (0.5s)",
+      "<b>Chain conversion</b>: Water→Ice, Ice→Packed Ice, Packed Ice→Blue Ice",
+      "No items produced — block modified in place"
+    ],
+    meta: ["No items", "Particles: Snowflake"]
+  },
+  obsidian_forge: {
+    summary: "Converts lava blocks to obsidian",
+    steps: [
+      "Scans cache for <b>Lava</b> blocks",
+      "Claims & navigates → QUICK delay (0.5s)",
+      "<b>Converts Lava → Obsidian</b> in place",
+      "No items produced"
+    ],
+    meta: ["No items", "Particles: Cloud"]
+  },
+  growth_accelerator: {
+    summary: "Accelerates crop/sapling growth by triggering random ticks",
+    steps: [
+      "Scans cache for <b>Growable</b> blocks (crops/saplings not yet mature)",
+      "Claims & navigates → QUICK delay (0.5s)",
+      "<b>Calls randomTick() 3 times</b> on the block (equivalent to 3 growth ticks)",
+      "<b>Repeats</b>: keeps working on same block until crop matures or block changes",
+      "No items produced"
+    ],
+    meta: ["Repeating job", "No items", "Particles: Happy Villager"]
+  },
+  lava_cauldron_filler: {
+    summary: "Fills empty cauldrons with lava",
+    steps: [
+      "Scans for <b>Cauldrons</b> that can accept lava (via CobbleCrewCauldronUtils)",
+      "Claims & navigates → QUICK delay (0.5s)",
+      "<b>Adds lava fluid</b> to cauldron",
+      "Cooldown: 90s"
+    ],
+    meta: ["Cooldown: 90s", "No items", "Particles: Lava"]
+  },
+  water_cauldron_filler: {
+    summary: "Fills empty cauldrons with water",
+    steps: [
+      "Scans for <b>Cauldrons</b> that can accept water",
+      "Claims & navigates → QUICK delay (0.5s)",
+      "<b>Adds water fluid</b> to cauldron",
+      "Cooldown: 90s"
+    ],
+    meta: ["Cooldown: 90s", "No items", "Particles: Splash"]
+  },
+  snow_cauldron_filler: {
+    summary: "Fills empty cauldrons with powder snow",
+    steps: [
+      "Scans for <b>Cauldrons</b> that can accept powder snow",
+      "Claims & navigates → QUICK delay (0.5s)",
+      "<b>Adds powder snow</b> to cauldron",
+      "Cooldown: 90s"
+    ],
+    meta: ["Cooldown: 90s", "No items", "Particles: Snowflake"]
+  },
+  furnace_fueler: {
+    summary: "Lights furnaces directly — infinite fuel from fire Pokémon",
+    steps: [
+      "Scans cache for <b>Furnace</b> blocks that are unlit with items in slot 0",
+      "Claims & navigates → QUICK delay (0.5s)",
+      "<b>Sets burn time</b> via mixin (default 200s = 4000 ticks, max 20000)",
+      "Sets furnace state to LIT=true",
+      "Cooldown: 80s"
+    ],
+    meta: ["Cooldown: 80s", "Burn time: 200s", "No items", "Particles: Flame"]
+  },
+  brewing_stand_fueler: {
+    summary: "Adds fuel to brewing stands",
+    steps: [
+      "Scans cache for <b>Brewing Stand</b> blocks with fuel below MAX",
+      "Claims & navigates → QUICK delay (0.5s)",
+      "<b>Adds fuel</b> via mixin (default +10, clamps to MAX_FUEL_USES)",
+      "Cooldown: 80s"
+    ],
+    meta: ["Cooldown: 80s", "Fuel added: +10", "No items", "Particles: Flame"]
+  },
+  fire_douser: {
+    summary: "Removes fire blocks in an area — CRITICAL priority",
+    steps: [
+      "Scans cache for <b>Fire</b> or <b>Soul Fire</b> blocks",
+      "Claims & navigates → QUICK delay (0.5s)",
+      "<b>Removes all fire blocks</b> in configurable radius (default 2 blocks)",
+      "No items produced"
+    ],
+    meta: ["Importance: CRITICAL", "AoE radius: 2 blocks", "No items", "Particles: Smoke"]
+  },
+  crop_irrigator: {
+    summary: "Hydrates dry farmland to max moisture",
+    steps: [
+      "Scans cache for <b>Farmland</b> with moisture ≤2 (dry)",
+      "Claims & navigates → QUICK delay (0.5s)",
+      "<b>Sets moisture to MAX</b> in configurable radius (default 2 blocks)",
+      "Only targets dry farmland — skips already-hydrated blocks"
+    ],
+    meta: ["AoE radius: 2 blocks", "No items", "Particles: Splash"]
+  },
+  bee_pollinator: {
+    summary: "Gradually fills beehives with honey",
+    steps: [
+      "Scans cache for <b>Beehive/Bee Nest</b> blocks below full honey",
+      "Claims & navigates → QUICK delay (0.5s)",
+      "<b>Increments honey level by 1</b> (gradual filling)",
+      "Cooldown: 120s"
+    ],
+    meta: ["Species: Combee, Vespiquen", "Cooldown: 120s", "No items", "Particles: Wax On"]
+  },
+
+  // ── LOGISTICS ──
+  magnetizer: {
+    summary: "Consolidates 9 nuggets → 1 ingot inside containers",
+    steps: [
+      "Scans for <b>containers</b> with ≥9 Iron Nuggets or Gold Nuggets",
+      "Claims container & navigates to it",
+      "Arrival delay",
+      "<b>Consolidates in-place</b>: every 9 nuggets → 1 ingot",
+      "Remainder stays as nuggets — no items leave the container"
+    ],
+    meta: ["Species: Magnemite, Magneton, Magnezone", "Importance: BACKGROUND", "No item output", "Particles: Electric Spark"]
+  },
+  ground_item_collector: {
+    summary: "Picks up dropped items from ground → deposits to containers",
+    steps: [
+      "Scans for <b>dropped ItemEntity</b> within configurable radius (default 8 blocks)",
+      "Navigates to item on ground",
+      "Picks up the item → adds to held items",
+      "Navigates to nearest container with space → deposits",
+      "<span class='jd-note'>HIGH importance — prioritized over most other jobs</span>"
+    ],
+    meta: ["Importance: HIGH", "Radius: 8 blocks", "Particles: Enchant"]
+  },
+
+  // ── COMBO ──
+  demolisher: {
+    summary: "COMBO: Breaks stone blocks (requires BOTH moves)",
+    steps: [
+      "<b>Requires ALL moves</b>: both must be on the same Pokémon",
+      "Scans cache for <b>Stone</b> blocks",
+      "Claims & navigates → 1.5s arrival delay",
+      "Breaks stone with standard loot table → deposits",
+      "<span class='jd-note'>COMBO priority (highest tier) — always preferred over single-move jobs</span>"
+    ],
+    meta: ["Priority: COMBO", "Particles: Explosion"]
+  },
+  fortune_miner: {
+    summary: "COMBO: Mines ore with Fortune III for bonus drops",
+    steps: [
+      "<b>Requires ALL moves</b>",
+      "Scans cache for <b>Ore</b> blocks",
+      "Claims & navigates → 1.5s arrival delay",
+      "Creates <b>Diamond Pickaxe with Fortune III</b> enchantment",
+      "Uses enchanted tool for loot calculation → <b>significantly more drops</b>",
+      "Deposits ore drops to container"
+    ],
+    meta: ["Priority: COMBO", "Tool: Fortune III Diamond Pickaxe", "Particles: Enchant"]
+  },
+  silk_touch_extractor: {
+    summary: "COMBO: Mines stone, returns block item directly (silk touch)",
+    steps: [
+      "<b>Requires ALL moves</b>",
+      "Scans cache for <b>Stone</b> blocks",
+      "Claims & navigates → 1.5s arrival delay",
+      "<b>Gets block directly as item</b> (silk touch behavior)",
+      "E.g. Stone→Stone block, not Cobblestone",
+      "Deposits block items to container"
+    ],
+    meta: ["Priority: COMBO", "Silk Touch effect", "Particles: Enchant"]
+  },
+  vein_miner: {
+    summary: "COMBO: BFS mines up to 16 connected ore blocks at once",
+    steps: [
+      "<b>Requires ALL moves</b>",
+      "Scans cache for <b>Ore</b> blocks",
+      "Claims & navigates → 1.5s arrival delay",
+      "<b>Flood-fill harvest</b>: BFS breaks up to <b>16 connected same-type ore</b> blocks",
+      "Uses diamond pickaxe loot tables for each block",
+      "Collects all drops from entire vein → deposits"
+    ],
+    meta: ["Priority: COMBO", "Max 16 blocks per vein", "Tool: Diamond Pickaxe", "Particles: Explosion"]
+  },
+  tree_feller: {
+    summary: "COMBO: Fells entire trees including leaves (128 logs + 1024 leaves)",
+    steps: [
+      "<b>Requires ALL moves</b>",
+      "Scans cache for <b>Log</b> blocks",
+      "Claims & navigates → 1.5s arrival delay",
+      "<b>Tree harvest BFS with leaves</b>: up to 128 logs + up to 1024 leaves",
+      "Leaf loot tables give bonus saplings, sticks, apples",
+      "Collects all drops → deposits"
+    ],
+    meta: ["Priority: COMBO", "Max: 128 logs + 1024 leaves", "Particles: Campfire Smoke"]
+  },
+  fossil_hunter: {
+    summary: "COMBO: Mines stone with custom loot (diamonds, gold, bones, flint)",
+    steps: [
+      "<b>Requires ALL moves</b>",
+      "Scans cache for <b>Stone</b> blocks",
+      "Claims & navigates → 1.5s arrival delay",
+      "Breaks stone → rolls <b>custom loot table</b>:",
+      "3% Diamond, 7% 2×Gold Ingot, 15% 2×Iron Ingot, 20% 3×Bone, 20% 4×Clay, 35% 2×Flint",
+      "Deposits loot to container"
+    ],
+    meta: ["Priority: COMBO", "Custom loot table", "Particles: Crit"]
+  },
+  gem_vein_finder: {
+    summary: "COMBO: Mines stone with custom gem loot (diamonds, emeralds, amethyst)",
+    steps: [
+      "<b>Requires ALL moves</b>",
+      "Scans cache for <b>Stone</b> blocks",
+      "Claims & navigates → 1.5s arrival delay",
+      "Breaks stone → rolls <b>custom loot table</b>:",
+      "5% Diamond, 10% 2×Emerald, 20% 3×Amethyst, 20% 4×Lapis, 45% 3×Quartz",
+      "Deposits loot to container"
+    ],
+    meta: ["Priority: COMBO", "Custom loot table", "Particles: Enchant"]
+  },
+  string_crafter: {
+    summary: "COMBO: Produces string-based items on cooldown",
+    steps: [
+      "<b>Requires ALL moves</b>",
+      "<b>No target needed</b> — cooldown-based production",
+      "Waits 120s cooldown",
+      "Rolls random output: <b>33%</b> 3×Arrow, <b>33%</b> 1×Lead, <b>33%</b> 1×Fishing Rod",
+      "Deposits to container"
+    ],
+    meta: ["Priority: COMBO", "Cooldown: 120s", "Particles: Happy Villager"]
+  },
+  book_binder: {
+    summary: "COMBO: Produces books on cooldown",
+    steps: [
+      "<b>Requires ALL moves</b>",
+      "<b>No target needed</b> — cooldown-based production",
+      "Waits 180s cooldown",
+      "Produces <b>1× Book</b>",
+      "Deposits to container"
+    ],
+    meta: ["Priority: COMBO", "Cooldown: 180s", "Particles: Enchant"]
+  },
+  candle_maker: {
+    summary: "COMBO: Produces candles on cooldown",
+    steps: [
+      "<b>Requires ALL moves</b>",
+      "<b>No target needed</b> — 120s cooldown",
+      "Produces <b>1× Candle</b> → deposits"
+    ],
+    meta: ["Priority: COMBO", "Cooldown: 120s", "Particles: Flame"]
+  },
+  chain_forger: {
+    summary: "COMBO: Produces chains on cooldown",
+    steps: [
+      "<b>Requires ALL moves</b>",
+      "<b>No target needed</b> — 120s cooldown",
+      "Produces <b>1× Chain</b> → deposits"
+    ],
+    meta: ["Priority: COMBO", "Cooldown: 120s", "Particles: Lava"]
+  },
+  lantern_builder: {
+    summary: "COMBO: Produces lanterns on cooldown",
+    steps: [
+      "<b>Requires ALL moves</b>",
+      "<b>No target needed</b> — 180s cooldown",
+      "Produces <b>1× Lantern</b> → deposits"
+    ],
+    meta: ["Priority: COMBO", "Cooldown: 180s", "Particles: End Rod"]
+  },
+  banner_creator: {
+    summary: "COMBO: Produces random-color banners on cooldown",
+    steps: [
+      "<b>Requires ALL moves</b>",
+      "<b>No target needed</b> — 240s cooldown",
+      "Produces <b>1× random-color Banner</b> (16 possible colors)",
+      "Deposits to container"
+    ],
+    meta: ["Priority: COMBO", "Cooldown: 240s", "Particles: Happy Villager"]
+  },
+  deep_sea_trawler: {
+    summary: "COMBO: Produces rare ocean loot (Heart of the Sea, Nautilus Shell)",
+    steps: [
+      "<b>Requires ALL moves</b>",
+      "<b>No target needed</b> — 300s cooldown (5 min)",
+      "Rolls weighted loot: <b>3%</b> Heart of the Sea, <b>22%</b> Nautilus Shell, <b>25%</b> 2×Prismarine Crystal, <b>50%</b> 3×Prismarine Shard",
+      "Deposits to container"
+    ],
+    meta: ["Priority: COMBO", "Cooldown: 300s", "Particles: Bubble"]
+  },
+  magma_diver: {
+    summary: "COMBO: Produces rare nether loot (Blaze Rod, Magma Cream)",
+    steps: [
+      "<b>Requires ALL moves</b>",
+      "<b>No target needed</b> — 300s cooldown (5 min)",
+      "Rolls weighted loot: <b>3%</b> 2×Blaze Rod, <b>12%</b> 3×Magma Cream, <b>20%</b> 5×Gold Nugget, <b>65%</b> 1×Obsidian",
+      "Deposits to container"
+    ],
+    meta: ["Priority: COMBO", "Cooldown: 300s", "Particles: Lava"]
+  },
+  blast_furnace: {
+    summary: "COMBO: Smelts raw ore into DOUBLE ingots (2:1 ratio)",
+    steps: [
+      "<b>Requires ALL moves</b>",
+      "Scans for <b>Barrels</b> containing Raw Iron, Raw Gold, or Raw Copper",
+      "Claims barrel & navigates → QUICK delay (0.5s)",
+      "Extracts raw ore → <b>transforms to 2× Ingots per raw ore</b>",
+      "<span class='jd-note'>Double yield vs regular Ore Smelter's 1:1</span>",
+      "Deposits ingots to output container"
+    ],
+    meta: ["Priority: COMBO", "Ratio: 1:2 (double!)", "Particles: Lava"]
+  },
+  full_restore: {
+    summary: "COMBO: Removes all debuffs + applies Regeneration II",
+    steps: [
+      "<b>Requires ALL moves</b>",
+      "Scans for <b>players</b> with harmful effects or below max HP",
+      "Navigates to player (tracks movement)",
+      "<b>First removes ALL harmful status effects</b>",
+      "Then applies <b>Regeneration II for 30s</b>",
+      "Cooldown → scans again"
+    ],
+    meta: ["Priority: COMBO", "Importance: CRITICAL", "Work boost: 10%", "Particles: Heart"]
+  },
+  aura_master: {
+    summary: "COMBO: Applies Speed + Strength + Haste + Resistance all at once",
+    steps: [
+      "<b>Requires ALL moves</b>",
+      "Scans for <b>players</b> missing any of the 4 effects",
+      "Navigates to player (tracks movement)",
+      "Applies all missing effects: <b>Speed I + Strength I + Haste I + Resistance I</b> (30s each)",
+      "Only applies effects player doesn't already have",
+      "Cooldown → scans again"
+    ],
+    meta: ["Priority: COMBO", "Work boost: 20%", "4 simultaneous buffs", "Particles: Enchant"]
+  }
+};
+
 const ORIGINAL_JOBS = [
-  // GATHERING (35)
   {name:"logger",cat:"gathering",moves:["cut"],combo:false},
   {name:"bamboo_chopper",cat:"gathering",moves:["falseswipe"],combo:false},
   {name:"sugar_cane_cutter",cat:"gathering",moves:["aircutter"],combo:false},
@@ -388,11 +1500,9 @@ const ORIGINAL_JOBS = [
   {name:"crop_harvester",cat:"gathering",moves:["trailblaze"],combo:false},
   {name:"root_harvester",cat:"gathering",moves:["strength"],combo:false},
   {name:"honey_harvester",cat:"gathering",moves:["bugbuzz"],combo:false},
-  // PRODUCTION (4)
   {name:"fishing_looter",cat:"production",moves:["dive"],combo:false},
   {name:"dive_collector",cat:"production",moves:["waterfall"],combo:false},
   {name:"dig_site_excavator",cat:"production",moves:["dig"],combo:false},
-  // PROCESSING (10)
   {name:"ore_smelter",cat:"processing",moves:["flamethrower"],combo:false},
   {name:"food_cooker",cat:"processing",moves:["ember"],combo:false},
   {name:"glass_maker",cat:"processing",moves:["heatwave"],combo:false},
@@ -401,12 +1511,10 @@ const ORIGINAL_JOBS = [
   {name:"bone_grinder",cat:"processing",moves:["superpower"],combo:false},
   {name:"flint_knapper",cat:"processing",moves:["pound"],combo:false},
   {name:"pigment_presser",cat:"processing",moves:["rollout"],combo:false},
-  // PLACEMENT (4)
   {name:"torch_lighter",cat:"placement",moves:["flash"],combo:false},
   {name:"tree_planter",cat:"placement",moves:["seedbomb"],combo:false},
   {name:"crop_sower",cat:"placement",moves:["bulletseed"],combo:false},
   {name:"bonemeal_applicator",cat:"placement",moves:["synthesis"],combo:false},
-  // DEFENSE (7)
   {name:"guard",cat:"defense",moves:["crunch"],combo:false},
   {name:"sentry",cat:"defense",moves:["wideguard"],combo:false},
   {name:"repeller",cat:"defense",moves:["roar"],combo:false},
@@ -414,7 +1522,6 @@ const ORIGINAL_JOBS = [
   {name:"fire_trap",cat:"defense",moves:["firefang"],combo:false},
   {name:"poison_trap",cat:"defense",moves:["toxicspikes"],combo:false},
   {name:"ice_trap",cat:"defense",moves:["chillingwater"],combo:false},
-  // SUPPORT (10)
   {name:"healer",cat:"support",moves:["drainingkiss"],combo:false},
   {name:"speed_booster",cat:"support",moves:["tailwind"],combo:false},
   {name:"strength_booster",cat:"support",moves:["swordsdance"],combo:false},
@@ -425,7 +1532,6 @@ const ORIGINAL_JOBS = [
   {name:"water_breather",cat:"support",moves:["brine"],combo:false},
   {name:"hunger_restorer",cat:"support",moves:["yawn"],combo:false},
   {name:"scout",cat:"support",moves:["fly"],combo:false},
-  // ENVIRONMENTAL (11)
   {name:"frost_former",cat:"environmental",moves:["icebeam"],combo:false},
   {name:"obsidian_forge",cat:"environmental",moves:["hydropump"],combo:false},
   {name:"growth_accelerator",cat:"environmental",moves:["growth"],combo:false},
@@ -437,10 +1543,8 @@ const ORIGINAL_JOBS = [
   {name:"fire_douser",cat:"environmental",moves:["waterpulse"],combo:false},
   {name:"crop_irrigator",cat:"environmental",moves:["muddywater"],combo:false},
   {name:"bee_pollinator",cat:"environmental",moves:["signalbeam"],combo:false},
-  // LOGISTICS (2)
   {name:"magnetizer",cat:"logistics",moves:["magnetrise"],combo:false},
   {name:"ground_item_collector",cat:"logistics",moves:["telekinesis"],combo:false},
-  // COMBO (18)
   {name:"demolisher",cat:"combo",moves:["rocksmash","smackdown"],combo:true},
   {name:"fortune_miner",cat:"combo",moves:["ancientpower","psychic"],combo:true},
   {name:"silk_touch_extractor",cat:"combo",moves:["mindreader","ironhead"],combo:true},
@@ -461,30 +1565,39 @@ const ORIGINAL_JOBS = [
   {name:"aura_master",cat:"combo",moves:["calmmind","helpinghand"],combo:true},
 ];
 
-// ═══════════════════════════════════════════
-// STATE
-// ═══════════════════════════════════════════
-let jobs = JSON.parse(JSON.stringify(ORIGINAL_JOBS)); // working copy
+// ═══ STATE ═══
+const STORAGE_KEY = 'cobblecrew_job_organizer_v2';
+let jobs = loadState() || JSON.parse(JSON.stringify(ORIGINAL_JOBS));
 let editingJob = null;
-let currentSortCol = 'name';
-let currentSortDir = 1;
-let moveSortCol = 'species';
-let moveSortDir = -1;
 
-// ═══════════════════════════════════════════
-// HELPERS
-// ═══════════════════════════════════════════
+// ═══ PERSISTENCE ═══
+function saveState() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(jobs));
+    const el = document.getElementById('saveIndicator');
+    el.textContent = '\u2713 Saved';
+    el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), 1500);
+  } catch(e) {}
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const loaded = JSON.parse(raw);
+    if (!Array.isArray(loaded) || !loaded.length || !loaded[0].name || !loaded[0].moves) return null;
+    return loaded;
+  } catch(e) { return null; }
+}
+
+// ═══ HELPERS ═══
 function speciesCount(move) { return ALL_MOVES[move] || 0; }
 
 function jobMinSpecies(job) {
+  if (!job.moves.length) return 0;
   if (job.combo) return Math.min(...job.moves.map(speciesCount));
   return Math.max(...job.moves.map(speciesCount));
-}
-
-function jobSpeciesLabel(job) {
-  if (!job.combo) return job.moves.map(m => speciesCount(m)).join(', ');
-  const counts = job.moves.map(m => `${m}: ${speciesCount(m)}`);
-  return counts.join(' & ');
 }
 
 function countClass(n) {
@@ -497,53 +1610,40 @@ function countClass(n) {
 function isChanged(job) {
   const orig = ORIGINAL_JOBS.find(j => j.name === job.name);
   if (!orig) return true;
-  if (orig.cat !== job.cat) return true;
-  if (orig.combo !== job.combo) return true;
+  if (orig.cat !== job.cat || orig.combo !== job.combo) return true;
   if (orig.moves.length !== job.moves.length) return true;
-  return !orig.moves.every((m,i) => job.moves.includes(m));
+  return !orig.moves.every(m => job.moves.includes(m));
 }
 
-function getChanges() {
-  return jobs.filter(isChanged);
-}
+function getChanges() { return jobs.filter(isChanged); }
 
 function moveAssignments() {
   const map = {};
-  for (const j of jobs) {
-    for (const m of j.moves) {
-      if (!map[m]) map[m] = [];
-      map[m].push(j.name);
-    }
-  }
+  for (const j of jobs) for (const m of j.moves) { if (!map[m]) map[m] = []; map[m].push(j.name); }
   return map;
 }
 
-// ═══════════════════════════════════════════
-// TABS
-// ═══════════════════════════════════════════
+// ═══ TABS ═══
 function switchTab(name) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  event.target.classList.add('active');
   ['jobs','moves','changes','export'].forEach(t => {
     document.getElementById('tab-'+t).style.display = t===name ? 'block' : 'none';
   });
-  event.target.classList.add('active');
   if (name === 'changes') renderChanges();
   if (name === 'export') generateExport();
   if (name === 'moves') renderMoves();
 }
 
-// ═══════════════════════════════════════════
-// STATS
-// ═══════════════════════════════════════════
+// ═══ STATS ═══
 function renderStats() {
   const total = jobs.length;
   const combos = jobs.filter(j => j.combo).length;
-  const singles = total - combos;
   const usedMoves = new Set(jobs.flatMap(j => j.moves)).size;
   const changed = getChanges().length;
   document.getElementById('statsBar').innerHTML = `
     <span class="stat">Jobs: <b>${total}</b></span>
-    <span class="stat">Single-move: <b>${singles}</b></span>
+    <span class="stat">Single: <b>${total-combos}</b></span>
     <span class="stat">Combos: <b>${combos}</b></span>
     <span class="stat">Moves used: <b>${usedMoves}</b> / ${Object.keys(ALL_MOVES).length}</span>
     <span class="stat" style="${changed?'color:var(--green)':''}">Changes: <b>${changed}</b></span>
@@ -551,9 +1651,7 @@ function renderStats() {
   document.getElementById('changeCount').textContent = changed;
 }
 
-// ═══════════════════════════════════════════
-// RENDER JOBS TABLE
-// ═══════════════════════════════════════════
+// ═══ RENDER JOBS TABLE ═══
 function renderJobs() {
   const search = document.getElementById('jobSearch').value.toLowerCase();
   const catF = document.getElementById('catFilter').value;
@@ -580,8 +1678,7 @@ function renderJobs() {
   });
 
   const assigns = moveAssignments();
-  const tbody = document.getElementById('jobsBody');
-  tbody.innerHTML = filtered.map(j => {
+  document.getElementById('jobsBody').innerHTML = filtered.map(j => {
     const changed = isChanged(j);
     const cls = [j.combo ? 'combo-row' : '', changed ? 'changed' : ''].filter(Boolean).join(' ');
     const moveTags = j.moves.map(m => {
@@ -597,11 +1694,10 @@ function renderJobs() {
       <td style="text-align:right" class="${countClass(sp)}"><b>${sp}</b></td>
       <td>
         <button onclick="editJob('${j.name}')" style="font-size:0.75em;padding:2px 8px">Edit</button>
-        ${changed ? `<button class="secondary" onclick="revertSingle('${j.name}')" style="font-size:0.75em;padding:2px 6px">↩</button>` : ''}
+        ${changed ? `<button class="secondary" onclick="revertSingle('${j.name}')" style="font-size:0.75em;padding:2px 6px">\u21a9</button>` : ''}
       </td>
     </tr>`;
   }).join('');
-
   renderStats();
 }
 
@@ -614,27 +1710,22 @@ function sortJobsBy(col) {
   renderJobs();
 }
 
-// ═══════════════════════════════════════════
-// RENDER MOVES TABLE
-// ═══════════════════════════════════════════
+// ═══ RENDER MOVES TABLE ═══
 function renderMoves() {
   const search = document.getElementById('moveSearch').value.toLowerCase();
   const sortBy = document.getElementById('moveSort').value;
   const filter = document.getElementById('moveFilter').value;
   const minSp = parseInt(document.getElementById('minSpecies').value) || 0;
-
   const assigns = moveAssignments();
   let entries = Object.entries(ALL_MOVES).map(([name,count]) => ({name, count, jobs: assigns[name]||[]}));
-
   entries = entries.filter(e => {
     if (search && !e.name.includes(search)) return false;
     if (e.count < minSp) return false;
-    if (filter === 'assigned' && e.jobs.length === 0) return false;
-    if (filter === 'unassigned' && e.jobs.length > 0) return false;
+    if (filter === 'assigned' && !e.jobs.length) return false;
+    if (filter === 'unassigned' && e.jobs.length) return false;
     if (filter === 'multi' && e.jobs.length < 2) return false;
     return true;
   });
-
   entries.sort((a,b) => {
     switch(sortBy) {
       case 'species-desc': return b.count - a.count;
@@ -642,14 +1733,12 @@ function renderMoves() {
       case 'name': return a.name.localeCompare(b.name);
     }
   });
-
-  const tbody = document.getElementById('movesBody');
-  tbody.innerHTML = entries.map(e => {
+  document.getElementById('movesBody').innerHTML = entries.map(e => {
     const jobTags = e.jobs.map(j => `<span class="move-tag assigned">${j}</span>`).join(' ');
     return `<tr>
       <td><b>${e.name}</b></td>
       <td style="text-align:right" class="${countClass(e.count)}"><b>${e.count}</b></td>
-      <td>${jobTags || '<span style="color:var(--text-dim)">—</span>'}</td>
+      <td>${jobTags || '<span style="color:var(--text-dim)">\u2014</span>'}</td>
     </tr>`;
   }).join('');
 }
@@ -657,28 +1746,62 @@ function renderMoves() {
 function sortMovesBy(col) {
   const sel = document.getElementById('moveSort');
   if (col === 'name') sel.value = 'name';
-  else if (col === 'species') sel.value = sel.value === 'species-desc' ? 'species-asc' : 'species-desc';
+  else sel.value = sel.value === 'species-desc' ? 'species-asc' : 'species-desc';
   renderMoves();
 }
 
-// ═══════════════════════════════════════════
-// EDIT JOB
-// ═══════════════════════════════════════════
+// ═══ EDIT JOB ═══
 function editJob(name) {
   editingJob = name;
   const job = jobs.find(j => j.name === name);
   document.getElementById('editJobName').textContent = name;
   document.getElementById('editCombo').checked = job.combo;
+  document.getElementById('editCategory').innerHTML = CATEGORIES.map(c => `<option ${c===job.cat?'selected':''}>${c}</option>`).join('');
 
-  const catSel = document.getElementById('editCategory');
-  catSel.innerHTML = CATEGORIES.map(c => `<option ${c===job.cat?'selected':''}>${c}</option>`).join('');
+  const orig = ORIGINAL_JOBS.find(j => j.name === name);
+  document.getElementById('originalMovesList').innerHTML = orig
+    ? orig.moves.map(m => `${m} (${speciesCount(m)})`).join(orig.combo ? ' + ' : ', ')
+    : '\u2014';
+
+  // Render job description
+  const desc = JOB_DESCRIPTIONS[name];
+  const descEl = document.getElementById('jobDescPanel');
+  if (desc) {
+    const timeline = desc.steps.map(s => `<li>${s}</li>`).join('');
+    const metaTags = (desc.meta||[]).map(m => `<span>${m}</span>`).join('');
+    descEl.innerHTML = `<div class="job-desc">
+      <div class="jd-summary">${desc.summary}</div>
+      <ol class="jd-timeline">${timeline}</ol>
+      ${metaTags ? `<div class="jd-meta">${metaTags}</div>` : ''}
+    </div>`;
+  } else {
+    descEl.innerHTML = '<div style="color:var(--text-dim);font-size:0.85em">No description available</div>';
+  }
 
   document.getElementById('editMoveSearch').value = '';
+  document.getElementById('pickerMin').value = 0;
   renderMovePicker();
+  renderSelectedMoves();
+  updateEditHint();
+  document.getElementById('editOverlay').classList.add('active');
+  document.body.style.overflow = 'hidden';
+  setTimeout(() => document.getElementById('editMoveSearch').focus(), 100);
+}
 
-  const panel = document.getElementById('editPanel');
-  panel.classList.add('active');
-  panel.scrollIntoView({behavior:'smooth'});
+function renderSelectedMoves() {
+  const job = jobs.find(j => j.name === editingJob);
+  if (!job) return;
+  document.getElementById('selectedMoveCount').textContent = job.moves.length;
+  const el = document.getElementById('selectedMovesList');
+  if (!job.moves.length) { el.innerHTML = '<div class="no-moves-msg">No moves selected</div>'; return; }
+  el.innerHTML = job.moves.map(m => {
+    const c = speciesCount(m);
+    return `<div class="selected-move">
+      <span class="sm-name">${m}</span>
+      <span class="sm-count ${countClass(c)}">${c} species</span>
+      <button class="sm-remove" onclick="toggleMove('${m}')" title="Remove">&times;</button>
+    </div>`;
+  }).join('');
 }
 
 function renderMovePicker() {
@@ -686,23 +1809,35 @@ function renderMovePicker() {
   if (!job) return;
   const search = document.getElementById('editMoveSearch').value.toLowerCase();
   const hideAssigned = document.getElementById('hideAssigned').checked;
+  const sortBy = document.getElementById('pickerSort').value;
+  const minSp = parseInt(document.getElementById('pickerMin').value) || 0;
   const assigns = moveAssignments();
 
-  // Sort: picked first, then by species count desc
   let entries = Object.entries(ALL_MOVES)
     .filter(([m]) => !search || m.includes(search))
     .map(([m,c]) => ({name:m, count:c, picked: job.moves.includes(m), assignedTo: assigns[m]||[]}))
-    .filter(e => !hideAssigned || e.picked || e.assignedTo.filter(j => j !== editingJob).length === 0);
+    .filter(e => e.count >= minSp)
+    .filter(e => !hideAssigned || e.picked || !e.assignedTo.filter(j => j !== editingJob).length);
 
-  entries.sort((a,b) => {
-    if (a.picked !== b.picked) return a.picked ? -1 : 1;
-    return b.count - a.count;
+  // Don't show picked moves in grid — they're in the sidebar
+  const unpicked = entries.filter(e => !e.picked);
+
+  unpicked.sort((a,b) => {
+    switch(sortBy) {
+      case 'species-desc': return b.count - a.count;
+      case 'species-asc': return a.count - b.count;
+      case 'name': return a.name.localeCompare(b.name);
+    }
+    return 0;
   });
 
-  document.getElementById('movePicker').innerHTML = entries.map(e => {
+  document.getElementById('movePicker').innerHTML = unpicked.map(e => {
     const otherJobs = e.assignedTo.filter(j => j !== editingJob);
-    const suffix = otherJobs.length ? ` [${otherJobs.join(',')}]` : '';
-    return `<span class="move-chip ${e.picked?'picked':''}" onclick="toggleMove('${e.name}')" title="${e.count} species${suffix}">${e.name} <span class="cnt">${e.count}</span></span>`;
+    const usedCls = otherJobs.length ? ' used-elsewhere' : '';
+    const badge = otherJobs.length ? `<span class="used-badge">${otherJobs[0]}${otherJobs.length>1?'+':''}</span>` : '';
+    return `<span class="move-chip${usedCls}" onclick="toggleMove('${e.name}')" title="${e.count} species${otherJobs.length?' \u2014 used by: '+otherJobs.join(', '):''}">
+      ${e.name} <span class="cnt">${e.count}</span>${badge}
+    </span>`;
   }).join('');
 }
 
@@ -712,6 +1847,19 @@ function toggleMove(move) {
   if (idx >= 0) job.moves.splice(idx, 1);
   else job.moves.push(move);
   renderMovePicker();
+  renderSelectedMoves();
+  updateEditHint();
+}
+
+function updateEditHint() {
+  const job = jobs.find(j => j.name === editingJob);
+  const orig = ORIGINAL_JOBS.find(j => j.name === editingJob);
+  const el = document.getElementById('editChangeHint');
+  if (!orig || !job) { el.textContent = ''; return; }
+  const changed = orig.cat !== job.cat || orig.combo !== job.combo ||
+    orig.moves.length !== job.moves.length || !orig.moves.every(m => job.moves.includes(m));
+  el.textContent = changed ? '\u25cf Unsaved changes' : '';
+  el.className = 'change-hint' + (changed ? ' has-changes' : '');
 }
 
 function saveEdit() {
@@ -719,98 +1867,91 @@ function saveEdit() {
   job.cat = document.getElementById('editCategory').value;
   job.combo = document.getElementById('editCombo').checked;
   cancelEdit();
+  saveState();
   renderJobs();
 }
 
 function cancelEdit() {
   editingJob = null;
-  document.getElementById('editPanel').classList.remove('active');
+  document.getElementById('editOverlay').classList.remove('active');
+  document.body.style.overflow = '';
 }
 
 function revertJob() {
   const orig = ORIGINAL_JOBS.find(j => j.name === editingJob);
   if (!orig) return;
   const job = jobs.find(j => j.name === editingJob);
-  job.moves = [...orig.moves];
-  job.cat = orig.cat;
-  job.combo = orig.combo;
+  job.moves = [...orig.moves]; job.cat = orig.cat; job.combo = orig.combo;
+  document.getElementById('editCombo').checked = job.combo;
+  document.getElementById('editCategory').innerHTML = CATEGORIES.map(c => `<option ${c===job.cat?'selected':''}>${c}</option>`).join('');
   renderMovePicker();
-  renderJobs();
+  renderSelectedMoves();
+  updateEditHint();
 }
 
 function revertSingle(name) {
   const orig = ORIGINAL_JOBS.find(j => j.name === name);
   if (!orig) return;
   const job = jobs.find(j => j.name === name);
-  job.moves = [...orig.moves];
-  job.cat = orig.cat;
-  job.combo = orig.combo;
+  job.moves = [...orig.moves]; job.cat = orig.cat; job.combo = orig.combo;
+  saveState();
   renderJobs();
 }
 
 function revertAll() {
+  if (!confirm('Revert ALL changes back to original? This cannot be undone.')) return;
   jobs = JSON.parse(JSON.stringify(ORIGINAL_JOBS));
+  saveState();
   renderJobs();
   renderChanges();
 }
 
-// ═══════════════════════════════════════════
-// CHANGES
-// ═══════════════════════════════════════════
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && editingJob) cancelEdit();
+});
+
+// ═══ CHANGES ═══
 function renderChanges() {
   const changes = getChanges();
   const el = document.getElementById('changesList');
-  if (changes.length === 0) {
-    el.innerHTML = '<p style="color:var(--text-dim)">No changes yet. Double-click or click Edit on any job to modify it.</p>';
+  if (!changes.length) {
+    el.innerHTML = '<p style="color:var(--text-dim)">No changes yet. Double-click or click Edit on any job.</p>';
     return;
   }
   el.innerHTML = changes.map(j => {
     const orig = ORIGINAL_JOBS.find(o => o.name === j.name);
     let parts = [];
-    if (orig.cat !== j.cat) parts.push(`Category: <span class="old">${orig.cat}</span> → <span class="new">${j.cat}</span>`);
-    if (orig.combo !== j.combo) parts.push(`Combo: <span class="old">${orig.combo}</span> → <span class="new">${j.combo}</span>`);
-    const oldMoves = orig.moves.join(', ');
-    const newMoves = j.moves.join(', ');
-    if (oldMoves !== newMoves) parts.push(`Moves: <span class="old">${oldMoves}</span> → <span class="new">${newMoves}</span>`);
+    if (orig.cat !== j.cat) parts.push(`Category: <span class="old">${orig.cat}</span> \u2192 <span class="new">${j.cat}</span>`);
+    if (orig.combo !== j.combo) parts.push(`Combo: <span class="old">${orig.combo}</span> \u2192 <span class="new">${j.combo}</span>`);
+    const oldM = orig.moves.join(', '), newM = j.moves.join(', ');
+    if (oldM !== newM) parts.push(`Moves: <span class="old">${oldM}</span> \u2192 <span class="new">${newM}</span>`);
     return `<div class="change-item"><b>${j.name}</b>: ${parts.join(' | ')}</div>`;
   }).join('');
   renderStats();
 }
 
-// ═══════════════════════════════════════════
-// EXPORT
-// ═══════════════════════════════════════════
+// ═══ EXPORT ═══
 function generateExport() {
   const changes = getChanges();
-  if (changes.length === 0) {
-    document.getElementById('exportText').value = 'No changes to export.';
-    return;
-  }
-
+  if (!changes.length) { document.getElementById('exportText').value = 'No changes to export.'; return; }
   let lines = ['=== COBBLECREW JOB REASSIGNMENT ===', `Changes: ${changes.length}`, ''];
-
   for (const j of changes) {
     const orig = ORIGINAL_JOBS.find(o => o.name === j.name);
     lines.push(`JOB: ${j.name}`);
     if (orig.cat !== j.cat) lines.push(`  category: ${orig.cat} -> ${j.cat}`);
     if (orig.combo !== j.combo) lines.push(`  combo: ${orig.combo} -> ${j.combo}`);
-    const oldMoves = orig.moves.join(', ');
-    const newMoves = j.moves.join(', ');
-    if (oldMoves !== newMoves) {
-      lines.push(`  moves: ${oldMoves} -> ${newMoves}`);
-      // Show species counts for context
+    const oldM = orig.moves.join(', '), newM = j.moves.join(', ');
+    if (oldM !== newM) {
+      lines.push(`  moves: ${oldM} -> ${newM}`);
       lines.push(`  species counts: ${j.moves.map(m => `${m}(${speciesCount(m)})`).join(', ')}`);
     }
     lines.push('');
   }
-
-  // Also output the full final state for reference
   lines.push('=== FULL FINAL STATE ===');
   for (const j of jobs) {
     const marker = isChanged(j) ? ' [CHANGED]' : '';
     lines.push(`${j.name} [${j.cat}]${j.combo?' COMBO':''}: ${j.moves.join(' + ')}${marker}`);
   }
-
   document.getElementById('exportText').value = lines.join('\n');
 }
 
@@ -820,21 +1961,20 @@ function copyExport() {
   navigator.clipboard.writeText(ta.value);
 }
 
-// ═══════════════════════════════════════════
-// INIT
-// ═══════════════════════════════════════════
+// ═══ INIT ═══
 function init() {
-  // Populate category filter
   const catSel = document.getElementById('catFilter');
-  CATEGORIES.forEach(c => {
-    const opt = document.createElement('option');
-    opt.value = c; opt.textContent = c;
-    catSel.appendChild(opt);
-  });
+  CATEGORIES.forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; catSel.appendChild(o); });
   renderJobs();
   renderStats();
+  const n = getChanges().length;
+  if (n) {
+    const el = document.getElementById('saveIndicator');
+    el.textContent = `\u21bb Restored ${n} changes`;
+    el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), 3000);
+  }
 }
-
 init();
 </script>
 </body>

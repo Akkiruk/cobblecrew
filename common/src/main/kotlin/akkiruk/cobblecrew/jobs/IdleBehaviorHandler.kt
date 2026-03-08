@@ -32,7 +32,7 @@ object IdleBehaviorHandler {
     private const val PARTY_ARRIVAL_RADIUS = 6.0
     private const val IDLE_WANDER_RADIUS = 4
     private const val IDLE_WANDER_COOLDOWN = 200L
-    private const val IDLE_PICKUP_ATTEMPT_COOLDOWN = 60L
+    private const val IDLE_PICKUP_ATTEMPT_COOLDOWN = 10L
     private const val IDLE_PICKUP_STALE_TICKS = 100L
 
     fun handle(state: PokemonWorkerState, context: JobContext, pokemonEntity: PokemonEntity, world: World) {
@@ -91,7 +91,7 @@ object IdleBehaviorHandler {
 
         // Active pickup claim — keep navigating to it
         val currentTarget = (state.claim?.target as? Target.Block)?.pos
-        if (currentTarget != null && state.activeJob == null) {
+        if (currentTarget != null && state.idlePickupClaimTick > 0L) {
             val claimedAt = state.idlePickupClaimTick.takeIf { it > 0L } ?: now
             if (now - claimedAt > IDLE_PICKUP_STALE_TICKS) {
                 ClaimManager.release(state, world)

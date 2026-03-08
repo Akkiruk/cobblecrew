@@ -1,3 +1,10 @@
+## 4.3.2 — Pickup Fix
+- Fix pickup never actually running: the idle-phase gate blocked it on every tick
+- Pickup now checks during job cooldowns and between assignments (20-tick grace for new jobs)
+- In-progress pickups are always continued even across tick boundaries
+- Reduce pickup scan cooldown from 3 seconds to 0.5 seconds
+- Fix pickup claim guard that prevented continuation when a job was assigned
+
 ## 4.3.1 — Pickup Priority
 - Ground item pickup now takes priority over job selection
 - Pokémon between jobs will always pick up nearby items before starting a new job
