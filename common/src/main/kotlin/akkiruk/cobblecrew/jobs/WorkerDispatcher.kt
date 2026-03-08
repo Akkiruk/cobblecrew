@@ -46,12 +46,6 @@ object WorkerDispatcher {
         val world = context.world
         val pokemonId = pokemonEntity.pokemon.uuid
         val state = StateManager.getOrCreate(pokemonId)
-
-        // Let workers path through leaves (default penalty is -1 = avoid)
-        if (pokemonEntity.getPathfindingPenalty(net.minecraft.entity.ai.pathing.PathNodeType.LEAVES) < 0f) {
-            pokemonEntity.setPathfindingPenalty(net.minecraft.entity.ai.pathing.PathNodeType.LEAVES, 0f)
-        }
-
         val profile = ProfileManager.getOrBuild(pokemonEntity, state)
         val eligible = profile.allEligible()
 
