@@ -33,7 +33,7 @@ object ClaimManager {
     private const val PATHFIND_THROTTLE_TICKS = 5L
     private const val UNREACHABLE_TTL_TICKS = 200L // 10s
     private const val DEFAULT_CLAIM_TIMEOUT = 200L // 10s
-    private const val WORKER_WALK_SPEED = 0.23 // target blocks/tick — gentle waddle
+    private const val WORKER_WALK_SPEED = 0.35 // max effective speed — caps zoomers but preserves natural variation
 
     // -- Lightweight target key for reverse index --
     private sealed interface TargetKey {
