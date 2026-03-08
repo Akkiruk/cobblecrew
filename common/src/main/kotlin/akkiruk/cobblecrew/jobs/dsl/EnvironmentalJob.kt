@@ -51,6 +51,7 @@ open class EnvironmentalJob(
     val action: (World, BlockPos) -> Unit,
     val validate: ((World, BlockPos) -> Boolean)? = null,
     val shouldContinue: ((World, BlockPos) -> Boolean)? = null,
+    val partyEnabled: Boolean = false,
 ) : BaseJob() {
 
     // Captured to avoid name conflict with BaseJob.findTarget()
@@ -69,6 +70,7 @@ open class EnvironmentalJob(
         radius = defaultRadius,
         burnTimeSeconds = defaultBurnTimeSeconds,
         addedFuel = defaultAddedFuel,
+        partyEnabled = partyEnabled,
     )
 
     init { registerConfig() }

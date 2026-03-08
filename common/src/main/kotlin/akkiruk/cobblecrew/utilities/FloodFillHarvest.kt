@@ -97,16 +97,30 @@ fun treeHarvest(
         brokenPositions.add(current)
         logsBroken++
 
-        // Face neighbors for log connectivity
+        // Face neighbors for log connectivity (with leaf-peek: look through up to 2 leaf blocks for logs)
         for (dir in Direction.entries) {
             val neighbor = current.offset(dir)
             if (neighbor in visited) continue
-            visited.add(neighbor)
             val neighborState = world.getBlockState(neighbor)
             if (neighborState.isIn(BlockTags.LOGS)) {
+                visited.add(neighbor)
                 frontier.add(neighbor)
-            } else if (includeLeaves && neighborState.block is LeavesBlock) {
-                leafPositions.add(neighbor)
+            } else if (neighborState.block is LeavesBlock) {
+                if (includeLeaves) leafPositions.add(neighbor)
+                // Peek through up to 2 leaf blocks to find hidden logs
+                var peekPos = neighbor
+                for (hop in 1..2) {
+                    peekPos = peekPos.offset(dir)
+                    if (peekPos in visited) break
+                    val peekState = world.getBlockState(peekPos)
+                    if (peekState.isIn(BlockTags.LOGS)) {
+                        visited.add(peekPos)
+                        frontier.add(peekPos)
+                        break
+                    } else if (peekState.block !is LeavesBlock) {
+                        break
+                    }
+                }
             }
         }
 

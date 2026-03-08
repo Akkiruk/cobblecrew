@@ -52,6 +52,7 @@ open class SupportJob(
     val requiresDamage: Boolean = false,
     val workBoostPercent: Int = 0,
     val isCombo: Boolean = false,
+    val partyEnabled: Boolean = false,
 ) : BaseJob() {
 
     private val generalConfig get() = CobbleCrewConfigHolder.config.general
@@ -71,6 +72,7 @@ open class SupportJob(
         fallbackSpecies = fallbackSpecies,
         effectDurationSeconds = defaultDurationSeconds,
         effectAmplifier = effectAmplifier,
+        partyEnabled = partyEnabled,
     )
 
     init { registerConfig() }

@@ -41,6 +41,7 @@ open class ProductionJob(
     val particle: ParticleEffect = ParticleTypes.HAPPY_VILLAGER,
     val output: (World, PokemonEntity) -> List<ItemStack>,
     val isCombo: Boolean = false,
+    val partyEnabled: Boolean = false,
 ) : BaseJob() {
 
     override val arrivalParticle: ParticleEffect = particle
@@ -54,6 +55,7 @@ open class ProductionJob(
         cooldownSeconds = defaultCooldownSeconds,
         qualifyingMoves = qualifyingMoves.toList(),
         fallbackSpecies = fallbackSpecies,
+        partyEnabled = partyEnabled,
     )
 
     init { registerConfig() }

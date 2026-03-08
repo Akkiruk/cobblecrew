@@ -47,6 +47,7 @@ class PlacementJob(
     val itemCheck: (ItemStack) -> Boolean,
     findTarget: (World, BlockPos) -> BlockPos?,
     val placeFn: (World, BlockPos, ItemStack) -> Unit,
+    val partyEnabled: Boolean = false,
 ) : BaseJob() {
 
     // Captured under a different name to avoid conflict with BaseJob.findTarget()
@@ -62,6 +63,7 @@ class PlacementJob(
         enabled = true,
         qualifyingMoves = qualifyingMoves.toList(),
         fallbackSpecies = fallbackSpecies,
+        partyEnabled = partyEnabled,
     )
 
     init { registerConfig() }

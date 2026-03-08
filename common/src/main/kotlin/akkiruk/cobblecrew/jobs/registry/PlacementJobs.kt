@@ -14,6 +14,7 @@ import net.minecraft.block.Block
 import net.minecraft.block.Blocks
 import net.minecraft.block.CropBlock
 import net.minecraft.block.SaplingBlock
+import net.minecraft.block.StemBlock
 import net.minecraft.item.BlockItem
 import net.minecraft.item.BoneMealItem
 import net.minecraft.item.Items
@@ -32,8 +33,9 @@ object PlacementJobs {
 
     val TORCH_LIGHTER = PlacementJob(
         name = "torch_lighter",
-        qualifyingMoves = setOf("flash"),
+        qualifyingMoves = setOf("nightslash"),
         particle = ParticleTypes.FLAME,
+        partyEnabled = true,
         itemCheck = { it.item == Items.TORCH },
         findTarget = { world, origin ->
             BlockPos.iterateOutwards(origin, SEARCH_RADIUS, SEARCH_RADIUS, SEARCH_RADIUS)
@@ -50,11 +52,11 @@ object PlacementJobs {
 
     private val DIRT_BLOCKS = setOf(Blocks.DIRT, Blocks.COARSE_DIRT, Blocks.GRASS_BLOCK, Blocks.PODZOL, Blocks.ROOTED_DIRT, Blocks.MYCELIUM, Blocks.MUD, Blocks.MUDDY_MANGROVE_ROOTS)
 
-    private const val SAPLING_SPACING = 4 // min blocks between saplings so trees grow properly
+    private const val SAPLING_SPACING = 3 // min blocks between saplings so trees grow properly
 
     val TREE_PLANTER = PlacementJob(
         name = "tree_planter",
-        qualifyingMoves = setOf("seedbomb"),
+        qualifyingMoves = setOf("leafstorm"),
         particle = ParticleTypes.HAPPY_VILLAGER,
         itemCheck = { stack -> (stack.item as? BlockItem)?.block is SaplingBlock },
         findTarget = { world, origin ->
@@ -79,12 +81,10 @@ object PlacementJobs {
         name = "crop_sower",
         qualifyingMoves = setOf("bulletseed"),
         particle = ParticleTypes.HAPPY_VILLAGER,
+        partyEnabled = true,
         itemCheck = { stack ->
-            stack.item in setOf(
-                Items.WHEAT_SEEDS, Items.BEETROOT_SEEDS, Items.CARROT, Items.POTATO,
-                Items.MELON_SEEDS, Items.PUMPKIN_SEEDS, Items.TORCHFLOWER_SEEDS,
-                Items.PITCHER_POD,
-            )
+            val block = Block.getBlockFromItem(stack.item)
+            block is CropBlock || block is StemBlock
         },
         findTarget = { world, origin ->
             BlockPos.iterateOutwards(origin, SEARCH_RADIUS, SEARCH_RADIUS, SEARCH_RADIUS)
@@ -94,18 +94,10 @@ object PlacementJobs {
                 }?.toImmutable()
         },
         placeFn = { world, pos, item ->
-            val crop = when (item.item) {
-                Items.WHEAT_SEEDS -> Blocks.WHEAT
-                Items.BEETROOT_SEEDS -> Blocks.BEETROOTS
-                Items.CARROT -> Blocks.CARROTS
-                Items.POTATO -> Blocks.POTATOES
-                Items.MELON_SEEDS -> Blocks.MELON_STEM
-                Items.PUMPKIN_SEEDS -> Blocks.PUMPKIN_STEM
-                Items.TORCHFLOWER_SEEDS -> Blocks.TORCHFLOWER_CROP
-                Items.PITCHER_POD -> Blocks.PITCHER_CROP
-                else -> Blocks.WHEAT
+            val crop = Block.getBlockFromItem(item.item)
+            if (crop is CropBlock || crop is StemBlock) {
+                world.setBlockState(pos, crop.defaultState)
             }
-            world.setBlockState(pos, crop.defaultState)
         },
     )
 
@@ -113,6 +105,7 @@ object PlacementJobs {
         name = "bonemeal_applicator",
         qualifyingMoves = setOf("synthesis"),
         particle = ParticleTypes.COMPOSTER,
+        partyEnabled = true,
         itemCheck = { it.item == Items.BONE_MEAL },
         findTarget = { world, origin ->
             BlockPos.iterateOutwards(origin, SEARCH_RADIUS, SEARCH_RADIUS, SEARCH_RADIUS)

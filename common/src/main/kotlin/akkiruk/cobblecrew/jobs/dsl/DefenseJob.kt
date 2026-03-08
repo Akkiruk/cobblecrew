@@ -46,6 +46,7 @@ open class DefenseJob(
     val phase: WorkPhase = WorkPhase.ATTACKING,
     val effectFn: (World, PokemonEntity, HostileEntity) -> Unit,
     val isCombo: Boolean = false,
+    val partyEnabled: Boolean = false,
 ) : BaseJob() {
 
     private val generalConfig get() = CobbleCrewConfigHolder.config.general
@@ -60,6 +61,7 @@ open class DefenseJob(
         enabled = true,
         qualifyingMoves = qualifyingMoves.toList(),
         fallbackSpecies = fallbackSpecies,
+        partyEnabled = partyEnabled,
     )
 
     init { registerConfig() }

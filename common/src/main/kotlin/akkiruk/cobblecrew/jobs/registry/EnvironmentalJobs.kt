@@ -47,7 +47,7 @@ object EnvironmentalJobs {
         name = "frost_former",
         targetCategory = BlockCategory.WATER,
         additionalScanCategories = setOf(BlockCategory.ICE),
-        qualifyingMoves = setOf("icebeam"),
+        qualifyingMoves = setOf("icespinner"),
         priority = WorkerPriority.MOVE,
         particle = ParticleTypes.SNOWFLAKE,
         findTarget = { world, origin ->
@@ -67,7 +67,7 @@ object EnvironmentalJobs {
     val ObsidianForge = EnvironmentalJob(
         name = "obsidian_forge",
         targetCategory = BlockCategory.LAVA,
-        qualifyingMoves = setOf("hydropump"),
+        qualifyingMoves = setOf("frostbreath"),
         priority = WorkerPriority.MOVE,
         particle = ParticleTypes.CLOUD,
         findTarget = { world, origin ->
@@ -88,6 +88,7 @@ object EnvironmentalJobs {
         qualifyingMoves = setOf("growth"),
         priority = WorkerPriority.MOVE,
         particle = ParticleTypes.HAPPY_VILLAGER,
+        partyEnabled = true,
         findTarget = { world, origin ->
             CobbleCrewCacheManager.getTargets(origin, BlockCategory.GROWABLE)
                 .filter { !ClaimManager.isTargeted(it) }
@@ -132,20 +133,21 @@ object EnvironmentalJobs {
         validate = { _, _ -> true },
     )
 
-    val LavaCauldronFiller = cauldronFiller("lava_cauldron_filler", "flareblitz", ParticleTypes.LAVA, CobbleCrewCauldronUtils.CauldronFluid.LAVA)
-    val WaterCauldronFiller = cauldronFiller("water_cauldron_filler", "surf", ParticleTypes.SPLASH, CobbleCrewCauldronUtils.CauldronFluid.WATER)
-    val SnowCauldronFiller = cauldronFiller("snow_cauldron_filler", "blizzard", ParticleTypes.SNOWFLAKE, CobbleCrewCauldronUtils.CauldronFluid.POWDER_SNOW)
+    val LavaCauldronFiller = cauldronFiller("lava_cauldron_filler", "heatcrash", ParticleTypes.LAVA, CobbleCrewCauldronUtils.CauldronFluid.LAVA)
+    val WaterCauldronFiller = cauldronFiller("water_cauldron_filler", "watergun", ParticleTypes.SPLASH, CobbleCrewCauldronUtils.CauldronFluid.WATER)
+    val SnowCauldronFiller = cauldronFiller("snow_cauldron_filler", "hail", ParticleTypes.SNOWFLAKE, CobbleCrewCauldronUtils.CauldronFluid.POWDER_SNOW)
 
     // ── G7: Furnace Fueler ───────────────────────────────────────────
     val FurnaceFueler = EnvironmentalJob(
         name = "furnace_fueler",
         targetCategory = BlockCategory.FURNACE,
-        qualifyingMoves = setOf("fireblast"),
+        qualifyingMoves = setOf("flameburst"),
         priority = WorkerPriority.TYPE,
         importance = JobImportance.STANDARD,
         particle = ParticleTypes.FLAME,
         defaultCooldownSeconds = 80,
         defaultBurnTimeSeconds = 200,
+        partyEnabled = true,
         findTarget = ::findReadyFurnace,
         action = ::addBurnTime,
     )
@@ -182,6 +184,7 @@ object EnvironmentalJobs {
         particle = ParticleTypes.FLAME,
         defaultCooldownSeconds = 80,
         defaultAddedFuel = 10,
+        partyEnabled = true,
         findTarget = ::findReadyBrewingStand,
         action = ::addBrewingFuel,
     )
@@ -211,11 +214,12 @@ object EnvironmentalJobs {
     val FireDouser = EnvironmentalJob(
         name = "fire_douser",
         targetCategory = BlockCategory.FIRE,
-        qualifyingMoves = setOf("waterpulse"),
+        qualifyingMoves = setOf("watersport"),
         priority = WorkerPriority.TYPE,
         importance = JobImportance.CRITICAL,
         particle = ParticleTypes.SMOKE,
         defaultRadius = 2,
+        partyEnabled = true,
         findTarget = { world, origin ->
             CobbleCrewCacheManager.getTargets(origin, BlockCategory.FIRE)
                 .filter { !ClaimManager.isBlacklisted(it, world.time) }
@@ -238,7 +242,8 @@ object EnvironmentalJobs {
         qualifyingMoves = setOf("muddywater"),
         priority = WorkerPriority.TYPE,
         particle = ParticleTypes.SPLASH,
-        defaultRadius = 2,
+        defaultRadius = 1,
+        partyEnabled = true,
         findTarget = { world, origin ->
             CobbleCrewCacheManager.getTargets(origin, BlockCategory.FARMLAND)
                 .filter { pos ->
@@ -249,7 +254,7 @@ object EnvironmentalJobs {
                 .randomOrNull()
         },
         action = { world, pos ->
-            val r = JobConfigManager.get("crop_irrigator").radius?.takeIf { it > 0 } ?: 2
+            val r = JobConfigManager.get("crop_irrigator").radius?.takeIf { it > 0 } ?: 1
             BlockPos.iterate(pos.add(-r, 0, -r), pos.add(r, 0, r)).forEach { p ->
                 val s = world.getBlockState(p)
                 if (s.block == Blocks.FARMLAND)
@@ -266,11 +271,12 @@ object EnvironmentalJobs {
     val BeePollinator = EnvironmentalJob(
         name = "bee_pollinator",
         targetCategory = BlockCategory.HONEY,
-        qualifyingMoves = setOf("signalbeam"),
+        qualifyingMoves = setOf("grassyglide"),
         fallbackSpecies = listOf("Combee", "Vespiquen"),
         priority = WorkerPriority.SPECIES,
         particle = ParticleTypes.WAX_ON,
         defaultCooldownSeconds = 120,
+        partyEnabled = true,
         findTarget = { world, origin ->
             CobbleCrewCacheManager.getTargets(origin, BlockCategory.HONEY)
                 .filter { pos ->

@@ -30,7 +30,10 @@ object BlockCategoryValidators {
         CobblemonBlocks.SKY_TUMBLESTONE_CLUSTER,
     )
 
-    private val STONE_BLOCKS = setOf(Blocks.STONE, Blocks.COBBLESTONE, Blocks.MOSSY_COBBLESTONE)
+    private val STONE_BLOCKS = setOf(
+        Blocks.STONE, Blocks.COBBLESTONE, Blocks.MOSSY_COBBLESTONE,
+        Blocks.DEEPSLATE, Blocks.COBBLED_DEEPSLATE,
+    )
     private val IGNEOUS_BLOCKS = setOf(Blocks.GRANITE, Blocks.ANDESITE, Blocks.DIORITE)
     private val DEEPSLATE_BLOCKS = setOf(Blocks.DEEPSLATE, Blocks.COBBLED_DEEPSLATE, Blocks.TUFF, Blocks.CALCITE)
     private val ORE_BLOCKS = setOf(
@@ -41,7 +44,10 @@ object BlockCategoryValidators {
         Blocks.DEEPSLATE_EMERALD_ORE, Blocks.DEEPSLATE_COPPER_ORE,
         Blocks.NETHER_GOLD_ORE, Blocks.NETHER_QUARTZ_ORE,
     )
-    private val DIRT_BLOCKS = setOf(Blocks.DIRT, Blocks.COARSE_DIRT, Blocks.GRAVEL, Blocks.ROOTED_DIRT)
+    private val DIRT_BLOCKS = setOf(
+        Blocks.DIRT, Blocks.COARSE_DIRT, Blocks.GRAVEL, Blocks.ROOTED_DIRT,
+        Blocks.GRASS_BLOCK,
+    )
     private val SAND_BLOCKS = setOf(Blocks.SAND, Blocks.RED_SAND)
     private val MUSHROOM_BLOCKS = setOf(Blocks.BROWN_MUSHROOM, Blocks.RED_MUSHROOM)
     private val VEGETATION_BLOCKS = setOf(
@@ -103,7 +109,7 @@ object BlockCategoryValidators {
         BlockCategory.ORE to { block, _ -> block in ORE_BLOCKS },
 
         // Minerals & special
-        BlockCategory.ICE to { block, _ -> block == Blocks.ICE || block == Blocks.PACKED_ICE },
+        BlockCategory.ICE to { block, _ -> block == Blocks.ICE || block == Blocks.PACKED_ICE || block == Blocks.BLUE_ICE },
         BlockCategory.SCULK to { block, _ -> block == Blocks.SCULK || block == Blocks.SCULK_VEIN },
         BlockCategory.SNOW_BLOCK to { block, _ -> block == Blocks.SNOW_BLOCK },
 

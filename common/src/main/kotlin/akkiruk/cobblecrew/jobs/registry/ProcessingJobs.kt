@@ -22,7 +22,7 @@ object ProcessingJobs {
 
     val ORE_SMELTER = ProcessingJob(
         name = "ore_smelter",
-        qualifyingMoves = setOf("flamethrower"),
+        qualifyingMoves = setOf("temperflare"),
         particle = ParticleTypes.FLAME,
         inputCheck = { stack ->
             stack.item in setOf(Items.RAW_IRON, Items.RAW_GOLD, Items.RAW_COPPER)
@@ -37,62 +37,6 @@ object ProcessingJobs {
         },
     )
 
-    val FOOD_COOKER = ProcessingJob(
-        name = "food_cooker",
-        qualifyingMoves = setOf("ember"),
-        particle = ParticleTypes.FLAME,
-        inputCheck = { stack ->
-            stack.item in setOf(
-                Items.BEEF, Items.PORKCHOP, Items.MUTTON, Items.CHICKEN,
-                Items.COD, Items.SALMON, Items.RABBIT, Items.POTATO, Items.KELP,
-            )
-        },
-        transformFn = { input ->
-            val cooked = when (input.item) {
-                Items.BEEF -> Items.COOKED_BEEF
-                Items.PORKCHOP -> Items.COOKED_PORKCHOP
-                Items.MUTTON -> Items.COOKED_MUTTON
-                Items.CHICKEN -> Items.COOKED_CHICKEN
-                Items.COD -> Items.COOKED_COD
-                Items.SALMON -> Items.COOKED_SALMON
-                Items.RABBIT -> Items.COOKED_RABBIT
-                Items.POTATO -> Items.BAKED_POTATO
-                Items.KELP -> Items.DRIED_KELP
-                else -> null
-            }
-            if (cooked != null) listOf(ItemStack(cooked, input.count)) else emptyList()
-        },
-    )
-
-    val GLASS_MAKER = ProcessingJob(
-        name = "glass_maker",
-        qualifyingMoves = setOf("heatwave"),
-        particle = ParticleTypes.FLAME,
-        inputCheck = { it.item == Items.SAND || it.item == Items.RED_SAND },
-        transformFn = { input -> listOf(ItemStack(Items.GLASS, input.count)) },
-    )
-
-    val BRICK_BAKER = ProcessingJob(
-        name = "brick_baker",
-        qualifyingMoves = setOf("firespin"),
-        particle = ParticleTypes.FLAME,
-        inputCheck = { it.item == Items.CLAY_BALL },
-        transformFn = { input -> listOf(ItemStack(Items.BRICK, input.count)) },
-    )
-
-    val CHARCOAL_BURNER = ProcessingJob(
-        name = "charcoal_burner",
-        qualifyingMoves = setOf("incinerate"),
-        particle = ParticleTypes.CAMPFIRE_COSY_SMOKE,
-        inputCheck = { stack ->
-            stack.item in setOf(
-                Items.OAK_LOG, Items.SPRUCE_LOG, Items.BIRCH_LOG, Items.JUNGLE_LOG,
-                Items.ACACIA_LOG, Items.DARK_OAK_LOG, Items.CHERRY_LOG, Items.MANGROVE_LOG,
-            )
-        },
-        transformFn = { input -> listOf(ItemStack(Items.CHARCOAL, input.count)) },
-    )
-
     val PAPER_MAKER = object : ProcessingJob(
         name = "paper_maker",
         qualifyingMoves = setOf("slash"),
@@ -105,62 +49,6 @@ object ProcessingJobs {
     ) {
         override val minExtractAmount: Int = 3
     }
-
-    val BONE_GRINDER = ProcessingJob(
-        name = "bone_grinder",
-        qualifyingMoves = setOf("superpower"),
-        particle = ParticleTypes.CRIT,
-        inputCheck = { it.item == Items.BONE },
-        transformFn = { input -> listOf(ItemStack(Items.BONE_MEAL, input.count * 3)) },
-    )
-
-    val FLINT_KNAPPER = ProcessingJob(
-        name = "flint_knapper",
-        qualifyingMoves = setOf("pound"),
-        particle = ParticleTypes.CRIT,
-        inputCheck = { it.item == Items.GRAVEL },
-        transformFn = { input -> listOf(ItemStack(Items.FLINT, input.count)) },
-    )
-
-    val PIGMENT_PRESSER = ProcessingJob(
-        name = "pigment_presser",
-        qualifyingMoves = setOf("rollout"),
-        particle = ParticleTypes.COMPOSTER,
-        inputCheck = { stack ->
-            stack.item in setOf(
-                Items.DANDELION, Items.POPPY, Items.BLUE_ORCHID, Items.ALLIUM,
-                Items.AZURE_BLUET, Items.RED_TULIP, Items.ORANGE_TULIP, Items.WHITE_TULIP,
-                Items.PINK_TULIP, Items.OXEYE_DAISY, Items.CORNFLOWER, Items.LILY_OF_THE_VALLEY,
-                Items.WITHER_ROSE, Items.SUNFLOWER, Items.LILAC, Items.ROSE_BUSH, Items.PEONY,
-                Items.TORCHFLOWER, Items.PITCHER_PLANT,
-            )
-        },
-        transformFn = { input ->
-            val dye = when (input.item) {
-                Items.DANDELION -> Items.YELLOW_DYE
-                Items.POPPY -> Items.RED_DYE
-                Items.BLUE_ORCHID -> Items.LIGHT_BLUE_DYE
-                Items.ALLIUM -> Items.MAGENTA_DYE
-                Items.AZURE_BLUET -> Items.LIGHT_GRAY_DYE
-                Items.RED_TULIP -> Items.RED_DYE
-                Items.ORANGE_TULIP -> Items.ORANGE_DYE
-                Items.WHITE_TULIP -> Items.LIGHT_GRAY_DYE
-                Items.PINK_TULIP -> Items.PINK_DYE
-                Items.OXEYE_DAISY -> Items.LIGHT_GRAY_DYE
-                Items.CORNFLOWER -> Items.BLUE_DYE
-                Items.LILY_OF_THE_VALLEY -> Items.WHITE_DYE
-                Items.WITHER_ROSE -> Items.BLACK_DYE
-                Items.SUNFLOWER -> Items.YELLOW_DYE
-                Items.LILAC -> Items.MAGENTA_DYE
-                Items.ROSE_BUSH -> Items.RED_DYE
-                Items.PEONY -> Items.PINK_DYE
-                Items.TORCHFLOWER -> Items.ORANGE_DYE
-                Items.PITCHER_PLANT -> Items.CYAN_DYE
-                else -> Items.WHITE_DYE
-            }
-            listOf(ItemStack(dye, input.count))
-        },
-    )
 
     val COMPOSTER = object : ProcessingJob(
         name = "composter",
@@ -184,14 +72,7 @@ object ProcessingJobs {
     fun register() {
         WorkerRegistry.registerAll(
             ORE_SMELTER,
-            FOOD_COOKER,
-            GLASS_MAKER,
-            BRICK_BAKER,
-            CHARCOAL_BURNER,
             PAPER_MAKER,
-            BONE_GRINDER,
-            FLINT_KNAPPER,
-            PIGMENT_PRESSER,
             COMPOSTER,
         )
     }

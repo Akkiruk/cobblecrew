@@ -43,6 +43,7 @@ open class ProcessingJob(
     val inputCheck: (ItemStack) -> Boolean,
     val transformFn: (ItemStack) -> List<ItemStack>,
     val isCombo: Boolean = false,
+    val partyEnabled: Boolean = false,
 ) : BaseJob() {
 
     override val arrivalParticle: ParticleEffect = particle
@@ -55,6 +56,7 @@ open class ProcessingJob(
         enabled = true,
         qualifyingMoves = qualifyingMoves.toList(),
         fallbackSpecies = fallbackSpecies,
+        partyEnabled = partyEnabled,
     )
 
     init { registerConfig() }

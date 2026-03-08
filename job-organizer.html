@@ -27,6 +27,12 @@
   button.secondary { background: var(--surface2); border: 1px solid var(--border); }
   button.export-btn { background: var(--green); font-size: 1em; padding: 8px 20px; }
 
+  /* Mode badges */
+  .mode-badge { display: inline-block; font-size: 0.65em; padding: 1px 5px; border-radius: 3px; font-weight: 600; vertical-align: middle; margin-left: 3px; }
+  .mode-badge.pasture { background: #2d6a4f; color: #b7e4c7; }
+  .mode-badge.party { background: #5a189a; color: #e0aaff; }
+  .mode-badge.off { opacity: 0.35; text-decoration: line-through; }
+
   /* Stats bar */
   .stats { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 12px; font-size: 0.85em; }
   .stat { background: var(--surface); padding: 4px 10px; border-radius: 4px; }
@@ -108,6 +114,7 @@
   .export-area textarea { width: 100%; height: 300px; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 4px; font-family: 'Consolas', monospace; font-size: 0.85em; padding: 8px; resize: vertical; }
   .change-summary { background: var(--surface); border-radius: 6px; padding: 12px; margin-top: 12px; }
   .change-item { padding: 4px 0; border-bottom: 1px solid var(--surface2); font-size: 0.85em; }
+  .change-item:hover { background: var(--surface2); border-radius: 4px; }
   .change-item .old { color: var(--red); text-decoration: line-through; }
   .change-item .new { color: var(--green); }
 
@@ -134,6 +141,12 @@
   .job-desc .jd-meta span { background: var(--surface2); padding: 2px 8px; border-radius: 3px; font-size: 0.85em; }
   .job-desc-toggle { background: none; border: 1px solid var(--border); color: var(--accent2); padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 0.85em; width: 100%; text-align: left; }
   .job-desc-toggle:hover { background: var(--surface2); }
+
+  /* Job notes */
+  .job-notes-area { width: 100%; min-height: 80px; max-height: 200px; resize: vertical; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 8px; font-size: 0.85em; font-family: inherit; line-height: 1.4; }
+  .job-notes-area:focus { border-color: var(--accent); outline: none; }
+  .job-notes-area::placeholder { color: var(--text-dim); }
+  .notes-hint { font-size: 0.75em; color: var(--text-dim); margin-top: 4px; }
 </style>
 </head>
 <body>
@@ -170,6 +183,7 @@
       <thead><tr>
         <th onclick="sortJobsBy('name')">Job</th>
         <th onclick="sortJobsBy('category')">Category</th>
+        <th>Mode</th>
         <th onclick="sortJobsBy('moves')">Move(s)</th>
         <th onclick="sortJobsBy('species')" style="text-align:right">Species</th>
         <th>Actions</th>
@@ -251,10 +265,23 @@
             <input type="checkbox" id="editCombo">
             <span class="cb-label">Combo (requires ALL moves)</span>
           </div>
+          <div class="setting-row">
+            <input type="checkbox" id="editPasture">
+            <span class="cb-label">Enabled for <b style="color:#b7e4c7">Pasture</b></span>
+          </div>
+          <div class="setting-row">
+            <input type="checkbox" id="editParty">
+            <span class="cb-label">Enabled for <b style="color:#e0aaff">Party</b></span>
+          </div>
         </div>
         <div class="setting-group">
           <h3>Selected Moves (<span id="selectedMoveCount">0</span>)</h3>
           <div class="selected-moves" id="selectedMovesList"></div>
+        </div>
+        <div class="setting-group">
+          <h3>Notes</h3>
+          <textarea id="editJobNotes" class="job-notes-area" placeholder="Add notes about this job (exported with changes)..."></textarea>
+          <div class="notes-hint">Saved per-job. Included in export.</div>
         </div>
         <div class="setting-group" style="margin-top:auto">
           <h3 style="color:var(--text-dim)">Original Moves</h3>
@@ -264,13 +291,13 @@
       <div class="edit-main">
         <div class="picker-toolbar">
           <input type="text" id="editMoveSearch" placeholder="Search moves..." oninput="renderMovePicker()">
-          <label><input type="checkbox" id="hideAssigned" onchange="renderMovePicker()"> Hide assigned</label>
-          <select id="pickerSort" onchange="renderMovePicker()">
+          <label><input type="checkbox" id="hideAssigned" onchange="renderMovePicker();savePickerPrefs()"> Hide assigned</label>
+          <select id="pickerSort" onchange="renderMovePicker();savePickerPrefs()">
             <option value="species-desc">Species: High&rarr;Low</option>
             <option value="species-asc">Species: Low&rarr;High</option>
             <option value="name">Alphabetical</option>
           </select>
-          <label>Min: <input id="pickerMin" type="number" value="0" min="0" oninput="renderMovePicker()"></label>
+          <label>Min: <input id="pickerMin" type="number" value="0" min="0" oninput="renderMovePicker();savePickerPrefs()"></label>
         </div>
         <div class="move-grid" id="movePicker"></div>
       </div>
@@ -1465,109 +1492,114 @@ const JOB_DESCRIPTIONS = {
 };
 
 const ORIGINAL_JOBS = [
-  {name:"logger",cat:"gathering",moves:["cut"],combo:false},
-  {name:"bamboo_chopper",cat:"gathering",moves:["falseswipe"],combo:false},
-  {name:"sugar_cane_cutter",cat:"gathering",moves:["aircutter"],combo:false},
-  {name:"cactus_pruner",cat:"gathering",moves:["furyswipes"],combo:false},
-  {name:"vine_trimmer",cat:"gathering",moves:["grassknot"],combo:false},
-  {name:"sweet_berry_harvester",cat:"gathering",moves:["covet"],combo:false},
-  {name:"pumpkin_melon_harvester",cat:"gathering",moves:["stomp"],combo:false},
-  {name:"cocoa_harvester",cat:"gathering",moves:["knockoff"],combo:false},
-  {name:"chorus_fruit_harvester",cat:"gathering",moves:["gravity"],combo:false},
-  {name:"glowberry_picker",cat:"gathering",moves:["naturalgift"],combo:false},
-  {name:"dripleaf_harvester",cat:"gathering",moves:["magicalleaf"],combo:false},
-  {name:"stone_breaker",cat:"gathering",moves:["brickbreak"],combo:false},
-  {name:"igneous_miner",cat:"gathering",moves:["stompingtantrum"],combo:false},
-  {name:"deepslate_excavator",cat:"gathering",moves:["earthpower"],combo:false},
-  {name:"excavator",cat:"gathering",moves:["mudshot"],combo:false},
-  {name:"sand_miner",cat:"gathering",moves:["sandtomb"],combo:false},
-  {name:"clay_digger",cat:"gathering",moves:["mudslap"],combo:false},
-  {name:"sculk_harvester",cat:"gathering",moves:["shadowball"],combo:false},
-  {name:"ice_miner",cat:"gathering",moves:["icepunch"],combo:false},
-  {name:"mushroom_forager",cat:"gathering",moves:["absorb"],combo:false},
-  {name:"flower_picker",cat:"gathering",moves:["grassyterrain"],combo:false},
-  {name:"snow_scraper",cat:"gathering",moves:["icywind"],combo:false},
-  {name:"moss_scraper",cat:"gathering",moves:["scratch"],combo:false},
-  {name:"decomposer",cat:"gathering",moves:["sludgebomb"],combo:false},
-  {name:"terrain_flattener",cat:"gathering",moves:["bulldoze"],combo:false},
-  {name:"ore_miner",cat:"gathering",moves:["rockblast"],combo:false},
-  {name:"apricorn_harvester",cat:"gathering",moves:["bugbite"],combo:false},
-  {name:"berry_harvester",cat:"gathering",moves:["pluck"],combo:false},
-  {name:"mint_harvester",cat:"gathering",moves:["sweetscent"],combo:false},
-  {name:"amethyst_harvester",cat:"gathering",moves:["powergem"],combo:false},
-  {name:"tumblestone_harvester",cat:"gathering",moves:["rockpolish"],combo:false},
-  {name:"netherwart_harvester",cat:"gathering",moves:["hex"],combo:false},
-  {name:"crop_harvester",cat:"gathering",moves:["trailblaze"],combo:false},
-  {name:"root_harvester",cat:"gathering",moves:["strength"],combo:false},
-  {name:"honey_harvester",cat:"gathering",moves:["bugbuzz"],combo:false},
-  {name:"fishing_looter",cat:"production",moves:["dive"],combo:false},
-  {name:"dive_collector",cat:"production",moves:["waterfall"],combo:false},
-  {name:"dig_site_excavator",cat:"production",moves:["dig"],combo:false},
-  {name:"ore_smelter",cat:"processing",moves:["flamethrower"],combo:false},
-  {name:"food_cooker",cat:"processing",moves:["ember"],combo:false},
-  {name:"glass_maker",cat:"processing",moves:["heatwave"],combo:false},
-  {name:"brick_baker",cat:"processing",moves:["firespin"],combo:false},
-  {name:"charcoal_burner",cat:"processing",moves:["incinerate"],combo:false},
-  {name:"bone_grinder",cat:"processing",moves:["superpower"],combo:false},
-  {name:"flint_knapper",cat:"processing",moves:["pound"],combo:false},
-  {name:"pigment_presser",cat:"processing",moves:["rollout"],combo:false},
-  {name:"torch_lighter",cat:"placement",moves:["flash"],combo:false},
-  {name:"tree_planter",cat:"placement",moves:["seedbomb"],combo:false},
-  {name:"crop_sower",cat:"placement",moves:["bulletseed"],combo:false},
-  {name:"bonemeal_applicator",cat:"placement",moves:["synthesis"],combo:false},
-  {name:"guard",cat:"defense",moves:["crunch"],combo:false},
-  {name:"sentry",cat:"defense",moves:["wideguard"],combo:false},
-  {name:"repeller",cat:"defense",moves:["roar"],combo:false},
-  {name:"fearmonger",cat:"defense",moves:["scaryface"],combo:false},
-  {name:"fire_trap",cat:"defense",moves:["firefang"],combo:false},
-  {name:"poison_trap",cat:"defense",moves:["toxicspikes"],combo:false},
-  {name:"ice_trap",cat:"defense",moves:["chillingwater"],combo:false},
-  {name:"healer",cat:"support",moves:["drainingkiss"],combo:false},
-  {name:"speed_booster",cat:"support",moves:["tailwind"],combo:false},
-  {name:"strength_booster",cat:"support",moves:["swordsdance"],combo:false},
-  {name:"resistance_provider",cat:"support",moves:["irondefense"],combo:false},
-  {name:"haste_provider",cat:"support",moves:["honeclaws"],combo:false},
-  {name:"jump_booster",cat:"support",moves:["bounce"],combo:false},
-  {name:"night_vision_provider",cat:"support",moves:["laserfocus"],combo:false},
-  {name:"water_breather",cat:"support",moves:["brine"],combo:false},
-  {name:"hunger_restorer",cat:"support",moves:["yawn"],combo:false},
-  {name:"scout",cat:"support",moves:["fly"],combo:false},
-  {name:"frost_former",cat:"environmental",moves:["icebeam"],combo:false},
-  {name:"obsidian_forge",cat:"environmental",moves:["hydropump"],combo:false},
-  {name:"growth_accelerator",cat:"environmental",moves:["growth"],combo:false},
-  {name:"lava_cauldron_filler",cat:"environmental",moves:["flareblitz"],combo:false},
-  {name:"water_cauldron_filler",cat:"environmental",moves:["surf"],combo:false},
-  {name:"snow_cauldron_filler",cat:"environmental",moves:["blizzard"],combo:false},
-  {name:"furnace_fueler",cat:"environmental",moves:["fireblast"],combo:false},
-  {name:"brewing_stand_fueler",cat:"environmental",moves:["flamecharge"],combo:false},
-  {name:"fire_douser",cat:"environmental",moves:["waterpulse"],combo:false},
-  {name:"crop_irrigator",cat:"environmental",moves:["muddywater"],combo:false},
-  {name:"bee_pollinator",cat:"environmental",moves:["signalbeam"],combo:false},
-  {name:"magnetizer",cat:"logistics",moves:["magnetrise"],combo:false},
-  {name:"ground_item_collector",cat:"logistics",moves:["telekinesis"],combo:false},
-  {name:"demolisher",cat:"combo",moves:["rocksmash","smackdown"],combo:true},
-  {name:"fortune_miner",cat:"combo",moves:["ancientpower","psychic"],combo:true},
-  {name:"silk_touch_extractor",cat:"combo",moves:["mindreader","ironhead"],combo:true},
-  {name:"vein_miner",cat:"combo",moves:["earthquake","crosschop"],combo:true},
-  {name:"tree_feller",cat:"combo",moves:["headbutt","powerwhip"],combo:true},
-  {name:"fossil_hunter",cat:"combo",moves:["boneclub","furycutter"],combo:true},
-  {name:"gem_vein_finder",cat:"combo",moves:["flashcannon","foresight"],combo:true},
-  {name:"string_crafter",cat:"combo",moves:["stringshot","xscissor"],combo:true},
-  {name:"book_binder",cat:"combo",moves:["sketch","shadowclaw"],combo:true},
-  {name:"candle_maker",cat:"combo",moves:["willowisp","aromatherapy"],combo:true},
-  {name:"chain_forger",cat:"combo",moves:["metalclaw","bodypress"],combo:true},
-  {name:"lantern_builder",cat:"combo",moves:["sunnyday","irontail"],combo:true},
-  {name:"banner_creator",cat:"combo",moves:["dazzlinggleam","tailwhip"],combo:true},
-  {name:"deep_sea_trawler",cat:"combo",moves:["whirlpool","raindance"],combo:true},
-  {name:"magma_diver",cat:"combo",moves:["overheat","darkpulse"],combo:true},
-  {name:"blast_furnace",cat:"combo",moves:["scald","firepunch"],combo:true},
-  {name:"full_restore",cat:"combo",moves:["healbell","lifedew"],combo:true},
-  {name:"aura_master",cat:"combo",moves:["calmmind","helpinghand"],combo:true},
+  {name:"logger",cat:"gathering",moves:["cut"],combo:false,pasture:true,party:false},
+  {name:"bamboo_chopper",cat:"gathering",moves:["falseswipe"],combo:false,pasture:true,party:false},
+  {name:"sugar_cane_cutter",cat:"gathering",moves:["aircutter"],combo:false,pasture:true,party:false},
+  {name:"cactus_pruner",cat:"gathering",moves:["furyswipes"],combo:false,pasture:true,party:false},
+  {name:"vine_trimmer",cat:"gathering",moves:["grassknot"],combo:false,pasture:true,party:false},
+  {name:"sweet_berry_harvester",cat:"gathering",moves:["covet"],combo:false,pasture:true,party:false},
+  {name:"pumpkin_melon_harvester",cat:"gathering",moves:["stomp"],combo:false,pasture:true,party:false},
+  {name:"cocoa_harvester",cat:"gathering",moves:["knockoff"],combo:false,pasture:true,party:false},
+  {name:"chorus_fruit_harvester",cat:"gathering",moves:["gravity"],combo:false,pasture:true,party:false},
+  {name:"glowberry_picker",cat:"gathering",moves:["naturalgift"],combo:false,pasture:true,party:false},
+  {name:"dripleaf_harvester",cat:"gathering",moves:["magicalleaf"],combo:false,pasture:true,party:false},
+  {name:"stone_breaker",cat:"gathering",moves:["brickbreak"],combo:false,pasture:true,party:false},
+  {name:"igneous_miner",cat:"gathering",moves:["stompingtantrum"],combo:false,pasture:true,party:false},
+  {name:"deepslate_excavator",cat:"gathering",moves:["earthpower"],combo:false,pasture:true,party:false},
+  {name:"excavator",cat:"gathering",moves:["mudshot"],combo:false,pasture:true,party:false},
+  {name:"sand_miner",cat:"gathering",moves:["sandtomb"],combo:false,pasture:true,party:false},
+  {name:"clay_digger",cat:"gathering",moves:["mudslap"],combo:false,pasture:true,party:false},
+  {name:"sculk_harvester",cat:"gathering",moves:["shadowball"],combo:false,pasture:true,party:false},
+  {name:"ice_miner",cat:"gathering",moves:["icepunch"],combo:false,pasture:true,party:false},
+  {name:"mushroom_forager",cat:"gathering",moves:["absorb"],combo:false,pasture:true,party:false},
+  {name:"flower_picker",cat:"gathering",moves:["grassyterrain"],combo:false,pasture:true,party:false},
+  {name:"snow_scraper",cat:"gathering",moves:["icywind"],combo:false,pasture:true,party:false},
+  {name:"moss_scraper",cat:"gathering",moves:["scratch"],combo:false,pasture:true,party:false},
+  {name:"decomposer",cat:"gathering",moves:["sludgebomb"],combo:false,pasture:true,party:false},
+  {name:"terrain_flattener",cat:"gathering",moves:["bulldoze"],combo:false,pasture:true,party:false},
+  {name:"ore_miner",cat:"gathering",moves:["rockblast"],combo:false,pasture:true,party:false},
+  {name:"apricorn_harvester",cat:"gathering",moves:["bugbite"],combo:false,pasture:true,party:false},
+  {name:"berry_harvester",cat:"gathering",moves:["pluck"],combo:false,pasture:true,party:false},
+  {name:"mint_harvester",cat:"gathering",moves:["sweetscent"],combo:false,pasture:true,party:false},
+  {name:"amethyst_harvester",cat:"gathering",moves:["powergem"],combo:false,pasture:true,party:false},
+  {name:"tumblestone_harvester",cat:"gathering",moves:["rockpolish"],combo:false,pasture:true,party:false},
+  {name:"netherwart_harvester",cat:"gathering",moves:["hex"],combo:false,pasture:true,party:false},
+  {name:"crop_harvester",cat:"gathering",moves:["trailblaze"],combo:false,pasture:true,party:false},
+  {name:"root_harvester",cat:"gathering",moves:["strength"],combo:false,pasture:true,party:false},
+  {name:"honey_harvester",cat:"gathering",moves:["bugbuzz"],combo:false,pasture:true,party:false},
+  {name:"fishing_looter",cat:"production",moves:["dive"],combo:false,pasture:true,party:false},
+  {name:"dive_collector",cat:"production",moves:["waterfall"],combo:false,pasture:true,party:false},
+  {name:"dig_site_excavator",cat:"production",moves:["dig"],combo:false,pasture:true,party:false},
+  {name:"ore_smelter",cat:"processing",moves:["flamethrower"],combo:false,pasture:true,party:false},
+  {name:"food_cooker",cat:"processing",moves:["ember"],combo:false,pasture:true,party:false},
+  {name:"glass_maker",cat:"processing",moves:["heatwave"],combo:false,pasture:true,party:false},
+  {name:"brick_baker",cat:"processing",moves:["firespin"],combo:false,pasture:true,party:false},
+  {name:"charcoal_burner",cat:"processing",moves:["incinerate"],combo:false,pasture:true,party:false},
+  {name:"bone_grinder",cat:"processing",moves:["superpower"],combo:false,pasture:true,party:false},
+  {name:"flint_knapper",cat:"processing",moves:["pound"],combo:false,pasture:true,party:false},
+  {name:"pigment_presser",cat:"processing",moves:["rollout"],combo:false,pasture:true,party:false},
+  {name:"torch_lighter",cat:"placement",moves:["flash"],combo:false,pasture:true,party:false},
+  {name:"tree_planter",cat:"placement",moves:["seedbomb"],combo:false,pasture:true,party:false},
+  {name:"crop_sower",cat:"placement",moves:["bulletseed"],combo:false,pasture:true,party:false},
+  {name:"bonemeal_applicator",cat:"placement",moves:["synthesis"],combo:false,pasture:true,party:false},
+  {name:"guard",cat:"defense",moves:["crunch"],combo:false,pasture:true,party:false},
+  {name:"sentry",cat:"defense",moves:["wideguard"],combo:false,pasture:true,party:false},
+  {name:"repeller",cat:"defense",moves:["roar"],combo:false,pasture:true,party:false},
+  {name:"fearmonger",cat:"defense",moves:["scaryface"],combo:false,pasture:true,party:false},
+  {name:"fire_trap",cat:"defense",moves:["firefang"],combo:false,pasture:true,party:false},
+  {name:"poison_trap",cat:"defense",moves:["toxicspikes"],combo:false,pasture:true,party:false},
+  {name:"ice_trap",cat:"defense",moves:["chillingwater"],combo:false,pasture:true,party:false},
+  {name:"healer",cat:"support",moves:["drainingkiss"],combo:false,pasture:true,party:false},
+  {name:"speed_booster",cat:"support",moves:["tailwind"],combo:false,pasture:true,party:false},
+  {name:"strength_booster",cat:"support",moves:["swordsdance"],combo:false,pasture:true,party:false},
+  {name:"resistance_provider",cat:"support",moves:["irondefense"],combo:false,pasture:true,party:false},
+  {name:"haste_provider",cat:"support",moves:["honeclaws"],combo:false,pasture:true,party:false},
+  {name:"jump_booster",cat:"support",moves:["bounce"],combo:false,pasture:true,party:false},
+  {name:"night_vision_provider",cat:"support",moves:["laserfocus"],combo:false,pasture:true,party:false},
+  {name:"water_breather",cat:"support",moves:["brine"],combo:false,pasture:true,party:false},
+  {name:"hunger_restorer",cat:"support",moves:["yawn"],combo:false,pasture:true,party:false},
+  {name:"scout",cat:"support",moves:["fly"],combo:false,pasture:true,party:false},
+  {name:"frost_former",cat:"environmental",moves:["icebeam"],combo:false,pasture:true,party:false},
+  {name:"obsidian_forge",cat:"environmental",moves:["hydropump"],combo:false,pasture:true,party:false},
+  {name:"growth_accelerator",cat:"environmental",moves:["growth"],combo:false,pasture:true,party:false},
+  {name:"lava_cauldron_filler",cat:"environmental",moves:["flareblitz"],combo:false,pasture:true,party:false},
+  {name:"water_cauldron_filler",cat:"environmental",moves:["surf"],combo:false,pasture:true,party:false},
+  {name:"snow_cauldron_filler",cat:"environmental",moves:["blizzard"],combo:false,pasture:true,party:false},
+  {name:"furnace_fueler",cat:"environmental",moves:["fireblast"],combo:false,pasture:true,party:false},
+  {name:"brewing_stand_fueler",cat:"environmental",moves:["flamecharge"],combo:false,pasture:true,party:false},
+  {name:"fire_douser",cat:"environmental",moves:["waterpulse"],combo:false,pasture:true,party:false},
+  {name:"crop_irrigator",cat:"environmental",moves:["muddywater"],combo:false,pasture:true,party:false},
+  {name:"bee_pollinator",cat:"environmental",moves:["signalbeam"],combo:false,pasture:true,party:false},
+  {name:"magnetizer",cat:"logistics",moves:["magnetrise"],combo:false,pasture:true,party:false},
+  {name:"ground_item_collector",cat:"logistics",moves:["telekinesis"],combo:false,pasture:true,party:false},
+  {name:"demolisher",cat:"combo",moves:["rocksmash","smackdown"],combo:true,pasture:true,party:false},
+  {name:"fortune_miner",cat:"combo",moves:["ancientpower","psychic"],combo:true,pasture:true,party:false},
+  {name:"silk_touch_extractor",cat:"combo",moves:["mindreader","ironhead"],combo:true,pasture:true,party:false},
+  {name:"vein_miner",cat:"combo",moves:["earthquake","crosschop"],combo:true,pasture:true,party:false},
+  {name:"tree_feller",cat:"combo",moves:["headbutt","powerwhip"],combo:true,pasture:true,party:false},
+  {name:"fossil_hunter",cat:"combo",moves:["boneclub","furycutter"],combo:true,pasture:true,party:false},
+  {name:"gem_vein_finder",cat:"combo",moves:["flashcannon","foresight"],combo:true,pasture:true,party:false},
+  {name:"string_crafter",cat:"combo",moves:["stringshot","xscissor"],combo:true,pasture:true,party:false},
+  {name:"book_binder",cat:"combo",moves:["sketch","shadowclaw"],combo:true,pasture:true,party:false},
+  {name:"candle_maker",cat:"combo",moves:["willowisp","aromatherapy"],combo:true,pasture:true,party:false},
+  {name:"chain_forger",cat:"combo",moves:["metalclaw","bodypress"],combo:true,pasture:true,party:false},
+  {name:"lantern_builder",cat:"combo",moves:["sunnyday","irontail"],combo:true,pasture:true,party:false},
+  {name:"banner_creator",cat:"combo",moves:["dazzlinggleam","tailwhip"],combo:true,pasture:true,party:false},
+  {name:"deep_sea_trawler",cat:"combo",moves:["whirlpool","raindance"],combo:true,pasture:true,party:false},
+  {name:"magma_diver",cat:"combo",moves:["overheat","darkpulse"],combo:true,pasture:true,party:false},
+  {name:"blast_furnace",cat:"combo",moves:["scald","firepunch"],combo:true,pasture:true,party:false},
+  {name:"full_restore",cat:"combo",moves:["healbell","lifedew"],combo:true,pasture:true,party:false},
+  {name:"aura_master",cat:"combo",moves:["calmmind","helpinghand"],combo:true,pasture:true,party:false},
 ];
 
 // ═══ STATE ═══
 const STORAGE_KEY = 'cobblecrew_job_organizer_v2';
+const NOTES_KEY = 'cobblecrew_job_notes';
+const PICKER_KEY = 'cobblecrew_picker_prefs';
+let jobNotes = loadNotes();
 let jobs = loadState() || JSON.parse(JSON.stringify(ORIGINAL_JOBS));
+// Migrate: add pasture/party fields to saved jobs missing them
+for (const j of jobs) { if (j.pasture === undefined) j.pasture = true; if (j.party === undefined) j.party = false; }
 let editingJob = null;
 
 // ═══ PERSISTENCE ═══
@@ -1591,6 +1623,26 @@ function loadState() {
   } catch(e) { return null; }
 }
 
+function saveNotes() {
+  try { localStorage.setItem(NOTES_KEY, JSON.stringify(jobNotes)); } catch(e) {}
+}
+function loadNotes() {
+  try { const r = localStorage.getItem(NOTES_KEY); return r ? JSON.parse(r) : {}; } catch(e) { return {}; }
+}
+
+function savePickerPrefs() {
+  try {
+    localStorage.setItem(PICKER_KEY, JSON.stringify({
+      hideAssigned: document.getElementById('hideAssigned').checked,
+      sort: document.getElementById('pickerSort').value,
+      min: document.getElementById('pickerMin').value
+    }));
+  } catch(e) {}
+}
+function loadPickerPrefs() {
+  try { const r = localStorage.getItem(PICKER_KEY); return r ? JSON.parse(r) : null; } catch(e) { return null; }
+}
+
 // ═══ HELPERS ═══
 function speciesCount(move) { return ALL_MOVES[move] || 0; }
 
@@ -1611,6 +1663,7 @@ function isChanged(job) {
   const orig = ORIGINAL_JOBS.find(j => j.name === job.name);
   if (!orig) return true;
   if (orig.cat !== job.cat || orig.combo !== job.combo) return true;
+  if (!!orig.pasture !== !!job.pasture || !!orig.party !== !!job.party) return true;
   if (orig.moves.length !== job.moves.length) return true;
   return !orig.moves.every(m => job.moves.includes(m));
 }
@@ -1687,9 +1740,12 @@ function renderJobs() {
       return `<span class="move-tag ${multi?'':'assigned'}" title="${c} species">${m} <span class="${countClass(c)}">(${c})</span></span>`;
     }).join(j.combo ? ' + ' : ', ');
     const sp = jobMinSpecies(j);
+    const pBadge = j.pasture ? '<span class="mode-badge pasture">P</span>' : '<span class="mode-badge pasture off">P</span>';
+    const yBadge = j.party ? '<span class="mode-badge party">Y</span>' : '<span class="mode-badge party off">Y</span>';
     return `<tr class="${cls}" ondblclick="editJob('${j.name}')">
       <td><b>${j.name}</b>${j.combo?' <span style="color:var(--orange);font-size:0.75em">COMBO</span>':''}</td>
       <td>${j.cat}</td>
+      <td>${pBadge} ${yBadge}</td>
       <td>${moveTags}</td>
       <td style="text-align:right" class="${countClass(sp)}"><b>${sp}</b></td>
       <td>
@@ -1756,6 +1812,8 @@ function editJob(name) {
   const job = jobs.find(j => j.name === name);
   document.getElementById('editJobName').textContent = name;
   document.getElementById('editCombo').checked = job.combo;
+  document.getElementById('editPasture').checked = job.pasture !== false;
+  document.getElementById('editParty').checked = !!job.party;
   document.getElementById('editCategory').innerHTML = CATEGORIES.map(c => `<option ${c===job.cat?'selected':''}>${c}</option>`).join('');
 
   const orig = ORIGINAL_JOBS.find(j => j.name === name);
@@ -1778,8 +1836,15 @@ function editJob(name) {
     descEl.innerHTML = '<div style="color:var(--text-dim);font-size:0.85em">No description available</div>';
   }
 
+  document.getElementById('editJobNotes').value = jobNotes[name] || '';
+
   document.getElementById('editMoveSearch').value = '';
-  document.getElementById('pickerMin').value = 0;
+  const prefs = loadPickerPrefs();
+  if (prefs) {
+    document.getElementById('hideAssigned').checked = !!prefs.hideAssigned;
+    document.getElementById('pickerSort').value = prefs.sort || 'species-desc';
+    document.getElementById('pickerMin').value = prefs.min || 0;
+  }
   renderMovePicker();
   renderSelectedMoves();
   updateEditHint();
@@ -1857,6 +1922,7 @@ function updateEditHint() {
   const el = document.getElementById('editChangeHint');
   if (!orig || !job) { el.textContent = ''; return; }
   const changed = orig.cat !== job.cat || orig.combo !== job.combo ||
+    !!orig.pasture !== !!job.pasture || !!orig.party !== !!job.party ||
     orig.moves.length !== job.moves.length || !orig.moves.every(m => job.moves.includes(m));
   el.textContent = changed ? '\u25cf Unsaved changes' : '';
   el.className = 'change-hint' + (changed ? ' has-changes' : '');
@@ -1866,6 +1932,11 @@ function saveEdit() {
   const job = jobs.find(j => j.name === editingJob);
   job.cat = document.getElementById('editCategory').value;
   job.combo = document.getElementById('editCombo').checked;
+  job.pasture = document.getElementById('editPasture').checked;
+  job.party = document.getElementById('editParty').checked;
+  const note = document.getElementById('editJobNotes').value.trim();
+  if (note) jobNotes[editingJob] = note; else delete jobNotes[editingJob];
+  saveNotes();
   cancelEdit();
   saveState();
   renderJobs();
@@ -1881,8 +1952,10 @@ function revertJob() {
   const orig = ORIGINAL_JOBS.find(j => j.name === editingJob);
   if (!orig) return;
   const job = jobs.find(j => j.name === editingJob);
-  job.moves = [...orig.moves]; job.cat = orig.cat; job.combo = orig.combo;
+  job.moves = [...orig.moves]; job.cat = orig.cat; job.combo = orig.combo; job.pasture = orig.pasture; job.party = orig.party;
   document.getElementById('editCombo').checked = job.combo;
+  document.getElementById('editPasture').checked = job.pasture !== false;
+  document.getElementById('editParty').checked = !!job.party;
   document.getElementById('editCategory').innerHTML = CATEGORIES.map(c => `<option ${c===job.cat?'selected':''}>${c}</option>`).join('');
   renderMovePicker();
   renderSelectedMoves();
@@ -1893,7 +1966,7 @@ function revertSingle(name) {
   const orig = ORIGINAL_JOBS.find(j => j.name === name);
   if (!orig) return;
   const job = jobs.find(j => j.name === name);
-  job.moves = [...orig.moves]; job.cat = orig.cat; job.combo = orig.combo;
+  job.moves = [...orig.moves]; job.cat = orig.cat; job.combo = orig.combo; job.pasture = orig.pasture; job.party = orig.party;
   saveState();
   renderJobs();
 }
@@ -1925,7 +1998,12 @@ function renderChanges() {
     if (orig.combo !== j.combo) parts.push(`Combo: <span class="old">${orig.combo}</span> \u2192 <span class="new">${j.combo}</span>`);
     const oldM = orig.moves.join(', '), newM = j.moves.join(', ');
     if (oldM !== newM) parts.push(`Moves: <span class="old">${oldM}</span> \u2192 <span class="new">${newM}</span>`);
-    return `<div class="change-item"><b>${j.name}</b>: ${parts.join(' | ')}</div>`;
+    if (orig.pasture !== j.pasture) parts.push(`Pasture: <span class="old">${orig.pasture}</span> \u2192 <span class="new">${j.pasture}</span>`);
+    if (orig.party !== j.party) parts.push(`Party: <span class="old">${orig.party}</span> \u2192 <span class="new">${j.party}</span>`);
+    return `<div class="change-item" onclick="editJob('${j.name}')" style="cursor:pointer" title="Click to edit">
+      <b>${j.name}</b>: ${parts.join(' | ')}
+      <button onclick="event.stopPropagation();revertSingle('${j.name}');renderChanges()" class="secondary" style="font-size:0.7em;padding:2px 6px;margin-left:8px">\u21a9 Revert</button>
+    </div>`;
   }).join('');
   renderStats();
 }
@@ -1940,17 +2018,32 @@ function generateExport() {
     lines.push(`JOB: ${j.name}`);
     if (orig.cat !== j.cat) lines.push(`  category: ${orig.cat} -> ${j.cat}`);
     if (orig.combo !== j.combo) lines.push(`  combo: ${orig.combo} -> ${j.combo}`);
+    if (!!orig.pasture !== !!j.pasture) lines.push(`  pasture: ${!!orig.pasture} -> ${!!j.pasture}`);
+    if (!!orig.party !== !!j.party) lines.push(`  party: ${!!orig.party} -> ${!!j.party}`);
     const oldM = orig.moves.join(', '), newM = j.moves.join(', ');
     if (oldM !== newM) {
       lines.push(`  moves: ${oldM} -> ${newM}`);
       lines.push(`  species counts: ${j.moves.map(m => `${m}(${speciesCount(m)})`).join(', ')}`);
     }
+    if (jobNotes[j.name]) lines.push(`  notes: ${jobNotes[j.name]}`);
     lines.push('');
   }
+  // Include any notes on unchanged jobs too
+  const notedUnchanged = Object.keys(jobNotes).filter(n => !changes.find(c => c.name === n));
+  if (notedUnchanged.length) {
+    lines.push('=== ADDITIONAL NOTES (unchanged jobs) ===');
+    for (const n of notedUnchanged) {
+      lines.push(`${n}: ${jobNotes[n]}`);
+    }
+    lines.push('');
+  }
+
   lines.push('=== FULL FINAL STATE ===');
   for (const j of jobs) {
     const marker = isChanged(j) ? ' [CHANGED]' : '';
-    lines.push(`${j.name} [${j.cat}]${j.combo?' COMBO':''}: ${j.moves.join(' + ')}${marker}`);
+    const note = jobNotes[j.name] ? ` // ${jobNotes[j.name]}` : '';
+    const modes = [j.pasture!==false?'PASTURE':'', j.party?'PARTY':''].filter(Boolean).join('+');
+    lines.push(`${j.name} [${j.cat}]${j.combo?' COMBO':''} (${modes}): ${j.moves.join(' + ')}${marker}${note}`);
   }
   document.getElementById('exportText').value = lines.join('\n');
 }

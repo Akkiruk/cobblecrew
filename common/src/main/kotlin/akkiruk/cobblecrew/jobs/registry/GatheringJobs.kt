@@ -25,6 +25,8 @@ import net.minecraft.item.ItemStack
 import net.minecraft.item.Items
 import net.minecraft.particle.ParticleTypes
 import net.minecraft.state.property.Properties
+import net.minecraft.util.math.BlockPos
+import net.minecraft.util.math.Direction
 
 /**
  * All gathering jobs — find blocks, walk to them, harvest drops, deposit in chests.
@@ -46,7 +48,7 @@ object GatheringJobs {
     val LOGGER = GatheringJob(
         name = "logger",
         targetCategory = BlockCategory.LOG,
-        qualifyingMoves = setOf("cut"),
+        qualifyingMoves = setOf("dualchop"),
         particle = ParticleTypes.CAMPFIRE_COSY_SMOKE,
         harvestOverride = { world, pos, _ ->
             val result = treeHarvest(world, pos, maxLogs = 128, tool = ItemStack(Items.DIAMOND_AXE))
@@ -60,12 +62,14 @@ object GatheringJobs {
     val BAMBOO_CHOPPER = GatheringJob(
         name = "bamboo_chopper",
         targetCategory = BlockCategory.BAMBOO,
-        qualifyingMoves = setOf("falseswipe"),
+        qualifyingMoves = setOf("smartstrike"),
         fallbackSpecies = listOf("Pancham", "Pangoro"),
         particle = ParticleTypes.COMPOSTER,
         readyCheck = { world, pos ->
-            // Only harvest if the block above is not bamboo (top segment only)
-            world.getBlockState(pos.up()).block != Blocks.BAMBOO
+            // Target the second-to-lowest bamboo block (one above ground).
+            // Breaking it causes all bamboo above to pop as items.
+            val below = world.getBlockState(pos.down()).block
+            below != Blocks.BAMBOO
         },
     )
 
@@ -93,7 +97,7 @@ object GatheringJobs {
     val VINE_TRIMMER = GatheringJob(
         name = "vine_trimmer",
         targetCategory = BlockCategory.VINE,
-        qualifyingMoves = setOf("grassknot"),
+        qualifyingMoves = setOf("breakingswipe"),
         fallbackSpecies = listOf("Tangela", "Tangrowth"),
         particle = ParticleTypes.COMPOSTER,
         toolOverride = ItemStack(Items.SHEARS),
@@ -106,7 +110,7 @@ object GatheringJobs {
     val SWEET_BERRY_HARVESTER = GatheringJob(
         name = "sweet_berry_harvester",
         targetCategory = BlockCategory.SWEET_BERRY,
-        qualifyingMoves = setOf("covet"),
+        qualifyingMoves = setOf("stockpile"),
         fallbackSpecies = listOf("Greedent"),
         particle = ParticleTypes.COMPOSTER,
         readyCheck = { world, pos ->
@@ -122,14 +126,14 @@ object GatheringJobs {
     val PUMPKIN_MELON_HARVESTER = GatheringJob(
         name = "pumpkin_melon_harvester",
         targetCategory = BlockCategory.PUMPKIN_MELON,
-        qualifyingMoves = setOf("stomp"),
+        qualifyingMoves = setOf("switcheroo"),
         particle = ParticleTypes.COMPOSTER,
     )
 
     val COCOA_HARVESTER = GatheringJob(
         name = "cocoa_harvester",
         targetCategory = BlockCategory.COCOA,
-        qualifyingMoves = setOf("knockoff"),
+        qualifyingMoves = setOf("leechseed"),
         particle = ParticleTypes.COMPOSTER,
         readyCheck = { world, pos ->
             val state = world.getBlockState(pos)
@@ -177,7 +181,7 @@ object GatheringJobs {
     val STONE_BREAKER = GatheringJob(
         name = "stone_breaker",
         targetCategory = BlockCategory.STONE,
-        qualifyingMoves = setOf("brickbreak"),
+        qualifyingMoves = setOf("hammerarm"),
         particle = ParticleTypes.CRIT,
         toolOverride = ItemStack(Items.DIAMOND_PICKAXE),
     )
@@ -185,15 +189,7 @@ object GatheringJobs {
     val IGNEOUS_MINER = GatheringJob(
         name = "igneous_miner",
         targetCategory = BlockCategory.IGNEOUS,
-        qualifyingMoves = setOf("stompingtantrum"),
-        particle = ParticleTypes.CRIT,
-        toolOverride = ItemStack(Items.DIAMOND_PICKAXE),
-    )
-
-    val DEEPSLATE_EXCAVATOR = GatheringJob(
-        name = "deepslate_excavator",
-        targetCategory = BlockCategory.DEEPSLATE,
-        qualifyingMoves = setOf("earthpower"),
+        qualifyingMoves = setOf("explosion"),
         particle = ParticleTypes.CRIT,
         toolOverride = ItemStack(Items.DIAMOND_PICKAXE),
     )
@@ -201,7 +197,7 @@ object GatheringJobs {
     val EXCAVATOR = GatheringJob(
         name = "excavator",
         targetCategory = BlockCategory.DIRT,
-        qualifyingMoves = setOf("mudshot"),
+        qualifyingMoves = setOf("sludgewave"),
         particle = ParticleTypes.CRIT,
     )
 
@@ -215,7 +211,7 @@ object GatheringJobs {
     val CLAY_DIGGER = GatheringJob(
         name = "clay_digger",
         targetCategory = BlockCategory.CLAY,
-        qualifyingMoves = setOf("mudslap"),
+        qualifyingMoves = setOf("mistyterrain"),
         particle = ParticleTypes.SPLASH,
     )
 
@@ -225,7 +221,7 @@ object GatheringJobs {
     val SCULK_HARVESTER = GatheringJob(
         name = "sculk_harvester",
         targetCategory = BlockCategory.SCULK,
-        qualifyingMoves = setOf("shadowball"),
+        qualifyingMoves = setOf("psychicterrain"),
         particle = ParticleTypes.SCULK_SOUL,
         harvestOverride = { world, pos, _ ->
             val item = world.getBlockState(pos).block.asItem()
@@ -237,7 +233,7 @@ object GatheringJobs {
     val ICE_MINER = GatheringJob(
         name = "ice_miner",
         targetCategory = BlockCategory.ICE,
-        qualifyingMoves = setOf("icepunch"),
+        qualifyingMoves = setOf("icefang"),
         particle = ParticleTypes.SNOWFLAKE,
         harvestOverride = { world, pos, _ ->
             val item = world.getBlockState(pos).block.asItem()
@@ -259,15 +255,16 @@ object GatheringJobs {
     val FLOWER_PICKER = GatheringJob(
         name = "flower_picker",
         targetCategory = BlockCategory.FLOWER,
-        qualifyingMoves = setOf("grassyterrain"),
+        qualifyingMoves = setOf("flatter"),
         fallbackSpecies = listOf("Comfey"),
         particle = ParticleTypes.CHERRY_LEAVES,
+        partyEnabled = true,
     )
 
     val SNOW_SCRAPER = GatheringJob(
         name = "snow_scraper",
         targetCategory = BlockCategory.SNOW_BLOCK,
-        qualifyingMoves = setOf("icywind"),
+        qualifyingMoves = setOf("snowscape"),
         particle = ParticleTypes.SNOWFLAKE,
         toolOverride = ItemStack(Items.DIAMOND_SHOVEL),
     )
@@ -275,26 +272,46 @@ object GatheringJobs {
     val MOSS_SCRAPER = GatheringJob(
         name = "moss_scraper",
         targetCategory = BlockCategory.MOSS,
-        qualifyingMoves = setOf("scratch"),
+        qualifyingMoves = setOf("leechlife"),
         particle = ParticleTypes.COMPOSTER,
     )
 
     val DECOMPOSER = GatheringJob(
         name = "decomposer",
         targetCategory = BlockCategory.LEAVES,
-        qualifyingMoves = setOf("sludgebomb"),
+        qualifyingMoves = setOf("perishsong"),
         particle = ParticleTypes.COMPOSTER,
         harvestOverride = { world, pos, _ ->
-            // Leaves → bone meal
-            world.breakBlock(pos, false)
-            listOf(ItemStack(Items.BONE_MEAL, 1))
+            // Flood-fill through connected leaves, each → 1 bone meal, capped at 64
+            val drops = mutableListOf<ItemStack>()
+            val visited = mutableSetOf(pos)
+            val queue = ArrayDeque<BlockPos>()
+            queue.add(pos)
+            var count = 0
+            while (queue.isNotEmpty() && count < 64) {
+                val current = queue.removeFirst()
+                val state = world.getBlockState(current)
+                if (state.block !is LeavesBlock && current != pos) continue
+                world.breakBlock(current, false)
+                CobbleCrewCacheManager.removeTargetGlobal(BlockCategory.LEAVES, current)
+                drops.add(ItemStack(Items.BONE_MEAL, 1))
+                count++
+                for (dir in Direction.entries) {
+                    val neighbor = current.offset(dir)
+                    if (neighbor !in visited && world.getBlockState(neighbor).block is LeavesBlock) {
+                        visited.add(neighbor)
+                        queue.add(neighbor)
+                    }
+                }
+            }
+            drops
         },
     )
 
-    val TERRAIN_FLATTENER = GatheringJob(
-        name = "terrain_flattener",
+    val LAWNMOWER = GatheringJob(
+        name = "lawnmower",
         targetCategory = BlockCategory.VEGETATION,
-        qualifyingMoves = setOf("bulldoze"),
+        qualifyingMoves = setOf("razorleaf"),
         particle = ParticleTypes.CRIT,
     )
     // ── Ores ─────────────────────────────────────────────────────────────────
@@ -306,14 +323,16 @@ object GatheringJobs {
         fallbackSpecies = listOf("Rhyhorn", "Rhydon", "Rhyperior", "Onix", "Steelix"),
         particle = ParticleTypes.CRIT,
         toolOverride = ItemStack(Items.DIAMOND_PICKAXE),
+        partyEnabled = true,
     )
     // ── Cobblemon Growables (migrated from legacy) ─────────────────────
 
     val APRICORN_HARVESTER = GatheringJob(
         name = "apricorn_harvester",
         targetCategory = BlockCategory.APRICORN,
-        qualifyingMoves = setOf("bugbite"),
+        qualifyingMoves = setOf("peck"),
         particle = ParticleTypes.HAPPY_VILLAGER,
+        partyEnabled = true,
         readyCheck = { world, pos ->
             world.getBlockState(pos).block is ApricornBlock
                 && world.getBlockState(pos).get(ApricornBlock.AGE) == ApricornBlock.MAX_AGE
@@ -331,6 +350,7 @@ object GatheringJobs {
         qualifyingMoves = setOf("pluck"),
         fallbackSpecies = listOf("Tropius"),
         particle = ParticleTypes.HAPPY_VILLAGER,
+        partyEnabled = true,
         readyCheck = { world, pos ->
             val state = world.getBlockState(pos)
             state.block is BerryBlock && state.get(BerryBlock.AGE) == BerryBlock.FRUIT_AGE
@@ -379,6 +399,7 @@ object GatheringJobs {
         particle = ParticleTypes.COMPOSTER,
         tolerance = 1.5,
         toolOverride = ItemStack(Items.DIAMOND_PICKAXE),
+        partyEnabled = true,
         afterHarvestAction = { world, pos, state ->
             val replant = JobConfigManager.get("tumblestone_harvester").replant ?: true
             if (replant && state.block in TUMBLESTONE_BLOCKS) {
@@ -398,7 +419,7 @@ object GatheringJobs {
     val NETHERWART_HARVESTER = GatheringJob(
         name = "netherwart_harvester",
         targetCategory = BlockCategory.NETHERWART,
-        qualifyingMoves = setOf("hex"),
+        qualifyingMoves = setOf("flipturn"),
         particle = ParticleTypes.SMOKE,
         readyCheck = { world, pos ->
             world.getBlockState(pos).get(NetherWartBlock.AGE) == NetherWartBlock.MAX_AGE
@@ -413,7 +434,7 @@ object GatheringJobs {
     val CROP_HARVESTER = GatheringJob(
         name = "crop_harvester",
         targetCategory = BlockCategory.CROP_GRAIN,
-        qualifyingMoves = setOf("trailblaze"),
+        qualifyingMoves = setOf("naturepower"),
         particle = ParticleTypes.HAPPY_VILLAGER,
         readyCheck = { world, pos ->
             CobbleCrewCropUtils.isMatureCrop(world, pos)
@@ -426,7 +447,7 @@ object GatheringJobs {
     val ROOT_HARVESTER = GatheringJob(
         name = "root_harvester",
         targetCategory = BlockCategory.CROP_ROOT,
-        qualifyingMoves = setOf("strength"),
+        qualifyingMoves = setOf("mudsport"),
         particle = ParticleTypes.COMPOSTER,
         readyCheck = { world, pos ->
             val state = world.getBlockState(pos)
@@ -444,6 +465,7 @@ object GatheringJobs {
         qualifyingMoves = setOf("bugbuzz"),
         fallbackSpecies = listOf("Combee", "Vespiquen"),
         particle = ParticleTypes.HAPPY_VILLAGER,
+        partyEnabled = true,
         readyCheck = { world, pos ->
             val state = world.getBlockState(pos)
             state.block is BeehiveBlock && state.get(BeehiveBlock.HONEY_LEVEL) == BeehiveBlock.FULL_HONEY_LEVEL
@@ -474,7 +496,6 @@ object GatheringJobs {
             // Stone & Earth
             STONE_BREAKER,
             IGNEOUS_MINER,
-            DEEPSLATE_EXCAVATOR,
             EXCAVATOR,
             SAND_MINER,
             CLAY_DIGGER,
@@ -489,7 +510,7 @@ object GatheringJobs {
             SNOW_SCRAPER,
             MOSS_SCRAPER,
             DECOMPOSER,
-            TERRAIN_FLATTENER,
+            LAWNMOWER,
             // Cobblemon Growables (migrated from legacy)
             APRICORN_HARVESTER,
             BERRY_HARVESTER,

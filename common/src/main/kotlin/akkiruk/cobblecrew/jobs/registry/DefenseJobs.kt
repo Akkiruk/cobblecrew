@@ -24,8 +24,9 @@ object DefenseJobs {
 
     val GUARD = DefenseJob(
         name = "guard",
-        qualifyingMoves = setOf("crunch"),
+        qualifyingMoves = setOf("furyattack"),
         particle = ParticleTypes.CRIT,
+        partyEnabled = true,
         effectFn = { world, pokemon, target ->
             (world as? ServerWorld)?.let { sw ->
                 target.damage(sw.damageSources.mobAttack(pokemon), 4.0f)
@@ -33,21 +34,11 @@ object DefenseJobs {
         },
     )
 
-    val SENTRY = DefenseJob(
-        name = "sentry",
-        qualifyingMoves = setOf("wideguard"),
-        particle = ParticleTypes.ELECTRIC_SPARK,
-        phase = WorkPhase.DEBUFFING,
-        effectFn = { _, _, target ->
-            target.addStatusEffect(StatusEffectInstance(StatusEffects.GLOWING, 400, 0))
-            target.addStatusEffect(StatusEffectInstance(StatusEffects.WEAKNESS, 200, 0))
-        },
-    )
-
     val REPELLER = DefenseJob(
         name = "repeller",
-        qualifyingMoves = setOf("roar"),
+        qualifyingMoves = setOf("psychicnoise"),
         particle = ParticleTypes.POOF,
+        partyEnabled = true,
         phase = WorkPhase.DEBUFFING,
         effectFn = { _, pokemon, target ->
             val dx = target.x - pokemon.x
@@ -61,8 +52,9 @@ object DefenseJobs {
 
     val FEARMONGER = DefenseJob(
         name = "fearmonger",
-        qualifyingMoves = setOf("scaryface"),
+        qualifyingMoves = setOf("poltergeist"),
         particle = ParticleTypes.WITCH,
+        partyEnabled = true,
         phase = WorkPhase.DEBUFFING,
         effectFn = { _, pokemon, target ->
             val dx = target.x - pokemon.x
@@ -76,38 +68,17 @@ object DefenseJobs {
 
     val FIRE_TRAP = DefenseJob(
         name = "fire_trap",
-        qualifyingMoves = setOf("firefang"),
+        qualifyingMoves = setOf("mysticalfire"),
         particle = ParticleTypes.FLAME,
+        partyEnabled = true,
         effectFn = { _, _, target ->
             target.setOnFireFor(5f)
         },
     )
 
-    val POISON_TRAP = DefenseJob(
-        name = "poison_trap",
-        qualifyingMoves = setOf("toxicspikes"),
-        particle = ParticleTypes.ITEM_SLIME,
-        phase = WorkPhase.DEBUFFING,
-        effectFn = { _, _, target ->
-            target.addStatusEffect(StatusEffectInstance(StatusEffects.POISON, 200, 1))
-        },
-    )
-
-    val ICE_TRAP = DefenseJob(
-        name = "ice_trap",
-        qualifyingMoves = setOf("chillingwater"),
-        particle = ParticleTypes.SNOWFLAKE,
-        phase = WorkPhase.DEBUFFING,
-        effectFn = { _, _, target ->
-            target.addStatusEffect(StatusEffectInstance(StatusEffects.SLOWNESS, 300, 3))
-            target.addStatusEffect(StatusEffectInstance(StatusEffects.MINING_FATIGUE, 300, 2))
-        },
-    )
-
     fun register() {
         WorkerRegistry.registerAll(
-            GUARD, SENTRY, REPELLER, FEARMONGER,
-            FIRE_TRAP, POISON_TRAP, ICE_TRAP,
+            GUARD, REPELLER, FEARMONGER, FIRE_TRAP,
         )
     }
 }

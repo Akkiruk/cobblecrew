@@ -1,3 +1,22 @@
+## 4.4.0 — Job Reassignment Overhaul
+- Remove 35 underperforming/exploitable jobs (all logistics, most combos, most processing, scout, etc.)
+- Reassign qualifying moves across all 50 surviving jobs for better thematic fit
+- Add per-job partyEnabled config flag — 32 jobs enabled for party mode, rest pasture-only
+- Config schema v3: existing configs auto-migrate to pick up new moves and party defaults
+- Rename terrain_flattener → lawnmower
+- Move full_restore from combo to support category (now single-move: lifedew)
+- Logger now peeks through up to 2 leaf blocks to find hidden logs behind canopy
+- Bamboo chopper targets second-to-lowest block — breaking it drops all bamboo above
+- Decomposer flood-fills connected leaves (up to 64), each → 1 bone meal
+- Stone breaker now mines deepslate and cobbled deepslate
+- Excavator now mines grass blocks
+- Ice miner now mines blue ice
+- Tree planter spacing reduced from 4 to 3 blocks
+- Speed booster and haste provider upgraded to level II
+- Crop irrigator area reduced to 3×3
+- Fishing looter cooldown reduced from 120s to 45s
+- Crop sower now supports modded seeds (any item whose block is CropBlock or StemBlock)
+
 ## 4.3.2 — Pickup Fix
 - Fix pickup never actually running: the idle-phase gate blocked it on every tick
 - Pickup now checks during job cooldowns and between assignments (20-tick grace for new jobs)

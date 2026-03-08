@@ -248,8 +248,9 @@ abstract class BaseJob : Worker {
 
     override fun isAvailable(context: JobContext, pokemonId: UUID): Boolean {
         if (!config.enabled) return false
-        // Party Pokémon: check player-level and server-level blocked jobs/categories
+        // Party Pokémon: per-job partyEnabled flag + player-level blocked lists
         if (context is JobContext.Party) {
+            if (config.partyEnabled != true) return false
             if (PartyJobPreferences.isBlocked(context.player.uuid, name, category)) return false
         }
         if (!requiresTarget) return true

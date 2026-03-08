@@ -55,6 +55,7 @@ open class GatheringJob(
     val afterHarvestAction: ((World, BlockPos, BlockState) -> Unit)? = null,
     val tolerance: Double = 3.0,
     val isCombo: Boolean = false,
+    val partyEnabled: Boolean = false,
 ) : BaseJob() {
 
     override val arrivalParticle: ParticleEffect = particle
@@ -65,6 +66,7 @@ open class GatheringJob(
         enabled = true,
         qualifyingMoves = qualifyingMoves.toList(),
         fallbackSpecies = fallbackSpecies,
+        partyEnabled = partyEnabled,
     )
 
     init { registerConfig() }

@@ -77,17 +77,18 @@ object ProductionJobs {
 
     // ── Loot-based Workers ───────────────────────────────────────────
 
-    object FishingLooter : LootProducer("fishing_looter", 120) {
+    object FishingLooter : LootProducer("fishing_looter", 45) {
         override val category = "production"
         override val priority = WorkerPriority.MOVE
         private val qualifyingMoves = setOf("dive")
 
         override fun buildDefaultConfig() = JobConfig(
             enabled = true,
-            cooldownSeconds = 120,
+            cooldownSeconds = 45,
             qualifyingMoves = qualifyingMoves.toList(),
             treasureChance = 10,
             requiresWater = true,
+            partyEnabled = true,
         )
 
         init { registerConfig() }
@@ -114,138 +115,9 @@ object ProductionJobs {
         }
     }
 
-    object PickupLooter : LootProducer("pickup_looter", 120) {
-        override val category = "production"
-        override val priority = WorkerPriority.MOVE
-
-        override fun buildDefaultConfig() = JobConfig(
-            enabled = true,
-            cooldownSeconds = 120,
-            requiredAbility = "pickup",
-            lootTables = listOf("cobblemon:gameplay/pickup"),
-        )
-
-        init { registerConfig() }
-
-        override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String): Boolean {
-            if (!config.enabled) return false
-            val req = config.requiredAbility?.lowercase() ?: "pickup"
-            return ability.lowercase() == req
-        }
-
-        override fun canWork(context: JobContext, entity: PokemonEntity) = true
-
-        override fun generateLoot(world: World, origin: BlockPos, entity: PokemonEntity): List<ItemStack> {
-            val tables = (config.lootTables ?: emptyList()).ifEmpty { listOf("cobblemon:gameplay/pickup") }
-                .mapNotNull { Identifier.tryParse(it) }
-            if (tables.isEmpty()) return emptyList()
-            val lootParams = LootContextParameterSet.Builder(world as ServerWorld)
-                .add(LootContextParameters.ORIGIN, origin.toCenterPos())
-                .add(LootContextParameters.THIS_ENTITY, entity)
-                .build(LootContextTypes.CHEST)
-            val key = RegistryKey.of(RegistryKeys.LOOT_TABLE, tables.random())
-            return world.server.reloadableRegistries.getLootTable(key).generateLoot(lootParams)
-        }
-    }
-
-    object DiveCollector : LootProducer("dive_collector", 210) {
-        override val category = "production"
-        override val priority = WorkerPriority.MOVE
-        private val qualifyingMoves = setOf("waterfall")
-
-        override fun buildDefaultConfig() = JobConfig(
-            enabled = true,
-            cooldownSeconds = 210,
-            qualifyingMoves = qualifyingMoves.toList(),
-            requiresWater = true,
-            lootTables = listOf("cobblemon:gameplay/pickup"),
-        )
-
-        init { registerConfig() }
-
-        override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String) =
-            dslEligible(config, qualifyingMoves, emptyList(), moves, species)
-
-        override fun canWork(context: JobContext, entity: PokemonEntity) =
-            config.requiresWater != true || entity.isTouchingWater
-
-        override fun generateLoot(world: World, origin: BlockPos, entity: PokemonEntity): List<ItemStack> {
-            val tables = (config.lootTables ?: emptyList()).ifEmpty { listOf("cobblemon:gameplay/pickup") }
-                .mapNotNull { Identifier.tryParse(it) }
-            if (tables.isEmpty()) return emptyList()
-            val lootParams = LootContextParameterSet.Builder(world as ServerWorld)
-                .add(LootContextParameters.ORIGIN, origin.toCenterPos())
-                .add(LootContextParameters.THIS_ENTITY, entity)
-                .build(LootContextTypes.CHEST)
-            val key = RegistryKey.of(RegistryKeys.LOOT_TABLE, tables.random())
-            return world.server.reloadableRegistries.getLootTable(key).generateLoot(lootParams)
-        }
-    }
-
-    // ── Target-based excavation ──────────────────────────────────────
-
-    object DigSiteExcavator : BaseJob() {
-        override val name = "dig_site_excavator"
-        override val category = "production"
-        override val priority = WorkerPriority.TYPE
-        override val targetCategory = BlockCategory.SUSPICIOUS
-        override val arrivalParticle: ParticleEffect = ParticleTypes.COMPOSTER
-        override val workPhase: WorkPhase = WorkPhase.HARVESTING
-
-        private val qualifyingMoves = setOf("dig")
-
-        override fun buildDefaultConfig() = JobConfig(
-            enabled = true,
-            cooldownSeconds = 120,
-            qualifyingMoves = qualifyingMoves.toList(),
-            lootTables = listOf("cobblemon:gameplay/pickup"),
-        )
-
-        init { registerConfig() }
-
-        override fun isEligible(moves: Set<String>, types: Set<String>, species: String, ability: String) =
-            dslEligible(config, qualifyingMoves, emptyList(), moves, species)
-
-        override fun findTarget(state: PokemonWorkerState, context: JobContext): Target? =
-            findCachedBlockTarget(state, context, BlockCategory.SUSPICIOUS) { world, pos ->
-                world.getBlockState(pos.up()).isAir
-            }
-
-        override fun doWork(state: PokemonWorkerState, context: JobContext, pokemonEntity: PokemonEntity): WorkResult {
-            val pos = state.targetPos ?: return WorkResult.Done()
-            val world = context.world
-
-            val tables = (config.lootTables ?: emptyList()).ifEmpty { listOf("cobblemon:gameplay/pickup") }
-                .mapNotNull { Identifier.tryParse(it) }
-            if (tables.isEmpty()) return WorkResult.Done()
-
-            val lootParams = LootContextParameterSet.Builder(world as ServerWorld)
-                .add(LootContextParameters.ORIGIN, pos.toCenterPos())
-                .add(LootContextParameters.THIS_ENTITY, pokemonEntity)
-                .build(LootContextTypes.CHEST)
-
-            val key = RegistryKey.of(RegistryKeys.LOOT_TABLE, tables.random())
-            val drops = world.server.reloadableRegistries.getLootTable(key).generateLoot(lootParams)
-            if (drops.isEmpty()) return WorkResult.Done()
-
-            val baseCd = (config.cooldownSeconds.takeIf { it > 0 } ?: 120) * 20L
-            state.lastActionTime = WorkSpeedBoostManager.adjustCooldown(baseCd, context.origin, world.time)
-            return WorkResult.Done(drops)
-        }
-
-        override fun getCooldownTicks(state: PokemonWorkerState): Long {
-            val cd = state.lastActionTime
-            if (cd > 0) { state.lastActionTime = 0L; return cd }
-            return 0L
-        }
-    }
-
     fun register() {
         WorkerRegistry.registerAll(
             FishingLooter,
-            PickupLooter,
-            DiveCollector,
-            DigSiteExcavator,
         )
     }
 }
