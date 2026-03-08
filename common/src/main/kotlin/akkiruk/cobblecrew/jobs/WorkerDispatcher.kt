@@ -32,7 +32,7 @@ object WorkerDispatcher {
 
     /**
      * Periodic maintenance — call once per server tick from platform hooks.
-     * Sweeps expired claims/blacklists every [SWEEP_INTERVAL] ticks.
+     * Sweeps expired claims every [SWEEP_INTERVAL] ticks.
      */
     fun tickMaintenance(serverTick: Long) {
         if (serverTick - lastSweepTick >= SWEEP_INTERVAL) {
@@ -95,7 +95,7 @@ object WorkerDispatcher {
 
         if (current != null && job != current) {
             current.cleanup(pokemonId)
-            ClaimManager.release(state, world, blacklist = false)
+            ClaimManager.release(state)
             state.resetJobState()
         }
 
@@ -124,7 +124,7 @@ object WorkerDispatcher {
         state.idle.resetOnJobAssign()
         // Release stale idle-pickup claims when transitioning from idle to job
         if (current == null) {
-            ClaimManager.release(state, world, blacklist = false)
+            ClaimManager.release(state)
             if (state.heldItems.isNotEmpty()) {
                 state.heldItems.forEach { stack -> Block.dropStack(world, pokemonEntity.blockPos, stack) }
                 state.heldItems.clear()
@@ -141,7 +141,7 @@ object WorkerDispatcher {
         val state = StateManager.get(pokemonId)
         val species = state?.profile?.species
 
-        ClaimManager.cleanupPokemon(pokemonId, world)
+        ClaimManager.cleanupPokemon(pokemonId)
         StateManager.remove(pokemonId)
 
         CobbleCrewDebugLogger.pokemonCleanedUp(species, pokemonId)

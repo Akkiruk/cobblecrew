@@ -40,18 +40,6 @@ class CobbleCrewConfig : ConfigData {
         /** Seconds a target is ignored after a failed claim (prevents immediate re-claim). */
         @ConfigEntry.BoundedDiscrete(min = 1, max = 30)
         var targetGracePeriodSeconds = 3
-
-        /** Blacklist duration (seconds) after 1 pathfind failure. */
-        @ConfigEntry.BoundedDiscrete(min = 2, max = 60)
-        var blacklistShortSeconds = 5
-
-        /** Blacklist duration (seconds) after 2 pathfind failures. */
-        @ConfigEntry.BoundedDiscrete(min = 10, max = 120)
-        var blacklistMediumSeconds = 30
-
-        /** Blacklist duration (seconds) after 3+ pathfind failures. */
-        @ConfigEntry.BoundedDiscrete(min = 30, max = 600)
-        var blacklistLongSeconds = 120
     }
 
     class PartyGroup {

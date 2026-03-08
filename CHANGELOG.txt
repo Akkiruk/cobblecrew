@@ -1,3 +1,10 @@
+## 4.6.0 — Remove Blacklist, Add Stuck Detection + Force-Work
+- Remove the entire blacklist system (config fields, commands, data structures, all filter checks)
+- Add stuck detection: if a Pokémon hasn't moved >1 block in 3 seconds while navigating, skip to working from distance
+- Add 10-second hard navigation timeout: if a Pokémon can't reach its target in 10s, force work from current position
+- Add teleport-home safety valve: if a Pokémon is forced to work from >4 blocks away 3 times in a row, teleport it back to its pasture origin
+- Net effect: Pokémon never get stuck doing nothing — they always complete their work, even if they can't path to the target
+
 ## 4.5.1 — Remove False Blacklisting
 - Fix: blocks were getting blacklisted (5s → 30s → 120s escalating) when a target disappeared while a Pokémon was walking to it (e.g. another worker got it first, tree already felled). This was the main cause of loggers appearing to "stop working" — positions that grew new trees were still blacklisted from the last cycle.
 - All claim releases now explicitly skip blacklisting. The escalating blacklist system is no longer triggered.

@@ -40,9 +40,22 @@ class NavState {
     var secondaryTargetPos: BlockPos? = null
     var lastPathfindTick: Long = 0L
 
+    // Stuck detection: snapshot position every 60 ticks, force-work after 200 ticks
+    var navStartTick: Long = 0L
+    var navCheckPos: BlockPos? = null
+    var navCheckTick: Long = 0L
+    var forceWorkCount: Int = 0
+
     fun reset() {
         targetPos = null
         secondaryTargetPos = null
+        resetNav()
+    }
+
+    fun resetNav() {
+        navStartTick = 0L
+        navCheckPos = null
+        navCheckTick = 0L
     }
 }
 
@@ -127,6 +140,10 @@ class PokemonWorkerState(val pokemonId: UUID) {
     var targetPos: BlockPos? by nav::targetPos
     var secondaryTargetPos: BlockPos? by nav::secondaryTargetPos
     var lastPathfindTick: Long by nav::lastPathfindTick
+    var navStartTick: Long by nav::navStartTick
+    var navCheckPos: BlockPos? by nav::navCheckPos
+    var navCheckTick: Long by nav::navCheckTick
+    var forceWorkCount: Int by nav::forceWorkCount
 
     val heldItems: MutableList<ItemStack> get() = deposit.heldItems
     val failedDeposits: MutableSet<BlockPos> get() = deposit.failedDeposits

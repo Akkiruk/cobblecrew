@@ -158,7 +158,6 @@ object EnvironmentalJobs {
                 val be = world.getBlockEntity(pos) as? AbstractFurnaceBlockEntity ?: return@filter false
                 !be.getStack(0).isEmpty
                     && !world.getBlockState(pos).get(AbstractFurnaceBlock.LIT)
-                    && !ClaimManager.isBlacklisted(pos, world.time)
             }
             .randomOrNull()
 
@@ -195,7 +194,6 @@ object EnvironmentalJobs {
                 val be = world.getBlockEntity(pos) as? BrewingStandBlockEntity ?: return@filter false
                 val accessor = be as BrewingStandBlockEntityAccessor
                 accessor.fuel < BrewingStandBlockEntity.MAX_FUEL_USES
-                    && !ClaimManager.isBlacklisted(pos, world.time)
             }
             .randomOrNull()
 
@@ -222,7 +220,6 @@ object EnvironmentalJobs {
         partyEnabled = true,
         findTarget = { world, origin ->
             CobbleCrewCacheManager.getTargets(origin, BlockCategory.FIRE)
-                .filter { !ClaimManager.isBlacklisted(it, world.time) }
                 .randomOrNull()
         },
         action = { world, pos ->
@@ -249,7 +246,6 @@ object EnvironmentalJobs {
                 .filter { pos ->
                     world.getBlockState(pos).block == Blocks.FARMLAND
                         && world.getBlockState(pos).get(FarmlandBlock.MOISTURE) <= 2
-                        && !ClaimManager.isBlacklisted(pos, world.time)
                 }
                 .randomOrNull()
         },
@@ -283,7 +279,6 @@ object EnvironmentalJobs {
                     val s = world.getBlockState(pos)
                     s.block is BeehiveBlock
                         && s.get(BeehiveBlock.HONEY_LEVEL) < BeehiveBlock.FULL_HONEY_LEVEL
-                        && !ClaimManager.isBlacklisted(pos, world.time)
                 }
                 .randomOrNull()
         },

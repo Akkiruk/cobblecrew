@@ -94,7 +94,7 @@ object IdleBehaviorHandler {
         if (currentTarget != null && state.idlePickupClaimTick > 0L) {
             val claimedAt = state.idlePickupClaimTick.takeIf { it > 0L } ?: now
             if (now - claimedAt > IDLE_PICKUP_STALE_TICKS) {
-                ClaimManager.release(state, world, blacklist = false)
+                ClaimManager.release(state)
                 state.idlePickupClaimTick = 0L
                 return false
             }
@@ -102,21 +102,21 @@ object IdleBehaviorHandler {
             val nearbyItem = world.getEntitiesByClass(ItemEntity::class.java, searchArea) { !it.isRemoved && it.isOnGround }
                 .firstOrNull()
             if (nearbyItem == null) {
-                ClaimManager.release(state, world, blacklist = false)
+                ClaimManager.release(state)
                 state.idlePickupClaimTick = 0L
                 return false
             }
             ClaimManager.navigateTo(pokemonEntity, currentTarget, state)
             if (ClaimManager.isPokemonAtPosition(pokemonEntity, currentTarget, 2.0)) {
                 if (nearbyItem.isRemoved || nearbyItem.stack.isEmpty) {
-                    ClaimManager.release(state, world, blacklist = false)
+                    ClaimManager.release(state)
                     state.idlePickupClaimTick = 0L
                     return true
                 }
                 val stack = nearbyItem.stack.split(nearbyItem.stack.count)
                 if (nearbyItem.stack.isEmpty) nearbyItem.discard()
                 state.heldItems.add(stack)
-                ClaimManager.release(state, world, blacklist = false)
+                ClaimManager.release(state)
                 state.idlePickupClaimTick = 0L
             }
             return true
