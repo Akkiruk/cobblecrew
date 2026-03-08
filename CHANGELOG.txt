@@ -1,3 +1,8 @@
+## 4.3.1 — Pickup Priority
+- Ground item pickup now takes priority over job selection
+- Pokémon between jobs will always pick up nearby items before starting a new job
+- Active jobs are not interrupted — pickup only preempts at the job-selection stage
+
 ## 4.3.0 — Randomized Target Selection
 - Pokémon now pick a random valid target instead of always the closest one
 - Applies to all gathering, environmental, and cauldron-filling jobs

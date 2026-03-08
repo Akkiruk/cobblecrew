@@ -63,7 +63,14 @@ object IdleBehaviorHandler {
         return true
     }
 
-    private fun tryIdlePickup(state: PokemonWorkerState, context: JobContext, pokemonEntity: PokemonEntity): Boolean {
+    private fun tryIdlePickup(state: PokemonWorkerState, context: JobContext, pokemonEntity: PokemonEntity): Boolean =
+        handlePickup(state, context, pokemonEntity)
+
+    /**
+     * Attempt to pick up ground items. Called from both idle behavior and
+     * the dispatcher (before job selection) to ensure pickup always wins.
+     */
+    fun handlePickup(state: PokemonWorkerState, context: JobContext, pokemonEntity: PokemonEntity): Boolean {
         val world = context.world
         val origin = context.origin
         val now = world.time

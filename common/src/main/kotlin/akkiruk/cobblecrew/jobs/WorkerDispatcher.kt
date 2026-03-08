@@ -64,6 +64,12 @@ object WorkerDispatcher {
         val now = world.time
         state.idleSinceTick = 0L
 
+        // Ground-item pickup takes priority over any job when the Pokémon is between jobs
+        if (current == null && IdleBehaviorHandler.handlePickup(state, context, pokemonEntity)) {
+            WorkerVisualUtils.setExcited(pokemonEntity, false)
+            return
+        }
+
         // Stick with current job if it has real work or is within stickiness window
         if (current != null && current in eligible && JobSelector.shouldStick(current, state, context, pokemonId, now)) {
             val reason = JobSelector.stickReason(current, state, pokemonId)

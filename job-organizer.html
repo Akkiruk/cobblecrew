@@ -198,7 +198,10 @@
     <label style="min-width:auto"><input type="checkbox" id="editCombo"> Requires ALL moves</label>
   </div>
   <div>
-    <label style="font-size:0.85em;color:var(--text-dim)">Pick moves (click to toggle):</label>
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+      <label style="font-size:0.85em;color:var(--text-dim)">Pick moves (click to toggle):</label>
+      <label style="font-size:0.85em;color:var(--text-dim)"><input type="checkbox" id="hideAssigned" onchange="renderMovePicker()"> Hide already-assigned moves</label>
+    </div>
     <input class="move-search" id="editMoveSearch" placeholder="Filter moves..." oninput="renderMovePicker()">
     <div class="move-picker" id="movePicker"></div>
   </div>
@@ -682,12 +685,14 @@ function renderMovePicker() {
   const job = jobs.find(j => j.name === editingJob);
   if (!job) return;
   const search = document.getElementById('editMoveSearch').value.toLowerCase();
+  const hideAssigned = document.getElementById('hideAssigned').checked;
   const assigns = moveAssignments();
 
   // Sort: picked first, then by species count desc
   let entries = Object.entries(ALL_MOVES)
     .filter(([m]) => !search || m.includes(search))
-    .map(([m,c]) => ({name:m, count:c, picked: job.moves.includes(m), assignedTo: assigns[m]||[]}));
+    .map(([m,c]) => ({name:m, count:c, picked: job.moves.includes(m), assignedTo: assigns[m]||[]}))
+    .filter(e => !hideAssigned || e.picked || e.assignedTo.filter(j => j !== editingJob).length === 0);
 
   entries.sort((a,b) => {
     if (a.picked !== b.picked) return a.picked ? -1 : 1;
