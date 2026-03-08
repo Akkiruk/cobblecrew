@@ -248,7 +248,7 @@ abstract class BaseJob : Worker {
                         state.forceWorkCount++
                         if (state.forceWorkCount >= FORCE_WORK_TELEPORT_THRESHOLD) {
                             val origin = context.origin
-                            entity.requestTeleport(origin.x + 0.5, origin.y.toDouble(), origin.z + 0.5)
+                            entity.requestTeleport(origin.x + 0.5, origin.y + 1.0, origin.z + 0.5)
                             state.forceWorkCount = 0
                         }
                     } else {
