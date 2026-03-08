@@ -8,6 +8,7 @@
 
 package akkiruk.cobblecrew.jobs.dsl
 
+import akkiruk.cobblecrew.cache.CobbleCrewCacheManager
 import akkiruk.cobblecrew.config.JobConfig
 import akkiruk.cobblecrew.enums.BlockCategory
 import akkiruk.cobblecrew.enums.JobImportance
@@ -18,6 +19,7 @@ import akkiruk.cobblecrew.jobs.JobContext
 import akkiruk.cobblecrew.jobs.Target
 import akkiruk.cobblecrew.jobs.WorkResult
 import akkiruk.cobblecrew.state.PokemonWorkerState
+import java.util.UUID
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import net.minecraft.block.BlockState
 import net.minecraft.item.ItemStack
@@ -72,6 +74,13 @@ open class GatheringJob(
 
     override fun matchPriority(moves: Set<String>, types: Set<String>, species: String, ability: String) =
         dslMatchPriority(config, qualifyingMoves, fallbackSpecies, moves, species, isCombo)
+
+    override fun isAvailable(context: JobContext, pokemonId: UUID): Boolean {
+        if (!super.isAvailable(context, pokemonId)) return false
+        if (readyCheck == null) return true
+        val targets = CobbleCrewCacheManager.getTargets(context.origin, targetCategory)
+        return targets.any { readyCheck.invoke(context.world, it) }
+    }
 
     override fun findTarget(state: PokemonWorkerState, context: JobContext): Target? =
         findCachedBlockTarget(state, context, targetCategory, readyCheck = readyCheck)

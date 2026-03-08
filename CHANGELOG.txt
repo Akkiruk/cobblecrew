@@ -1,3 +1,8 @@
+## 4.2.1 — Gathering Job Availability Fix
+- Fix gathering jobs with readyChecks (e.g. honey_harvester) falsely claiming availability when no targets are actually ready
+- This caused honey_harvester to permanently block bee_pollinator from running, preventing Combee/Vespiquen from filling beehives
+- GatheringJob.isAvailable() now checks readyCheck against cached targets before reporting availability
+
 ## 4.2.0 — Responsive Workers
 - Per-job arrival delay: production, support, environmental jobs now start working instantly instead of waiting 1.5 seconds
 - Processing and placement jobs use a short 0.5s delay; gathering and combat keep the full animation
