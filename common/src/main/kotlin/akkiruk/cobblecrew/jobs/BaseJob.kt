@@ -157,7 +157,7 @@ abstract class BaseJob : Worker {
         }
 
         if (!validateTarget(state, context)) {
-            ClaimManager.release(state, context.world)
+            ClaimManager.release(state, context.world, blacklist = false)
             resetToIdle(state, context)
             return
         }
