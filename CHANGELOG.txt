@@ -1,3 +1,6 @@
+## 4.2.2 — Honey Harvester Drop Variety
+- Honey harvester now has a 50/50 chance to drop 3 honeycomb or 3 honey bottles (previously always honeycomb)
+
 ## 4.2.1 — Gathering Job Availability Fix
 - Fix gathering jobs with readyChecks (e.g. honey_harvester) falsely claiming availability when no targets are actually ready
 - This caused honey_harvester to permanently block bee_pollinator from running, preventing Combee/Vespiquen from filling beehives

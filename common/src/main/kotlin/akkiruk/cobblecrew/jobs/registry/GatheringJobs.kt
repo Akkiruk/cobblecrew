@@ -451,7 +451,8 @@ object GatheringJobs {
         harvestOverride = { world, pos, _ ->
             val state = world.getBlockState(pos)
             world.setBlockState(pos, state.with(BeehiveBlock.HONEY_LEVEL, 0), Block.NOTIFY_ALL)
-            listOf(ItemStack(Items.HONEYCOMB, 3))
+            if (world.random.nextBoolean()) listOf(ItemStack(Items.HONEYCOMB, 3))
+            else listOf(ItemStack(Items.HONEY_BOTTLE, 3))
         },
     )
 
