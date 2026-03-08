@@ -33,6 +33,7 @@ object ClaimManager {
     private const val PATHFIND_THROTTLE_TICKS = 5L
     private const val UNREACHABLE_TTL_TICKS = 200L // 10s
     private const val DEFAULT_CLAIM_TIMEOUT = 200L // 10s
+    private const val WORKER_WALK_SPEED = 0.23 // target blocks/tick — gentle waddle
 
     // -- Lightweight target key for reverse index --
     private sealed interface TargetKey {
@@ -109,7 +110,7 @@ object ClaimManager {
         val now = entity.world.time
         if (now - state.lastPathfindTick < PATHFIND_THROTTLE_TICKS) return false
         state.lastPathfindTick = now
-        entity.navigation.startMovingTo(pos.x + 0.5, pos.y.toDouble(), pos.z + 0.5, 1.0)
+        entity.navigation.startMovingTo(pos.x + 0.5, pos.y.toDouble(), pos.z + 0.5, workerSpeed(entity))
         return true
     }
 
@@ -118,7 +119,7 @@ object ClaimManager {
         val now = entity.world.time
         if (now - state.lastPathfindTick < PATHFIND_THROTTLE_TICKS) return false
         state.lastPathfindTick = now
-        entity.navigation.startMovingTo(player.x, player.y, player.z, 1.0)
+        entity.navigation.startMovingTo(player.x, player.y, player.z, workerSpeed(entity))
         return true
     }
 
@@ -132,6 +133,13 @@ object ClaimManager {
         val dx = entity.x - player.x
         val dz = entity.z - player.z
         return dx * dx + dz * dz <= tolerance * tolerance
+    }
+
+    /** Compute a speed multiplier that normalizes all workers to a gentle waddle. */
+    private fun workerSpeed(entity: PokemonEntity): Double {
+        val base = entity.getAttributeValue(net.minecraft.entity.attribute.EntityAttributes.GENERIC_MOVEMENT_SPEED)
+        if (base <= 0.0) return 1.0
+        return (WORKER_WALK_SPEED / base).coerceAtMost(1.0)
     }
 
     // ---- Cleanup ----
