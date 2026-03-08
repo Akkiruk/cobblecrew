@@ -276,8 +276,8 @@ abstract class BaseJob : Worker {
     // ---- Shared target-finding utilities for DSL subclasses ----
 
     /**
-     * Find the closest block in the scanner cache that matches [category],
-     * passes [readyCheck], is unclaimed, not blacklisted, and pathfind-reachable.
+     * Find a random block in the scanner cache that matches [category],
+     * passes [readyCheck], is unclaimed, not blacklisted, and not unreachable.
      */
     protected fun findCachedBlockTarget(
         state: PokemonWorkerState,
@@ -292,17 +292,15 @@ abstract class BaseJob : Worker {
         val targets = CobbleCrewCacheManager.getTargets(origin, category)
         if (targets.isEmpty()) return null
 
-        val sorted = targets
+        val valid = targets
             .filter { pos ->
                 !ClaimManager.isTargetedByOther(pos, pokemonId)
                     && !ClaimManager.isBlacklisted(pos, now)
                     && !ClaimManager.isUnreachable(pokemonId, pos, now)
                     && (readyCheck == null || readyCheck(world, pos))
             }
-            .sortedBy { it.getSquaredDistance(origin) }
 
-        // Return the closest valid target (already sorted by distance)
-        return sorted.firstOrNull()?.let { Target.Block(it) }
+        return valid.randomOrNull()?.let { Target.Block(it) }
     }
 
     /**

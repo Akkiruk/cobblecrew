@@ -55,7 +55,7 @@ object EnvironmentalJobs {
             val ice = CobbleCrewCacheManager.getTargets(origin, BlockCategory.ICE)
             (water + ice)
                 .filter { !ClaimManager.isTargeted(it) }
-                .minByOrNull { it.getSquaredDistance(origin) }
+                .randomOrNull()
         },
         action = { world, pos ->
             val next = FROST_CHAIN[world.getBlockState(pos).block]
@@ -73,7 +73,7 @@ object EnvironmentalJobs {
         findTarget = { world, origin ->
             CobbleCrewCacheManager.getTargets(origin, BlockCategory.LAVA)
                 .filter { !ClaimManager.isTargeted(it) }
-                .minByOrNull { it.getSquaredDistance(origin) }
+                .randomOrNull()
         },
         action = { world, pos ->
             if (world.getBlockState(pos).block == Blocks.LAVA)
@@ -92,7 +92,7 @@ object EnvironmentalJobs {
             CobbleCrewCacheManager.getTargets(origin, BlockCategory.GROWABLE)
                 .filter { !ClaimManager.isTargeted(it) }
                 .filter { !CobbleCrewCropUtils.isMatureCrop(world, it) }
-                .minByOrNull { it.getSquaredDistance(origin) }
+                .randomOrNull()
         },
         validate = { world, pos ->
             val state = world.getBlockState(pos)
@@ -158,7 +158,7 @@ object EnvironmentalJobs {
                     && !world.getBlockState(pos).get(AbstractFurnaceBlock.LIT)
                     && !ClaimManager.isBlacklisted(pos, world.time)
             }
-            .minByOrNull { it.getSquaredDistance(origin) }
+            .randomOrNull()
 
     private fun addBurnTime(world: World, pos: BlockPos) {
         val be = world.getBlockEntity(pos) as? AbstractFurnaceBlockEntity ?: return
@@ -194,7 +194,7 @@ object EnvironmentalJobs {
                 accessor.fuel < BrewingStandBlockEntity.MAX_FUEL_USES
                     && !ClaimManager.isBlacklisted(pos, world.time)
             }
-            .minByOrNull { it.getSquaredDistance(origin) }
+            .randomOrNull()
 
     private fun addBrewingFuel(world: World, pos: BlockPos) {
         val be = world.getBlockEntity(pos) as? BrewingStandBlockEntity ?: return
@@ -219,7 +219,7 @@ object EnvironmentalJobs {
         findTarget = { world, origin ->
             CobbleCrewCacheManager.getTargets(origin, BlockCategory.FIRE)
                 .filter { !ClaimManager.isBlacklisted(it, world.time) }
-                .minByOrNull { it.getSquaredDistance(origin) }
+                .randomOrNull()
         },
         action = { world, pos ->
             val r = JobConfigManager.get("fire_douser").radius?.takeIf { it > 0 } ?: 2
@@ -246,7 +246,7 @@ object EnvironmentalJobs {
                         && world.getBlockState(pos).get(FarmlandBlock.MOISTURE) <= 2
                         && !ClaimManager.isBlacklisted(pos, world.time)
                 }
-                .minByOrNull { it.getSquaredDistance(origin) }
+                .randomOrNull()
         },
         action = { world, pos ->
             val r = JobConfigManager.get("crop_irrigator").radius?.takeIf { it > 0 } ?: 2
@@ -279,7 +279,7 @@ object EnvironmentalJobs {
                         && s.get(BeehiveBlock.HONEY_LEVEL) < BeehiveBlock.FULL_HONEY_LEVEL
                         && !ClaimManager.isBlacklisted(pos, world.time)
                 }
-                .minByOrNull { it.getSquaredDistance(origin) }
+                .randomOrNull()
         },
         action = { world, pos ->
             val state = world.getBlockState(pos)

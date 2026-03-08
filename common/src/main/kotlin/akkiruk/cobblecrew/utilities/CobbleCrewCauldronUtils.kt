@@ -22,7 +22,7 @@ object CobbleCrewCauldronUtils {
     }
 
     /**
-     * Finds the closest empty cauldron
+     * Finds a random empty cauldron
      */
     fun findClosestCauldron(world: World, origin: BlockPos): BlockPos? {
         val possibleTargets = CobbleCrewCacheManager.getTargets(origin, BlockCategory.CAULDRON)
@@ -33,7 +33,7 @@ object CobbleCrewCauldronUtils {
                 world.getBlockState(pos).isOf(Blocks.CAULDRON)
                     && !ClaimManager.isBlacklisted(pos, world.time)
             }
-            .minByOrNull { it.getSquaredDistance(origin) }
+            .randomOrNull()
     }
 
     /**

@@ -1,3 +1,10 @@
+## 4.3.0 — Randomized Target Selection
+- Pokémon now pick a random valid target instead of always the closest one
+- Applies to all gathering, environmental, and cauldron-filling jobs
+- Workers spread out across available targets instead of crowding the nearest one
+- Defense/support/deposit still use closest (closest threat, nearest player, nearest container)
+- Slight performance improvement: random selection is O(n) vs O(n log n) for sorted
+
 ## 4.2.2 — Honey Harvester Drop Variety
 - Honey harvester now has a 50/50 chance to drop 3 honeycomb or 3 honey bottles (previously always honeycomb)
 

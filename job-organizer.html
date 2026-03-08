@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>CobbleCrew Job/Move Organizer</title>
+<style>
+  :root {
+    --bg: #1e1e2e; --surface: #2a2a3c; --surface2: #33334a;
+    --text: #e0e0e0; --text-dim: #888; --accent: #7c7cf0;
+    --accent2: #5ca0f0; --green: #5cd05c; --red: #f06060;
+    --orange: #f0a050; --yellow: #e0d060; --border: #444;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg); color: var(--text); padding: 16px; }
+  h1 { color: var(--accent); margin-bottom: 4px; font-size: 1.4em; }
+  h2 { color: var(--accent2); margin: 12px 0 6px; font-size: 1.1em; }
+  .subtitle { color: var(--text-dim); font-size: 0.85em; margin-bottom: 12px; }
+
+  /* Layout */
+  .top-bar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+  .top-bar input, .top-bar select { background: var(--surface); color: var(--text); border: 1px solid var(--border); padding: 6px 10px; border-radius: 4px; font-size: 0.9em; }
+  .top-bar input { width: 240px; }
+  .top-bar select { min-width: 140px; }
+  button { background: var(--accent); color: #fff; border: none; padding: 6px 14px; border-radius: 4px; cursor: pointer; font-size: 0.85em; }
+  button:hover { opacity: 0.85; }
+  button.danger { background: var(--red); }
+  button.secondary { background: var(--surface2); border: 1px solid var(--border); }
+  button.export-btn { background: var(--green); font-size: 1em; padding: 8px 20px; }
+
+  /* Stats bar */
+  .stats { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 12px; font-size: 0.85em; }
+  .stat { background: var(--surface); padding: 4px 10px; border-radius: 4px; }
+  .stat b { color: var(--accent2); }
+
+  /* Tables */
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 1100px) { .cols { grid-template-columns: 1fr; } }
+  .panel { background: var(--surface); border-radius: 6px; padding: 12px; max-height: 75vh; overflow-y: auto; }
+  .panel h2 { position: sticky; top: 0; background: var(--surface); padding: 4px 0 8px; z-index: 2; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.85em; }
+  th, td { padding: 5px 8px; text-align: left; border-bottom: 1px solid var(--surface2); }
+  th { position: sticky; top: 32px; background: var(--surface); color: var(--accent2); cursor: pointer; user-select: none; z-index: 1; }
+  th:hover { color: #fff; }
+  th .arrow { font-size: 0.7em; margin-left: 3px; }
+  tr:hover { background: var(--surface2); }
+  tr.selected { background: #3a3a6a; }
+  tr.combo-row { border-left: 3px solid var(--orange); }
+  tr.changed { border-left: 3px solid var(--green); }
+  .count-high { color: var(--green); font-weight: bold; }
+  .count-mid { color: var(--yellow); }
+  .count-low { color: var(--orange); }
+  .count-rare { color: var(--red); }
+  .move-tag { display: inline-block; background: var(--surface2); border-radius: 3px; padding: 1px 6px; margin: 1px; font-size: 0.8em; }
+  .move-tag.assigned { background: #3a4a3a; border: 1px solid var(--green); }
+
+  /* Edit panel */
+  .edit-panel { background: var(--surface); border-radius: 6px; padding: 12px; margin-top: 12px; display: none; }
+  .edit-panel.active { display: block; }
+  .edit-panel h2 { margin-top: 0; }
+  .edit-row { display: flex; gap: 8px; align-items: center; margin: 6px 0; flex-wrap: wrap; }
+  .edit-row label { min-width: 100px; color: var(--text-dim); font-size: 0.85em; }
+  .edit-row input, .edit-row select { background: var(--surface2); color: var(--text); border: 1px solid var(--border); padding: 4px 8px; border-radius: 4px; font-size: 0.85em; }
+  .edit-row input { width: 200px; }
+  .move-picker { display: flex; flex-wrap: wrap; gap: 4px; max-height: 200px; overflow-y: auto; padding: 6px; background: var(--surface2); border-radius: 4px; margin: 6px 0; }
+  .move-chip { padding: 3px 8px; border-radius: 3px; background: var(--bg); cursor: pointer; font-size: 0.8em; border: 1px solid transparent; transition: all 0.15s; }
+  .move-chip:hover { border-color: var(--accent); }
+  .move-chip.picked { background: var(--accent); color: #fff; }
+  .move-chip .cnt { color: var(--text-dim); font-size: 0.75em; margin-left: 3px; }
+  .move-chip.picked .cnt { color: rgba(255,255,255,0.7); }
+
+  /* Export area */
+  .export-area { margin-top: 16px; }
+  .export-area textarea { width: 100%; height: 300px; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 4px; font-family: 'Consolas', monospace; font-size: 0.85em; padding: 8px; resize: vertical; }
+  .change-summary { background: var(--surface); border-radius: 6px; padding: 12px; margin-top: 12px; }
+  .change-item { padding: 4px 0; border-bottom: 1px solid var(--surface2); font-size: 0.85em; }
+  .change-item .old { color: var(--red); text-decoration: line-through; }
+  .change-item .new { color: var(--green); }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 2px; margin-bottom: 12px; }
+  .tab { padding: 6px 16px; background: var(--surface); border-radius: 4px 4px 0 0; cursor: pointer; font-size: 0.85em; color: var(--text-dim); }
+  .tab.active { background: var(--surface2); color: var(--text); border-bottom: 2px solid var(--accent); }
+
+  /* Move search in picker */
+  .move-search { width: 100%; margin-bottom: 6px; }
+
+  /* Unassigned highlight */
+  .unassigned-moves .move-chip { border: 1px solid var(--text-dim); }
+
+  /* Tooltip */
+  .tooltip { position: relative; }
+  .tooltip:hover::after { content: attr(data-tip); position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); background: #222; color: #eee; padding: 4px 8px; border-radius: 3px; font-size: 0.75em; white-space: nowrap; z-index: 10; }
+</style>
+</head>
+<body>
+
+<h1>CobbleCrew Job/Move Organizer</h1>
+<p class="subtitle">Reassign moves to jobs. Changes are tracked. Export when done.</p>
+
+<div class="stats" id="statsBar"></div>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('jobs')">Jobs View</div>
+  <div class="tab" onclick="switchTab('moves')">All Moves</div>
+  <div class="tab" onclick="switchTab('changes')">Changes (<span id="changeCount">0</span>)</div>
+  <div class="tab" onclick="switchTab('export')">Export</div>
+</div>
+
+<!-- JOBS TAB -->
+<div id="tab-jobs">
+  <div class="top-bar">
+    <input id="jobSearch" placeholder="Search jobs..." oninput="renderJobs()">
+    <select id="catFilter" onchange="renderJobs()"><option value="">All Categories</option></select>
+    <select id="jobSort" onchange="renderJobs()">
+      <option value="name">Sort: Name</option>
+      <option value="category">Sort: Category</option>
+      <option value="species-asc">Sort: Species (Low→High)</option>
+      <option value="species-desc">Sort: Species (High→Low)</option>
+      <option value="move-count">Sort: # Moves</option>
+    </select>
+    <label style="font-size:0.85em;color:var(--text-dim)"><input type="checkbox" id="showComboOnly" onchange="renderJobs()"> Combos only</label>
+    <label style="font-size:0.85em;color:var(--text-dim)"><input type="checkbox" id="showChangedOnly" onchange="renderJobs()"> Changed only</label>
+  </div>
+  <div class="panel" id="jobsPanel">
+    <table>
+      <thead><tr>
+        <th onclick="sortJobsBy('name')">Job <span class="arrow" id="arrow-name"></span></th>
+        <th onclick="sortJobsBy('category')">Category <span class="arrow" id="arrow-category"></span></th>
+        <th onclick="sortJobsBy('moves')">Move(s) <span class="arrow" id="arrow-moves"></span></th>
+        <th onclick="sortJobsBy('species')" style="text-align:right">Species <span class="arrow" id="arrow-species"></span></th>
+        <th>Actions</th>
+      </tr></thead>
+      <tbody id="jobsBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- MOVES TAB -->
+<div id="tab-moves" style="display:none">
+  <div class="top-bar">
+    <input id="moveSearch" placeholder="Search moves..." oninput="renderMoves()">
+    <select id="moveSort" onchange="renderMoves()">
+      <option value="species-desc">Sort: Species (High→Low)</option>
+      <option value="species-asc">Sort: Species (Low→High)</option>
+      <option value="name">Sort: Name</option>
+    </select>
+    <select id="moveFilter" onchange="renderMoves()">
+      <option value="">All Moves</option>
+      <option value="assigned">Assigned to a Job</option>
+      <option value="unassigned">Unassigned</option>
+      <option value="multi">Used by Multiple Jobs</option>
+    </select>
+    <label style="font-size:0.85em;color:var(--text-dim)">Min species: <input id="minSpecies" type="number" value="0" min="0" style="width:60px" oninput="renderMoves()"></label>
+  </div>
+  <div class="panel" id="movesPanel">
+    <table>
+      <thead><tr>
+        <th onclick="sortMovesBy('name')">Move</th>
+        <th onclick="sortMovesBy('species')" style="text-align:right">Species</th>
+        <th>Assigned To</th>
+      </tr></thead>
+      <tbody id="movesBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- CHANGES TAB -->
+<div id="tab-changes" style="display:none">
+  <div class="change-summary" id="changeSummary">
+    <h2>Pending Changes</h2>
+    <div id="changesList"></div>
+    <div style="margin-top:12px">
+      <button class="danger" onclick="revertAll()">Revert All Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- EXPORT TAB -->
+<div id="tab-export" style="display:none">
+  <div class="export-area">
+    <h2>Export Changes</h2>
+    <p class="subtitle">Copy and paste this to the chat. It describes all your changes.</p>
+    <button class="export-btn" onclick="generateExport()">Generate Export Text</button>
+    <button class="secondary" onclick="copyExport()">Copy to Clipboard</button>
+    <textarea id="exportText" readonly placeholder="Click 'Generate Export Text' to produce output..."></textarea>
+  </div>
+</div>
+
+<!-- EDIT MODAL -->
+<div class="edit-panel" id="editPanel">
+  <h2>Edit Job: <span id="editJobName" style="color:var(--accent)"></span></h2>
+  <div class="edit-row">
+    <label>Category:</label>
+    <select id="editCategory"></select>
+  </div>
+  <div class="edit-row">
+    <label>Combo:</label>
+    <label style="min-width:auto"><input type="checkbox" id="editCombo"> Requires ALL moves</label>
+  </div>
+  <div>
+    <label style="font-size:0.85em;color:var(--text-dim)">Pick moves (click to toggle):</label>
+    <input class="move-search" id="editMoveSearch" placeholder="Filter moves..." oninput="renderMovePicker()">
+    <div class="move-picker" id="movePicker"></div>
+  </div>
+  <div style="margin-top:8px; display:flex; gap:8px;">
+    <button onclick="saveEdit()">Save Changes</button>
+    <button class="secondary" onclick="cancelEdit()">Cancel</button>
+    <button class="danger" onclick="revertJob()">Revert to Original</button>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+// DATA: All moves with species counts
+// ═══════════════════════════════════════════
+const ALL_MOVES = {
+  "terablast":1015,"protect":1002,"sleeptalk":1002,"substitute":1001,"rest":1000,"endure":999,"facade":987,
+  "raindance":691,"sunnyday":676,"takedown":664,"gigaimpact":576,"helpinghand":562,"hyperbeam":562,
+  "bodyslam":555,"swift":474,"thief":455,"doubleedge":439,"rocksmash":430,"headbutt":421,"dig":379,
+  "fling":378,"rocktomb":373,"rockslide":365,"taunt":351,"tackle":350,"strength":348,"bulldoze":336,
+  "scaryface":334,"mudslap":333,"brickbreak":330,"grassknot":325,"zenheadbutt":312,"solarbeam":312,
+  "irontail":311,"shadowball":308,"endeavor":305,"lightscreen":302,"flash":299,"curse":297,"aerialace":295,
+  "icywind":295,"knockoff":291,"workup":289,"earthquake":288,"payback":288,"trailblaze":287,"icebeam":275,
+  "swordsdance":273,"agility":272,"thunderwave":268,"safeguard":261,"shockwave":260,"cut":259,"psychup":257,
+  "blizzard":254,"waterpulse":254,"thunderbolt":254,"stompingtantrum":251,"sandstorm":244,"energyball":243,
+  "mudshot":238,"reflect":237,"psychic":237,"irondefense":236,"uproar":236,"leer":230,"surf":229,
+  "crunch":228,"stoneedge":226,"bite":223,"thunder":222,"calmmind":221,"focusblast":221,"roar":220,
+  "signalbeam":220,"charm":220,"echoedvoice":219,"screech":219,"gigadrain":218,"focuspunch":215,
+  "megakick":214,"poweruppunch":211,"lowkick":211,"ironhead":210,"uturn":208,"megapunch":207,
+  "flamethrower":203,"thunderpunch":203,"retaliate":203,"stealthrock":201,"assurance":201,"covet":200,
+  "growl":197,"earthpower":196,"rollout":195,"chillingwater":194,"shadowclaw":194,"hypervoice":193,
+  "batonpass":191,"seedbomb":191,"laserfocus":190,"encore":189,"poisonjab":187,"torment":187,
+  "incinerate":183,"icepunch":183,"fireblast":182,"superpower":182,"reversal":181,"hydropump":178,
+  "honeclaws":178,"acrobatics":177,"dreameater":177,"darkpulse":172,"hail":170,"trick":169,"flail":168,
+  "chargebeam":167,"confuseray":167,"firepunch":166,"throatchop":166,"allyswitch":165,"nastyplot":165,
+  "furycutter":164,"focusenergy":163,"counter":163,"spite":162,"playrough":161,"sludgebomb":160,
+  "magiccoat":159,"dazzlinggleam":158,"smackdown":155,"suckerpunch":155,"quickattack":154,"bodypress":154,
+  "ancientpower":153,"heatwave":150,"whirlpool":149,"foulplay":148,"weatherball":148,"outrage":148,
+  "skillswap":147,"astonish":147,"liquidation":146,"telekinesis":145,"brutalswing":144,"snatch":144,
+  "imprison":144,"trickroom":142,"waterfall":141,"watergun":141,"defog":140,"pursuit":140,"dive":140,
+  "amnesia":140,"aquatail":139,"lastresort":139,"airslash":138,"lowsweep":137,"wildcharge":137,
+  "storedpower":137,"bulletseed":137,"naturepower":136,"skittersmack":136,"painsplit":136,"snarl":135,
+  "flashcannon":135,"magicalleaf":135,"tailwind":134,"drainpunch":134,"faketears":133,"metronome":132,
+  "block":131,"psyshock":131,"roost":129,"willowisp":129,"slash":129,"bulkup":125,"lashout":125,
+  "roleplay":125,"closecombat":124,"psybeam":123,"falseswipe":122,"revenge":122,"heavyslam":122,
+  "bounce":122,"dragonpulse":120,"dualwingbeat":119,"feintattack":119,"gunkshot":118,"infestation":118,
+  "xscissor":117,"hex":117,"sandattack":116,"haze":116,"gravity":115,"gyroball":113,"grassyterrain":113,
+  "rockblast":112,"aircutter":112,"worryseed":112,"nightslash":111,"venoshock":111,"toxic":110,
+  "firefang":109,"rockpolish":108,"brine":108,"tailwhip":108,"recycle":108,"thrash":108,"rockclimb":107,
+  "highhorsepower":106,"fly":105,"afteryou":105,"grassyglide":104,"synthesis":104,"yawn":104,
+  "scratch":103,"leafstorm":103,"dragontail":102,"bugbite":101,"tickle":101,"defensecurl":100,
+  "disable":100,"overheat":100,"muddywater":99,"thunderfang":99,"leechseed":99,"confusion":98,
+  "metalclaw":98,"steelwing":97,"wonderroom":97,"ominouswind":96,"icefang":96,"harden":95,
+  "selfdestruct":95,"futuresight":94,"avalanche":94,"nightshade":94,"firespin":94,"flamecharge":94,
+  "swagger":93,"magnetrise":92,"naturalgift":92,"explosion":91,"supersonic":91,"drainingkiss":90,
+  "embargo":89,"sludgewave":88,"slam":88,"strugglebug":88,"disarmingvoice":88,"twister":87,"pound":87,
+  "sandtomb":87,"electroweb":86,"feint":86,"meteorbeam":86,"absorb":85,"pounce":84,"expandingforce":84,
+  "superfang":84,"snowscape":83,"fakeout":83,"acidspray":83,"captivate":83,"flareblitz":83,"growth":82,
+  "toxicspikes":81,"scorchingsands":81,"furyswipes":81,"dragonclaw":81,"scaleshot":80,"spikes":80,
+  "lunge":79,"hurricane":78,"babydolleyes":78,"healbell":78,"doublekick":77,"pluck":77,"foresight":77,
+  "mudsport":76,"breakingswipe":76,"electroball":76,"bide":76,"charge":75,"electricterrain":75,
+  "voltswitch":75,"hypnosis":75,"wideguard":74,"sweetscent":74,"ember":74,"discharge":73,"dracometeor":73,
+  "leechlife":73,"mist":72,"psychicfangs":72,"stomp":72,"quickguard":71,"bind":71,"flipturn":71,
+  "peck":71,"metalsound":71,"steelbeam":71,"bugbuzz":71,"powergem":70,"scald":70,"megadrain":70,
+  "temperflare":70,"psychicterrain":68,"copycat":68,"memento":68,"beatup":68,"dragondance":68,
+  "watersport":67,"stringshot":67,"steelroller":66,"detect":66,"recover":66,"guardswap":66,"aquajet":66,
+  "bravebird":65,"psychicnoise":65,"destinybond":65,"razorleaf":65,"coaching":64,"bubblebeam":64,
+  "magicroom":64,"powerswap":64,"skyattack":63,"whirlwind":63,"eerieimpulse":63,"wish":63,"dualchop":63,
+  "featherdance":62,"aquaring":62,"icespinner":62,"dragonbreath":62,"bubble":61,"stockpile":61,
+  "doubleteam":60,"mirrorcoat":60,"alluringvoice":60,"hammerarm":59,"meanlook":59,"rapidspin":59,
+  "risingvoltage":58,"belch":58,"mistyterrain":58,"switcheroo":58,"swallow":57,"refresh":57,
+  "upperhand":56,"gust":56,"psychocut":56,"spitup":56,"dragoncheer":56,"aromatherapy":55,
+  "thundershock":54,"poltergeist":54,"burningjealousy":54,"venomdrench":54,"smartstrike":53,
+  "wingattack":53,"furyattack":53,"triattack":52,"gastroacid":51,"extrasensory":51,"vacuumwave":50,
+  "bellydrum":50,"dragonrush":50,"luckychant":50,"stunspore":50,"odorsleuth":50,"ingrain":49,"spark":49,
+  "rockthrow":48,"mefirst":48,"payday":48,"snore":48,"silverwind":48,"flatter":48,"mysticalfire":48,
+  "lick":47,"phantomforce":47,"iciclespear":47,"chipaway":46,"pinmissile":46,"poisonsting":45,
+  "drillrun":45,"howl":45,"solarblade":45,"mudbomb":45,"splash":45,"poisonpowder":44,"doublehit":44,
+  "rage":44,"doubleslap":44,"soak":43,"razorwind":43,"powerwhip":43,"hardpress":43,"aurasphere":42,
+  "fissure":42,"moonblast":42,"barrier":41,"lifedew":41,"clearsmog":41,"wakeupslap":40,"wrap":40,
+  "supercellslam":40,"heatcrash":40,"tripleaxel":39,"acidarmor":38,"poisontail":38,"healpulse":38,
+  "sweetkiss":38,"megahorn":37,"shadowsneak":37,"quash":37,"headsmash":37,"crosspoison":36,
+  "mirrormove":36,"synchronoise":36,"pollenpuff":36,"frostbreath":36,"cosmicpower":36,"grasswhistle":36,
+  "perishsong":35,"skullbash":35,"flameburst":35,"playnice":35,"crushclaw":34,"withdraw":34,
+  "smokescreen":34,"entrainment":34,"powdersnow":34,"dynamicpunch":33,"acid":33,"sing":33,
+  "petalblizzard":33,"bestow":33,"mindreader":33,"punishment":32,"aurorabeam":32,"smog":32,
+  "iceshard":32,"healingwish":32,"smellingsalts":31,"wringout":31,"psywave":31,"sleeppowder":31,
+  "firepledge":31,"grasspledge":31,"waterpledge":31,"autotomize":30,"magnitude":30,"leafblade":30,
+  "secretpower":30,"dragonrage":30,"camouflage":29,"grudge":29,"zapcannon":29,"crosschop":28,
+  "shellsmash":28,"finalgambit":28,"vinewhip":28,"seismictoss":27,"powershift":27,"poisonfang":27,
+  "acupressure":26,"round":26,"ragepowder":26,"attract":26,"tailslap":26,"guardsplit":26,"powersplit":26,
+  "morningsun":26,"fairywind":26,"flamewheel":26,"terrainpulse":26,"speedswap":25,"lockon":25,
+  "mistyexplosion":24,"iciclecrash":24,"leafage":24,"fellstinger":24,"present":24,"stickyweb":24,
+  "strengthsap":23,"rototiller":23,"meditate":23,"drillpeck":23,"healblock":23,"trumpcard":23,
+  "metalburst":23,"teeterdance":22,"moonlight":22,"inferno":22,"skydrop":22,"powertrip":22,
+  "partingshot":21,"freezedry":21,"simplebeam":21,"auroraveil":21,"coil":20,"blazekick":20,
+  "highjumpkick":20,"assist":20,"darkestlariat":20,"lavaplume":20,"psychoshift":20,"bulletpunch":19,
+  "constrict":19,"petaldance":19,"visegrip":19,"nuzzle":19,"razorshell":19,"sheercold":19,"minimize":18,
+  "poisongas":18,"sludge":18,"followme":18,"machpunch":18,"woodhammer":18,"aromaticmist":18,
+  "powertrick":18,"tearfullook":18,"corrosivegas":18,"cottonguard":18,"hornattack":18,"sacredsword":17,
+  "forcepalm":17,"boomburst":17,"nobleroar":17,"guillotine":17,"teleport":17,"cottonspore":17,
+  "miracleeye":16,"mimic":16,"quiverdance":16,"slackoff":16,"karatechop":16,"horndrill":16,
+  "firstimpression":16,"sonicboom":16,"circlethrow":16,"glare":15,"blastburn":15,"mirrorshot":15,
+  "iceball":15,"extremespeed":15,"hydrocannon":15,"submission":14,"frenzyplant":14,"burnup":14,
+  "skyuppercut":14,"vitalthrow":13,"jumpkick":13,"dizzypunch":13,"reflecttype":13,"wavecrash":13,
+  "twineedle":12,"spore":11,"crabhammer":11,"nightmare":11,"armthrust":10,"waterspout":10,
+  "shadowpunch":10,"cometpunch":10,"leaftornado":10,"rollingkick":9,"hyperfang":9,"iondeluge":9,
+  "aquacutter":9,"magneticflux":8,"spikyshield":8,"sharpen":8,"hornleech":8,"shiftgear":7,"clamp":7,
+  "spotlight":7,"meteormash":7,"eruption":7,"paraboliccharge":6,"heartstamp":6,"stuffcheeks":6,
+  "octazooka":6,"spiderweb":6,"craftyshield":6,"confide":5,"needlearm":5,"steamroller":5,"tidyup":5,
+  "spikecannon":5,"flowershield":5,"jawlock":5,"branchpoke":5,"magnetbomb":5,"headlongrush":4,
+  "icehammer":4,"firelash":4,"bonerush":4,"naturesmadness":4,"stormthrow":4,"ragingfury":4,"ruination":4,
+  "comeuppance":4,"electrify":3,"nightdaze":3,"rockwrecker":3,"geargrind":3,"milkdrink":3,"topsyturvy":3,
+  "tailglow":3,"powder":3,"shedtail":3,"eggbomb":3,"volttackle":3,"mysticalpower":3,"axekick":3,
+  "conversion":3,"conversion2":3,"spinout":2,"barbbarrage":2,"saltcure":2,"kinesis":2,"boneclub":2,
+  "bonemerang":2,"transform":2,"sparklingaria":2,"sacredfire":2,"forestscurse":2,"zingzap":2,
+  "hyperdrill":2,"watershuriken":2,"psyshieldbash":2,"takeheart":2,"fierydance":2,"barrage":2,
+  "triplekick":2,"toxicthread":2,"revivalblessing":2,"populationbomb":2,"softboiled":2,"twinbeam":2,
+  "boltbeak":2,"trickortreat":2,"syrupbomb":2,"dragonhammer":2,"spiritbreak":2,"shoreup":2,"ragefist":2,
+  "lastrespects":2,"fishiousrend":2,"matblock":2,"gearup":2,"heartswap":2,"return":2,"frustration":2,
+  "falsesurrender":2,"sketch":1,"psystrike":1,"chatter":1,"pyroball":1,"courtchange":1,"sandsearstorm":1,
+  "healorder":1,"defendorder":1,"attackorder":1,"revelationdance":1,"overdrive":1,"stoneaxe":1,
+  "glaiverush":1,"moongeistbeam":1,"flowertrick":1,"terastarstorm":1,"springtidestorm":1,"accelerock":1,
+  "mortalspin":1,"thundercage":1,"doodle":1,"roaroftime":1,"multiattack":1,"crushgrip":1,
+  "gigatonhammer":1,"matchagotcha":1,"ivycudgel":1,"dragonascent":1,"hyperspacehole":1,"appleacid":1,
+  "purify":1,"spectralthief":1,"wickedblow":1,"orderup":1,"steameruption":1,"snipeshot":1,
+  "magicpowder":1,"coreenforcer":1,"thousandarrows":1,"thousandwaves":1,"landswrath":1,"seedflare":1,
+  "aquastep":1,"spiritshackle":1,"aeroblast":1,"tarshot":1,"teatime":1,"electroshot":1,
+  "bleakwindstorm":1,"dragondarts":1,"fairylock":1,"torchsong":1,"jetpunch":1,"junglehealing":1,
+  "tripledive":1,"malignantchain":1,"hydrosteam":1,"noretreat":1,"meteorassault":1,"secretsword":1,
+  "gravapple":1,"lusterpurge":1,"vcreate":1,"searingshot":1,"instruct":1,"tropkick":1,"oblivionwing":1,
+  "dragonenergy":1,"thunderclap":1,"armorcannon":1,"banefulbunker":1,"kowtowcleave":1,"obstruct":1,
+  "lunardance":1,"lunarblessing":1,"headcharge":1,"wildboltstorm":1,"floralhealing":1,"fusionbolt":1,
+  "boltstrike":1,"burningbulwark":1,"fusionflare":1,"blueflare":1,"shelltrap":1,"octolock":1,
+  "doubleironbash":1,"originpulse":1,"hiddenpower":1,"spacialrend":1,"kingsshield":1,"doubleshock":1,
+  "spicyextract":1,"decorate":1,"psychoboost":1,"collisioncourse":1,"filletaway":1,"bitterblade":1,
+  "mistball":1,"judgment":1,"fleurcannon":1,"mindblown":1,"electrodrift":1,"precipiceblades":1,
+  "dynamaxcannon":1,"eternabeam":1,"drumbeating":1,"darkvoid":1,"technoblast":1,"ragingbull":1,
+  "ficklebeam":1,"flyingpress":1,"chillyreception":1,"plasmafists":1,"direclaw":1,"tachyoncutter":1,
+  "sunsteelstrike":1,"aurawheel":1,"doomdesire":1,"diamondstorm":1,"beakblast":1,"luminacrash":1,
+  "photongeyser":1,"prismaticlaser":1,"makeitrain":1,"glaciate":1,"silktrap":1,"shadowforce":1,
+  "clangingscales":1,"clangoroussoul":1,"mightycleave":1,"magmastorm":1,"anchorshot":1,"geomancy":1,
+  "relicsong":1,"lovelykiss":1,"psyblade":1
+};
+
+// ═══════════════════════════════════════════
+// DATA: Original job definitions
+// ═══════════════════════════════════════════
+const CATEGORIES = ["gathering","production","processing","placement","defense","support","environmental","logistics","combo"];
+
+const ORIGINAL_JOBS = [
+  // GATHERING (35)
+  {name:"logger",cat:"gathering",moves:["cut"],combo:false},
+  {name:"bamboo_chopper",cat:"gathering",moves:["falseswipe"],combo:false},
+  {name:"sugar_cane_cutter",cat:"gathering",moves:["aircutter"],combo:false},
+  {name:"cactus_pruner",cat:"gathering",moves:["furyswipes"],combo:false},
+  {name:"vine_trimmer",cat:"gathering",moves:["grassknot"],combo:false},
+  {name:"sweet_berry_harvester",cat:"gathering",moves:["covet"],combo:false},
+  {name:"pumpkin_melon_harvester",cat:"gathering",moves:["stomp"],combo:false},
+  {name:"cocoa_harvester",cat:"gathering",moves:["knockoff"],combo:false},
+  {name:"chorus_fruit_harvester",cat:"gathering",moves:["gravity"],combo:false},
+  {name:"glowberry_picker",cat:"gathering",moves:["naturalgift"],combo:false},
+  {name:"dripleaf_harvester",cat:"gathering",moves:["magicalleaf"],combo:false},
+  {name:"stone_breaker",cat:"gathering",moves:["brickbreak"],combo:false},
+  {name:"igneous_miner",cat:"gathering",moves:["stompingtantrum"],combo:false},
+  {name:"deepslate_excavator",cat:"gathering",moves:["earthpower"],combo:false},
+  {name:"excavator",cat:"gathering",moves:["mudshot"],combo:false},
+  {name:"sand_miner",cat:"gathering",moves:["sandtomb"],combo:false},
+  {name:"clay_digger",cat:"gathering",moves:["mudslap"],combo:false},
+  {name:"sculk_harvester",cat:"gathering",moves:["shadowball"],combo:false},
+  {name:"ice_miner",cat:"gathering",moves:["icepunch"],combo:false},
+  {name:"mushroom_forager",cat:"gathering",moves:["absorb"],combo:false},
+  {name:"flower_picker",cat:"gathering",moves:["grassyterrain"],combo:false},
+  {name:"snow_scraper",cat:"gathering",moves:["icywind"],combo:false},
+  {name:"moss_scraper",cat:"gathering",moves:["scratch"],combo:false},
+  {name:"decomposer",cat:"gathering",moves:["sludgebomb"],combo:false},
+  {name:"terrain_flattener",cat:"gathering",moves:["bulldoze"],combo:false},
+  {name:"ore_miner",cat:"gathering",moves:["rockblast"],combo:false},
+  {name:"apricorn_harvester",cat:"gathering",moves:["bugbite"],combo:false},
+  {name:"berry_harvester",cat:"gathering",moves:["pluck"],combo:false},
+  {name:"mint_harvester",cat:"gathering",moves:["sweetscent"],combo:false},
+  {name:"amethyst_harvester",cat:"gathering",moves:["powergem"],combo:false},
+  {name:"tumblestone_harvester",cat:"gathering",moves:["rockpolish"],combo:false},
+  {name:"netherwart_harvester",cat:"gathering",moves:["hex"],combo:false},
+  {name:"crop_harvester",cat:"gathering",moves:["trailblaze"],combo:false},
+  {name:"root_harvester",cat:"gathering",moves:["strength"],combo:false},
+  {name:"honey_harvester",cat:"gathering",moves:["bugbuzz"],combo:false},
+  // PRODUCTION (4)
+  {name:"fishing_looter",cat:"production",moves:["dive"],combo:false},
+  {name:"dive_collector",cat:"production",moves:["waterfall"],combo:false},
+  {name:"dig_site_excavator",cat:"production",moves:["dig"],combo:false},
+  // PROCESSING (10)
+  {name:"ore_smelter",cat:"processing",moves:["flamethrower"],combo:false},
+  {name:"food_cooker",cat:"processing",moves:["ember"],combo:false},
+  {name:"glass_maker",cat:"processing",moves:["heatwave"],combo:false},
+  {name:"brick_baker",cat:"processing",moves:["firespin"],combo:false},
+  {name:"charcoal_burner",cat:"processing",moves:["incinerate"],combo:false},
+  {name:"bone_grinder",cat:"processing",moves:["superpower"],combo:false},
+  {name:"flint_knapper",cat:"processing",moves:["pound"],combo:false},
+  {name:"pigment_presser",cat:"processing",moves:["rollout"],combo:false},
+  // PLACEMENT (4)
+  {name:"torch_lighter",cat:"placement",moves:["flash"],combo:false},
+  {name:"tree_planter",cat:"placement",moves:["seedbomb"],combo:false},
+  {name:"crop_sower",cat:"placement",moves:["bulletseed"],combo:false},
+  {name:"bonemeal_applicator",cat:"placement",moves:["synthesis"],combo:false},
+  // DEFENSE (7)
+  {name:"guard",cat:"defense",moves:["crunch"],combo:false},
+  {name:"sentry",cat:"defense",moves:["wideguard"],combo:false},
+  {name:"repeller",cat:"defense",moves:["roar"],combo:false},
+  {name:"fearmonger",cat:"defense",moves:["scaryface"],combo:false},
+  {name:"fire_trap",cat:"defense",moves:["firefang"],combo:false},
+  {name:"poison_trap",cat:"defense",moves:["toxicspikes"],combo:false},
+  {name:"ice_trap",cat:"defense",moves:["chillingwater"],combo:false},
+  // SUPPORT (10)
+  {name:"healer",cat:"support",moves:["drainingkiss"],combo:false},
+  {name:"speed_booster",cat:"support",moves:["tailwind"],combo:false},
+  {name:"strength_booster",cat:"support",moves:["swordsdance"],combo:false},
+  {name:"resistance_provider",cat:"support",moves:["irondefense"],combo:false},
+  {name:"haste_provider",cat:"support",moves:["honeclaws"],combo:false},
+  {name:"jump_booster",cat:"support",moves:["bounce"],combo:false},
+  {name:"night_vision_provider",cat:"support",moves:["laserfocus"],combo:false},
+  {name:"water_breather",cat:"support",moves:["brine"],combo:false},
+  {name:"hunger_restorer",cat:"support",moves:["yawn"],combo:false},
+  {name:"scout",cat:"support",moves:["fly"],combo:false},
+  // ENVIRONMENTAL (11)
+  {name:"frost_former",cat:"environmental",moves:["icebeam"],combo:false},
+  {name:"obsidian_forge",cat:"environmental",moves:["hydropump"],combo:false},
+  {name:"growth_accelerator",cat:"environmental",moves:["growth"],combo:false},
+  {name:"lava_cauldron_filler",cat:"environmental",moves:["flareblitz"],combo:false},
+  {name:"water_cauldron_filler",cat:"environmental",moves:["surf"],combo:false},
+  {name:"snow_cauldron_filler",cat:"environmental",moves:["blizzard"],combo:false},
+  {name:"furnace_fueler",cat:"environmental",moves:["fireblast"],combo:false},
+  {name:"brewing_stand_fueler",cat:"environmental",moves:["flamecharge"],combo:false},
+  {name:"fire_douser",cat:"environmental",moves:["waterpulse"],combo:false},
+  {name:"crop_irrigator",cat:"environmental",moves:["muddywater"],combo:false},
+  {name:"bee_pollinator",cat:"environmental",moves:["signalbeam"],combo:false},
+  // LOGISTICS (2)
+  {name:"magnetizer",cat:"logistics",moves:["magnetrise"],combo:false},
+  {name:"ground_item_collector",cat:"logistics",moves:["telekinesis"],combo:false},
+  // COMBO (18)
+  {name:"demolisher",cat:"combo",moves:["rocksmash","smackdown"],combo:true},
+  {name:"fortune_miner",cat:"combo",moves:["ancientpower","psychic"],combo:true},
+  {name:"silk_touch_extractor",cat:"combo",moves:["mindreader","ironhead"],combo:true},
+  {name:"vein_miner",cat:"combo",moves:["earthquake","crosschop"],combo:true},
+  {name:"tree_feller",cat:"combo",moves:["headbutt","powerwhip"],combo:true},
+  {name:"fossil_hunter",cat:"combo",moves:["boneclub","furycutter"],combo:true},
+  {name:"gem_vein_finder",cat:"combo",moves:["flashcannon","foresight"],combo:true},
+  {name:"string_crafter",cat:"combo",moves:["stringshot","xscissor"],combo:true},
+  {name:"book_binder",cat:"combo",moves:["sketch","shadowclaw"],combo:true},
+  {name:"candle_maker",cat:"combo",moves:["willowisp","aromatherapy"],combo:true},
+  {name:"chain_forger",cat:"combo",moves:["metalclaw","bodypress"],combo:true},
+  {name:"lantern_builder",cat:"combo",moves:["sunnyday","irontail"],combo:true},
+  {name:"banner_creator",cat:"combo",moves:["dazzlinggleam","tailwhip"],combo:true},
+  {name:"deep_sea_trawler",cat:"combo",moves:["whirlpool","raindance"],combo:true},
+  {name:"magma_diver",cat:"combo",moves:["overheat","darkpulse"],combo:true},
+  {name:"blast_furnace",cat:"combo",moves:["scald","firepunch"],combo:true},
+  {name:"full_restore",cat:"combo",moves:["healbell","lifedew"],combo:true},
+  {name:"aura_master",cat:"combo",moves:["calmmind","helpinghand"],combo:true},
+];
+
+// ═══════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════
+let jobs = JSON.parse(JSON.stringify(ORIGINAL_JOBS)); // working copy
+let editingJob = null;
+let currentSortCol = 'name';
+let currentSortDir = 1;
+let moveSortCol = 'species';
+let moveSortDir = -1;
+
+// ═══════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════
+function speciesCount(move) { return ALL_MOVES[move] || 0; }
+
+function jobMinSpecies(job) {
+  if (job.combo) return Math.min(...job.moves.map(speciesCount));
+  return Math.max(...job.moves.map(speciesCount));
+}
+
+function jobSpeciesLabel(job) {
+  if (!job.combo) return job.moves.map(m => speciesCount(m)).join(', ');
+  const counts = job.moves.map(m => `${m}: ${speciesCount(m)}`);
+  return counts.join(' & ');
+}
+
+function countClass(n) {
+  if (n >= 200) return 'count-high';
+  if (n >= 100) return 'count-mid';
+  if (n >= 30) return 'count-low';
+  return 'count-rare';
+}
+
+function isChanged(job) {
+  const orig = ORIGINAL_JOBS.find(j => j.name === job.name);
+  if (!orig) return true;
+  if (orig.cat !== job.cat) return true;
+  if (orig.combo !== job.combo) return true;
+  if (orig.moves.length !== job.moves.length) return true;
+  return !orig.moves.every((m,i) => job.moves.includes(m));
+}
+
+function getChanges() {
+  return jobs.filter(isChanged);
+}
+
+function moveAssignments() {
+  const map = {};
+  for (const j of jobs) {
+    for (const m of j.moves) {
+      if (!map[m]) map[m] = [];
+      map[m].push(j.name);
+    }
+  }
+  return map;
+}
+
+// ═══════════════════════════════════════════
+// TABS
+// ═══════════════════════════════════════════
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  ['jobs','moves','changes','export'].forEach(t => {
+    document.getElementById('tab-'+t).style.display = t===name ? 'block' : 'none';
+  });
+  event.target.classList.add('active');
+  if (name === 'changes') renderChanges();
+  if (name === 'export') generateExport();
+  if (name === 'moves') renderMoves();
+}
+
+// ═══════════════════════════════════════════
+// STATS
+// ═══════════════════════════════════════════
+function renderStats() {
+  const total = jobs.length;
+  const combos = jobs.filter(j => j.combo).length;
+  const singles = total - combos;
+  const usedMoves = new Set(jobs.flatMap(j => j.moves)).size;
+  const changed = getChanges().length;
+  document.getElementById('statsBar').innerHTML = `
+    <span class="stat">Jobs: <b>${total}</b></span>
+    <span class="stat">Single-move: <b>${singles}</b></span>
+    <span class="stat">Combos: <b>${combos}</b></span>
+    <span class="stat">Moves used: <b>${usedMoves}</b> / ${Object.keys(ALL_MOVES).length}</span>
+    <span class="stat" style="${changed?'color:var(--green)':''}">Changes: <b>${changed}</b></span>
+  `;
+  document.getElementById('changeCount').textContent = changed;
+}
+
+// ═══════════════════════════════════════════
+// RENDER JOBS TABLE
+// ═══════════════════════════════════════════
+function renderJobs() {
+  const search = document.getElementById('jobSearch').value.toLowerCase();
+  const catF = document.getElementById('catFilter').value;
+  const sortBy = document.getElementById('jobSort').value;
+  const comboOnly = document.getElementById('showComboOnly').checked;
+  const changedOnly = document.getElementById('showChangedOnly').checked;
+
+  let filtered = jobs.filter(j => {
+    if (search && !j.name.includes(search) && !j.moves.some(m => m.includes(search))) return false;
+    if (catF && j.cat !== catF) return false;
+    if (comboOnly && !j.combo) return false;
+    if (changedOnly && !isChanged(j)) return false;
+    return true;
+  });
+
+  filtered.sort((a,b) => {
+    switch(sortBy) {
+      case 'name': return a.name.localeCompare(b.name);
+      case 'category': return a.cat.localeCompare(b.cat) || a.name.localeCompare(b.name);
+      case 'species-asc': return jobMinSpecies(a) - jobMinSpecies(b);
+      case 'species-desc': return jobMinSpecies(b) - jobMinSpecies(a);
+      case 'move-count': return b.moves.length - a.moves.length || a.name.localeCompare(b.name);
+    }
+  });
+
+  const assigns = moveAssignments();
+  const tbody = document.getElementById('jobsBody');
+  tbody.innerHTML = filtered.map(j => {
+    const changed = isChanged(j);
+    const cls = [j.combo ? 'combo-row' : '', changed ? 'changed' : ''].filter(Boolean).join(' ');
+    const moveTags = j.moves.map(m => {
+      const c = speciesCount(m);
+      const multi = (assigns[m]||[]).length > 1;
+      return `<span class="move-tag ${multi?'':'assigned'}" title="${c} species">${m} <span class="${countClass(c)}">(${c})</span></span>`;
+    }).join(j.combo ? ' + ' : ', ');
+    const sp = jobMinSpecies(j);
+    return `<tr class="${cls}" ondblclick="editJob('${j.name}')">
+      <td><b>${j.name}</b>${j.combo?' <span style="color:var(--orange);font-size:0.75em">COMBO</span>':''}</td>
+      <td>${j.cat}</td>
+      <td>${moveTags}</td>
+      <td style="text-align:right" class="${countClass(sp)}"><b>${sp}</b></td>
+      <td>
+        <button onclick="editJob('${j.name}')" style="font-size:0.75em;padding:2px 8px">Edit</button>
+        ${changed ? `<button class="secondary" onclick="revertSingle('${j.name}')" style="font-size:0.75em;padding:2px 6px">↩</button>` : ''}
+      </td>
+    </tr>`;
+  }).join('');
+
+  renderStats();
+}
+
+function sortJobsBy(col) {
+  const sel = document.getElementById('jobSort');
+  if (col === 'name') sel.value = 'name';
+  else if (col === 'category') sel.value = 'category';
+  else if (col === 'species') sel.value = sel.value === 'species-desc' ? 'species-asc' : 'species-desc';
+  else if (col === 'moves') sel.value = 'move-count';
+  renderJobs();
+}
+
+// ═══════════════════════════════════════════
+// RENDER MOVES TABLE
+// ═══════════════════════════════════════════
+function renderMoves() {
+  const search = document.getElementById('moveSearch').value.toLowerCase();
+  const sortBy = document.getElementById('moveSort').value;
+  const filter = document.getElementById('moveFilter').value;
+  const minSp = parseInt(document.getElementById('minSpecies').value) || 0;
+
+  const assigns = moveAssignments();
+  let entries = Object.entries(ALL_MOVES).map(([name,count]) => ({name, count, jobs: assigns[name]||[]}));
+
+  entries = entries.filter(e => {
+    if (search && !e.name.includes(search)) return false;
+    if (e.count < minSp) return false;
+    if (filter === 'assigned' && e.jobs.length === 0) return false;
+    if (filter === 'unassigned' && e.jobs.length > 0) return false;
+    if (filter === 'multi' && e.jobs.length < 2) return false;
+    return true;
+  });
+
+  entries.sort((a,b) => {
+    switch(sortBy) {
+      case 'species-desc': return b.count - a.count;
+      case 'species-asc': return a.count - b.count;
+      case 'name': return a.name.localeCompare(b.name);
+    }
+  });
+
+  const tbody = document.getElementById('movesBody');
+  tbody.innerHTML = entries.map(e => {
+    const jobTags = e.jobs.map(j => `<span class="move-tag assigned">${j}</span>`).join(' ');
+    return `<tr>
+      <td><b>${e.name}</b></td>
+      <td style="text-align:right" class="${countClass(e.count)}"><b>${e.count}</b></td>
+      <td>${jobTags || '<span style="color:var(--text-dim)">—</span>'}</td>
+    </tr>`;
+  }).join('');
+}
+
+function sortMovesBy(col) {
+  const sel = document.getElementById('moveSort');
+  if (col === 'name') sel.value = 'name';
+  else if (col === 'species') sel.value = sel.value === 'species-desc' ? 'species-asc' : 'species-desc';
+  renderMoves();
+}
+
+// ═══════════════════════════════════════════
+// EDIT JOB
+// ═══════════════════════════════════════════
+function editJob(name) {
+  editingJob = name;
+  const job = jobs.find(j => j.name === name);
+  document.getElementById('editJobName').textContent = name;
+  document.getElementById('editCombo').checked = job.combo;
+
+  const catSel = document.getElementById('editCategory');
+  catSel.innerHTML = CATEGORIES.map(c => `<option ${c===job.cat?'selected':''}>${c}</option>`).join('');
+
+  document.getElementById('editMoveSearch').value = '';
+  renderMovePicker();
+
+  const panel = document.getElementById('editPanel');
+  panel.classList.add('active');
+  panel.scrollIntoView({behavior:'smooth'});
+}
+
+function renderMovePicker() {
+  const job = jobs.find(j => j.name === editingJob);
+  if (!job) return;
+  const search = document.getElementById('editMoveSearch').value.toLowerCase();
+  const assigns = moveAssignments();
+
+  // Sort: picked first, then by species count desc
+  let entries = Object.entries(ALL_MOVES)
+    .filter(([m]) => !search || m.includes(search))
+    .map(([m,c]) => ({name:m, count:c, picked: job.moves.includes(m), assignedTo: assigns[m]||[]}));
+
+  entries.sort((a,b) => {
+    if (a.picked !== b.picked) return a.picked ? -1 : 1;
+    return b.count - a.count;
+  });
+
+  document.getElementById('movePicker').innerHTML = entries.map(e => {
+    const otherJobs = e.assignedTo.filter(j => j !== editingJob);
+    const suffix = otherJobs.length ? ` [${otherJobs.join(',')}]` : '';
+    return `<span class="move-chip ${e.picked?'picked':''}" onclick="toggleMove('${e.name}')" title="${e.count} species${suffix}">${e.name} <span class="cnt">${e.count}</span></span>`;
+  }).join('');
+}
+
+function toggleMove(move) {
+  const job = jobs.find(j => j.name === editingJob);
+  const idx = job.moves.indexOf(move);
+  if (idx >= 0) job.moves.splice(idx, 1);
+  else job.moves.push(move);
+  renderMovePicker();
+}
+
+function saveEdit() {
+  const job = jobs.find(j => j.name === editingJob);
+  job.cat = document.getElementById('editCategory').value;
+  job.combo = document.getElementById('editCombo').checked;
+  cancelEdit();
+  renderJobs();
+}
+
+function cancelEdit() {
+  editingJob = null;
+  document.getElementById('editPanel').classList.remove('active');
+}
+
+function revertJob() {
+  const orig = ORIGINAL_JOBS.find(j => j.name === editingJob);
+  if (!orig) return;
+  const job = jobs.find(j => j.name === editingJob);
+  job.moves = [...orig.moves];
+  job.cat = orig.cat;
+  job.combo = orig.combo;
+  renderMovePicker();
+  renderJobs();
+}
+
+function revertSingle(name) {
+  const orig = ORIGINAL_JOBS.find(j => j.name === name);
+  if (!orig) return;
+  const job = jobs.find(j => j.name === name);
+  job.moves = [...orig.moves];
+  job.cat = orig.cat;
+  job.combo = orig.combo;
+  renderJobs();
+}
+
+function revertAll() {
+  jobs = JSON.parse(JSON.stringify(ORIGINAL_JOBS));
+  renderJobs();
+  renderChanges();
+}
+
+// ═══════════════════════════════════════════
+// CHANGES
+// ═══════════════════════════════════════════
+function renderChanges() {
+  const changes = getChanges();
+  const el = document.getElementById('changesList');
+  if (changes.length === 0) {
+    el.innerHTML = '<p style="color:var(--text-dim)">No changes yet. Double-click or click Edit on any job to modify it.</p>';
+    return;
+  }
+  el.innerHTML = changes.map(j => {
+    const orig = ORIGINAL_JOBS.find(o => o.name === j.name);
+    let parts = [];
+    if (orig.cat !== j.cat) parts.push(`Category: <span class="old">${orig.cat}</span> → <span class="new">${j.cat}</span>`);
+    if (orig.combo !== j.combo) parts.push(`Combo: <span class="old">${orig.combo}</span> → <span class="new">${j.combo}</span>`);
+    const oldMoves = orig.moves.join(', ');
+    const newMoves = j.moves.join(', ');
+    if (oldMoves !== newMoves) parts.push(`Moves: <span class="old">${oldMoves}</span> → <span class="new">${newMoves}</span>`);
+    return `<div class="change-item"><b>${j.name}</b>: ${parts.join(' | ')}</div>`;
+  }).join('');
+  renderStats();
+}
+
+// ═══════════════════════════════════════════
+// EXPORT
+// ═══════════════════════════════════════════
+function generateExport() {
+  const changes = getChanges();
+  if (changes.length === 0) {
+    document.getElementById('exportText').value = 'No changes to export.';
+    return;
+  }
+
+  let lines = ['=== COBBLECREW JOB REASSIGNMENT ===', `Changes: ${changes.length}`, ''];
+
+  for (const j of changes) {
+    const orig = ORIGINAL_JOBS.find(o => o.name === j.name);
+    lines.push(`JOB: ${j.name}`);
+    if (orig.cat !== j.cat) lines.push(`  category: ${orig.cat} -> ${j.cat}`);
+    if (orig.combo !== j.combo) lines.push(`  combo: ${orig.combo} -> ${j.combo}`);
+    const oldMoves = orig.moves.join(', ');
+    const newMoves = j.moves.join(', ');
+    if (oldMoves !== newMoves) {
+      lines.push(`  moves: ${oldMoves} -> ${newMoves}`);
+      // Show species counts for context
+      lines.push(`  species counts: ${j.moves.map(m => `${m}(${speciesCount(m)})`).join(', ')}`);
+    }
+    lines.push('');
+  }
+
+  // Also output the full final state for reference
+  lines.push('=== FULL FINAL STATE ===');
+  for (const j of jobs) {
+    const marker = isChanged(j) ? ' [CHANGED]' : '';
+    lines.push(`${j.name} [${j.cat}]${j.combo?' COMBO':''}: ${j.moves.join(' + ')}${marker}`);
+  }
+
+  document.getElementById('exportText').value = lines.join('\n');
+}
+
+function copyExport() {
+  const ta = document.getElementById('exportText');
+  ta.select();
+  navigator.clipboard.writeText(ta.value);
+}
+
+// ═══════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════
+function init() {
+  // Populate category filter
+  const catSel = document.getElementById('catFilter');
+  CATEGORIES.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c; opt.textContent = c;
+    catSel.appendChild(opt);
+  });
+  renderJobs();
+  renderStats();
+}
+
+init();
+</script>
+</body>
+</html>
