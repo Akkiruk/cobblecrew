@@ -225,6 +225,10 @@ abstract class BaseJob : Worker {
                 // The next tick will re-enter IDLE → see cooldown → wait → then findTarget
                 // returns the same target → navigate (already there) → arrive → work → repeat
             }
+
+            is WorkResult.Continue -> {
+                // Multi-tick job in progress — stay in WORKING, doWork called next tick
+            }
         }
     }
 

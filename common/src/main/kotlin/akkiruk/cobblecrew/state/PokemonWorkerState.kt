@@ -111,6 +111,9 @@ class PokemonWorkerState(val pokemonId: UUID) {
     /** Job-specific scratch space for custom per-job data. */
     var lastActionTime: Long = 0L
 
+    /** Per-job scratch data for multi-tick operations (e.g. tree felling). Cleared on job reset. */
+    var scratchData: Any? = null
+
     // ── Convenience delegates (keep call sites concise) ──────────────
 
     var activeJob: Worker? by job::activeJob
@@ -153,6 +156,7 @@ class PokemonWorkerState(val pokemonId: UUID) {
         nav.reset()
         visual.resetArrival()
         lastActionTime = 0L
+        scratchData = null
     }
 }
 

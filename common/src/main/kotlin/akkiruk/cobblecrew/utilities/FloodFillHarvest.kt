@@ -97,16 +97,30 @@ fun treeHarvest(
         brokenPositions.add(current)
         logsBroken++
 
-        // Face neighbors for log connectivity
+        // Face neighbors for log connectivity (with leaf-peek: look through up to 2 leaf blocks for logs)
         for (dir in Direction.entries) {
             val neighbor = current.offset(dir)
             if (neighbor in visited) continue
-            visited.add(neighbor)
             val neighborState = world.getBlockState(neighbor)
             if (neighborState.isIn(BlockTags.LOGS)) {
+                visited.add(neighbor)
                 frontier.add(neighbor)
-            } else if (includeLeaves && neighborState.block is LeavesBlock) {
-                leafPositions.add(neighbor)
+            } else if (neighborState.block is LeavesBlock) {
+                if (includeLeaves) leafPositions.add(neighbor)
+                // Peek through up to 2 leaf blocks to find hidden logs
+                var peekPos = neighbor
+                for (hop in 1..2) {
+                    peekPos = peekPos.offset(dir)
+                    if (peekPos in visited) break
+                    val peekState = world.getBlockState(peekPos)
+                    if (peekState.isIn(BlockTags.LOGS)) {
+                        visited.add(peekPos)
+                        frontier.add(peekPos)
+                        break
+                    } else if (peekState.block !is LeavesBlock) {
+                        break
+                    }
+                }
             }
         }
 
@@ -165,3 +179,45 @@ data class TreeHarvestResult(
     val drops: List<ItemStack>,
     val brokenPositions: Set<BlockPos>,
 )
+
+/**
+ * Scans a tree structure starting from any log, finding the base and collecting
+ * all connected logs via 26-neighbor BFS (catches diagonal branches, 2x2 trunks, etc.).
+ * Returns positions sorted top-down (highest Y first) for natural felling.
+ * Does NOT break any blocks.
+ */
+fun scanTree(world: World, startPos: BlockPos, maxLogs: Int = 256): List<BlockPos> {
+    if (!world.getBlockState(startPos).isIn(BlockTags.LOGS)) return emptyList()
+
+    // Find the base: scan straight down through connected logs
+    var base = startPos
+    var safety = 0
+    while (world.getBlockState(base.down()).isIn(BlockTags.LOGS) && safety++ < maxLogs) {
+        base = base.down()
+    }
+
+    // BFS all connected logs via 26-neighbor adjacency
+    val visited = mutableSetOf(base)
+    val frontier = ArrayDeque<BlockPos>()
+    frontier.add(base)
+    val logs = mutableListOf<BlockPos>()
+
+    while (frontier.isNotEmpty() && logs.size < maxLogs) {
+        val current = frontier.removeFirst()
+        if (!world.getBlockState(current).isIn(BlockTags.LOGS)) continue
+        logs.add(current)
+
+        for (dx in -1..1) for (dy in -1..1) for (dz in -1..1) {
+            if (dx == 0 && dy == 0 && dz == 0) continue
+            val neighbor = current.add(dx, dy, dz)
+            if (visited.add(neighbor)) {
+                if (world.getBlockState(neighbor).isIn(BlockTags.LOGS)) {
+                    frontier.add(neighbor)
+                }
+            }
+        }
+    }
+
+    // Top-down sort for natural felling appearance
+    return logs.sortedByDescending { it.y }
+}

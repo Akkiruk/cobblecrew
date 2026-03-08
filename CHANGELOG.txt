@@ -1,6 +1,10 @@
-## 4.4.1 — Logger Tree Fix
-- Fix logger harvesting multiple trees at once: remove leaf-peek BFS that bridged adjacent tree canopies
-- Tree harvest now uses simple face-connected log BFS (vanilla/Cobblemon trees are always face-connected)
+## 4.5.0 — Multi-Tick Tree Felling
+- Completely rewrite Logger job: trees now fell over multiple ticks (8 logs/tick) instead of all-at-once
+- Scan tree from base using 26-neighbor BFS — catches diagonal branches, 2x2 trunks, all tree shapes
+- Break logs top-down for natural-looking felling; leaves decay naturally
+- Removes all tree logs from block cache on first tick so no other logger targets the same tree
+- Add WorkResult.Continue to the job system — enables multi-tick work for any future job
+- Add scratchData field to PokemonWorkerState for per-job multi-tick state
 
 ## 4.4.0 — Job Reassignment Overhaul
 - Remove 35 underperforming/exploitable jobs (all logistics, most combos, most processing, scout, etc.)

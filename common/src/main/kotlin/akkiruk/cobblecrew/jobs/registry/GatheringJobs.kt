@@ -11,19 +11,25 @@ package akkiruk.cobblecrew.jobs.registry
 import akkiruk.cobblecrew.cache.CobbleCrewCacheManager
 import akkiruk.cobblecrew.config.JobConfigManager
 import akkiruk.cobblecrew.enums.BlockCategory
+import akkiruk.cobblecrew.jobs.JobContext
+import akkiruk.cobblecrew.jobs.WorkResult
 import akkiruk.cobblecrew.jobs.WorkerRegistry
 import akkiruk.cobblecrew.jobs.dsl.GatheringJob
+import akkiruk.cobblecrew.state.PokemonWorkerState
 import akkiruk.cobblecrew.utilities.CobbleCrewCropUtils
-import akkiruk.cobblecrew.utilities.treeHarvest
+import akkiruk.cobblecrew.utilities.scanTree
 import com.cobblemon.mod.common.CobblemonBlocks
 import com.cobblemon.mod.common.block.ApricornBlock
 import com.cobblemon.mod.common.block.BerryBlock
 import com.cobblemon.mod.common.block.MintBlock
 import com.cobblemon.mod.common.block.entity.BerryBlockEntity
+import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import net.minecraft.block.*
 import net.minecraft.item.ItemStack
 import net.minecraft.item.Items
 import net.minecraft.particle.ParticleTypes
+import net.minecraft.registry.tag.BlockTags
+import net.minecraft.server.world.ServerWorld
 import net.minecraft.state.property.Properties
 import net.minecraft.util.math.BlockPos
 import net.minecraft.util.math.Direction
@@ -45,19 +51,58 @@ object GatheringJobs {
 
     // ── Wood ────────────────────────────────────────────────────────────
 
-    val LOGGER = GatheringJob(
+    private data class TreeFellState(
+        val targetOrigin: BlockPos,
+        val logs: MutableList<BlockPos>,
+        val drops: MutableList<ItemStack> = mutableListOf(),
+    )
+
+    private const val LOGS_PER_TICK = 8
+
+    val LOGGER = object : GatheringJob(
         name = "logger",
         targetCategory = BlockCategory.LOG,
         qualifyingMoves = setOf("dualchop"),
         particle = ParticleTypes.CAMPFIRE_COSY_SMOKE,
-        harvestOverride = { world, pos, _ ->
-            val result = treeHarvest(world, pos, maxLogs = 128, tool = ItemStack(Items.DIAMOND_AXE))
-            result.brokenPositions.forEach { broken ->
-                CobbleCrewCacheManager.removeTargetGlobal(BlockCategory.LOG, broken)
+    ) {
+        override fun doWork(
+            state: PokemonWorkerState,
+            context: JobContext,
+            pokemonEntity: PokemonEntity,
+        ): WorkResult {
+            val targetPos = state.targetPos ?: return WorkResult.Done()
+
+            val fell = (state.scratchData as? TreeFellState)
+                ?.takeIf { it.targetOrigin == targetPos }
+                ?: run {
+                    val logs = scanTree(context.world, targetPos)
+                    if (logs.isEmpty()) return WorkResult.Done()
+                    // Remove all tree logs from cache so no other logger targets this tree
+                    logs.forEach { CobbleCrewCacheManager.removeTargetGlobal(BlockCategory.LOG, it) }
+                    TreeFellState(targetPos, logs.toMutableList()).also { state.scratchData = it }
+                }
+
+            val sw = context.world as ServerWorld
+            val tool = ItemStack(Items.DIAMOND_AXE)
+            var broken = 0
+            while (broken < LOGS_PER_TICK && fell.logs.isNotEmpty()) {
+                val pos = fell.logs.removeFirst()
+                val blockState = context.world.getBlockState(pos)
+                if (!blockState.isIn(BlockTags.LOGS)) continue
+                fell.drops.addAll(Block.getDroppedStacks(blockState, sw, pos, null, pokemonEntity, tool))
+                context.world.breakBlock(pos, false)
+                broken++
             }
-            result.drops
-        },
-    )
+
+            if (fell.logs.isEmpty()) {
+                val items = fell.drops.toList()
+                state.scratchData = null
+                return WorkResult.Done(items)
+            }
+
+            return WorkResult.Continue
+        }
+    }
 
     val BAMBOO_CHOPPER = GatheringJob(
         name = "bamboo_chopper",

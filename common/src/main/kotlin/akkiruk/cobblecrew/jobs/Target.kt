@@ -35,4 +35,7 @@ sealed interface WorkResult {
 
     /** Stay at current target and re-enter ARRIVING after cooldown (e.g. cauldron fillers). */
     data object Repeat : WorkResult
+
+    /** Work in progress — stay in WORKING phase, doWork called again next tick. */
+    data object Continue : WorkResult
 }
