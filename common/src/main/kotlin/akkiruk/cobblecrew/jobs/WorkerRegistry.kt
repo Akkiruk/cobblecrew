@@ -45,7 +45,6 @@ object WorkerRegistry {
         SupportJobs.register()
         EnvironmentalJobs.register()
         LogisticsJobs.register()
-        FactoryJobs.register()
         ComboJobs.register()
 
         CobbleCrew.LOGGER.info("[CobbleCrew] Registered ${_workers.size} jobs")
