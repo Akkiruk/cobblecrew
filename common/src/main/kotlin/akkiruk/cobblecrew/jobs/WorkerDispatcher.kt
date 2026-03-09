@@ -32,7 +32,7 @@ object WorkerDispatcher {
 
     /**
      * Periodic maintenance — call once per server tick from platform hooks.
-     * Sweeps expired claims every [SWEEP_INTERVAL] ticks.
+     * Sweeps expired claims/blacklists every [SWEEP_INTERVAL] ticks.
      */
     fun tickMaintenance(serverTick: Long) {
         if (serverTick - lastSweepTick >= SWEEP_INTERVAL) {
@@ -46,20 +46,6 @@ object WorkerDispatcher {
         val world = context.world
         val pokemonId = pokemonEntity.pokemon.uuid
         val state = StateManager.getOrCreate(pokemonId)
-
-        // Slow workers pushing through leaves (collision removed by mixin)
-        if (state.activeJob != null) {
-            // Ensure pathfinder knows it can route through leaves
-            if (pokemonEntity.getPathfindingPenalty(net.minecraft.entity.ai.pathing.PathNodeType.LEAVES) < 0f) {
-                pokemonEntity.setPathfindingPenalty(net.minecraft.entity.ai.pathing.PathNodeType.LEAVES, 0f)
-            }
-            val feetBlock = world.getBlockState(pokemonEntity.blockPos)
-            if (feetBlock.block is net.minecraft.block.LeavesBlock) {
-                val vel = pokemonEntity.velocity
-                pokemonEntity.velocity = vel.multiply(0.4, 1.0, 0.4)
-            }
-        }
-
         val profile = ProfileManager.getOrBuild(pokemonEntity, state)
         val eligible = profile.allEligible()
 

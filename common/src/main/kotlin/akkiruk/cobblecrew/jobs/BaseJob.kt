@@ -68,13 +68,6 @@ abstract class BaseJob : Worker {
     /** Config access — reads from JobConfigManager by name. */
     open val config: JobConfig get() = JobConfigManager.get(name)
 
-    companion object {
-        private const val NAV_FORCE_WORK_TICKS = 200L  // 10s hard timeout
-        private const val NAV_STUCK_CHECK_TICKS = 60L   // check every 3s
-        private const val FORCE_WORK_DISTANCE_SQ = 16.0  // 4 blocks squared
-        private const val FORCE_WORK_TELEPORT_THRESHOLD = 3
-    }
-
     /**
      * Build the default [JobConfig] for this job. Override to add type-specific
      * fields (cooldown, effect duration, etc.).
@@ -169,32 +162,12 @@ abstract class BaseJob : Worker {
             return
         }
 
-        // Arrived normally
         if (ClaimManager.isPokemonAtPosition(entity, targetPos, arrivalTolerance)) {
             entity.navigation.stop()
-            state.nav.resetNav()
             state.phase = JobPhase.ARRIVING
-            return
+        } else {
+            ClaimManager.navigateTo(entity, targetPos, state)
         }
-
-        val now = context.world.time
-
-        // Initialize stuck tracking on first nav tick
-        if (state.navStartTick == 0L) {
-            state.navStartTick = now
-            state.navCheckPos = entity.blockPos
-            state.navCheckTick = now
-        }
-
-        // Hard timeout (10s / 200 ticks) — force work from distance
-        if (now - state.navStartTick >= NAV_FORCE_WORK_TICKS) {
-            entity.navigation.stop()
-            state.nav.resetNav()
-            state.phase = JobPhase.WORKING
-            return
-        }
-
-        ClaimManager.navigateTo(entity, targetPos, state)
     }
 
     private fun tickArriving(state: PokemonWorkerState, context: JobContext, entity: PokemonEntity) {
@@ -221,24 +194,6 @@ abstract class BaseJob : Worker {
         when (result) {
             is WorkResult.Done -> {
                 afterWork(state, context, entity)
-
-                // Track forced-from-distance work for teleport-home safety
-                val tp = state.targetPos
-                if (tp != null) {
-                    val dx = entity.x - (tp.x + 0.5)
-                    val dz = entity.z - (tp.z + 0.5)
-                    if (dx * dx + dz * dz > FORCE_WORK_DISTANCE_SQ) {
-                        state.forceWorkCount++
-                        if (state.forceWorkCount >= FORCE_WORK_TELEPORT_THRESHOLD) {
-                            val origin = context.origin
-                            entity.requestTeleport(origin.x + 0.5, origin.y + 1.0, origin.z + 0.5)
-                            state.forceWorkCount = 0
-                        }
-                    } else {
-                        state.forceWorkCount = 0
-                    }
-                }
-
                 ClaimManager.release(state)
 
                 if (result.items.isNotEmpty() && producesItems) {
@@ -291,7 +246,6 @@ abstract class BaseJob : Worker {
         state.targetPos = null
         state.arrivalTick = null
         state.graceTick = null
-        state.nav.resetNav()
     }
 
     // ---- Worker interface (final — state is centralized) ----
@@ -328,7 +282,7 @@ abstract class BaseJob : Worker {
 
     /**
      * Find a random block in the scanner cache that matches [category],
-     * passes [readyCheck], is unclaimed and not unreachable.
+     * passes [readyCheck], is unclaimed, not blacklisted, and not unreachable.
      */
     protected fun findCachedBlockTarget(
         state: PokemonWorkerState,

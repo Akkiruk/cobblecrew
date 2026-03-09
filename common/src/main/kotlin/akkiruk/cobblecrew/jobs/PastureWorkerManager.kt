@@ -12,6 +12,7 @@ import akkiruk.cobblecrew.CobbleCrew
 import akkiruk.cobblecrew.cache.CobbleCrewCacheManager
 import akkiruk.cobblecrew.listeners.BlockChangeNotifier
 import akkiruk.cobblecrew.utilities.ContainerAnimations
+import akkiruk.cobblecrew.utilities.CobbleCrewDebugLogger
 import akkiruk.cobblecrew.utilities.DeferredBlockScanner
 import com.cobblemon.mod.common.block.entity.PokemonPastureBlockEntity
 import com.cobblemon.mod.common.entity.PoseType
@@ -27,6 +28,12 @@ import java.util.concurrent.ConcurrentHashMap
  */
 object PastureWorkerManager {
     private const val POKEMON_TICK_INTERVAL = 5
+
+    // Margin inside the tether boundary at which we preemptively teleport back.
+    // Cobblemon recalls if the entity leaves the box entirely — we snap it back
+    // before that can happen. 5 blocks of margin is enough to account for
+    // movement between ticks + pathfinding overshoot.
+    private const val TETHER_SAFETY_MARGIN = 5.0
 
     // Track previously-tethered UUIDs per pasture position for recall detection
     private val previousTethered = ConcurrentHashMap<BlockPos, MutableSet<UUID>>()
@@ -85,12 +92,57 @@ object PastureWorkerManager {
             val poseType = pokemonEntity.dataTracker.get(PokemonEntity.POSE_TYPE)
             if (poseType == PoseType.SLEEP) continue
 
+            // Preemptive tether safety — teleport back before Cobblemon's harsh recall.
+            // Cobblemon's checkPastureTether() tries randomTeleport and if that fails,
+            // it fully recalls the Pokémon from the pasture. We beat it to the punch.
+            if (isNearTetherBoundary(pokemonEntity, pos)) {
+                snapToPasture(pokemonEntity, pos)
+                continue // skip this tick — let it re-orient next cycle
+            }
+
             try {
                 WorkerDispatcher.tickPokemon(context, pokemonEntity)
             } catch (e: Exception) {
                 CobbleCrew.LOGGER.error("[CobbleCrew] Error in tickPokemon: ${e.message}")
             }
         }
+    }
+
+    /**
+     * Check if a tethered Pokémon is dangerously close to the roam boundary.
+     * Uses the Tethering's minRoamPos/maxRoamPos to detect when the entity
+     * is within [TETHER_SAFETY_MARGIN] blocks of the edge.
+     */
+    private fun isNearTetherBoundary(entity: PokemonEntity, pasturePos: BlockPos): Boolean {
+        val tethering = entity.tethering ?: return false
+        val min = tethering.minRoamPos
+        val max = tethering.maxRoamPos
+        val margin = TETHER_SAFETY_MARGIN
+
+        return entity.x <= min.x + margin || entity.x >= max.x + 1 - margin ||
+               entity.y <= min.y + margin || entity.y >= max.y + 1 - margin ||
+               entity.z <= min.z + margin || entity.z >= max.z + 1 - margin
+    }
+
+    /**
+     * Teleport the Pokémon back to the pasture origin and reset its job.
+     * Uses requestTeleport which unconditionally sets position (unlike
+     * Cobblemon's randomTeleport which can fail and trigger a full recall).
+     */
+    private fun snapToPasture(entity: PokemonEntity, pasturePos: BlockPos) {
+        entity.navigation.stop()
+        entity.requestTeleport(
+            pasturePos.x + 0.5,
+            pasturePos.y.toDouble() + 1.0,
+            pasturePos.z + 0.5,
+        )
+        val pokemonId = entity.pokemon.uuid
+        WorkerDispatcher.resetAssignment(pokemonId)
+        CobbleCrewDebugLogger.log(
+            CobbleCrewDebugLogger.Category.NAVIGATION,
+            entity.pokemon.species.name, pokemonId,
+            "Snapped back to pasture — was near tether boundary"
+        )
     }
 
     /**
