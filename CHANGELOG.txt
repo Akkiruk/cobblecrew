@@ -1,3 +1,9 @@
+## 4.5.4 — Mega Trees: Spruce & Jungle
+- Large tree planter now handles spruce and jungle saplings in addition to dark oak
+- All three sapling types get placed as 2x2 for mega tree growth
+- Dynamic sapling resolution — placeFn reads the actual item type instead of hardcoding dark oak
+- Only dark oak is excluded from the normal 1x1 tree planter (spruce/jungle can still grow solo)
+
 ## 4.5.3 — 2x2 Tree Planting
 - New job: large_tree_planter — places dark oak saplings in a 2x2 pattern so they actually grow
 - Extracts 4 saplings at once from barrels (requires a stack of 4+)

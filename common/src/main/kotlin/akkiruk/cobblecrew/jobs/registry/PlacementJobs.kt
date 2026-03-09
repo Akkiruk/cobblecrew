@@ -52,8 +52,11 @@ object PlacementJobs {
 
     private val DIRT_BLOCKS = setOf(Blocks.DIRT, Blocks.COARSE_DIRT, Blocks.GRASS_BLOCK, Blocks.PODZOL, Blocks.ROOTED_DIRT, Blocks.MYCELIUM, Blocks.MUD, Blocks.MUDDY_MANGROVE_ROOTS)
 
-    /** Saplings that must be placed in a 2x2 pattern to grow. */
-    private val TWO_BY_TWO_SAPLINGS = setOf(Blocks.DARK_OAK_SAPLING)
+    /** Saplings that MUST be 2x2 to grow (excluded from normal planter). */
+    private val REQUIRES_TWO_BY_TWO = setOf(Blocks.DARK_OAK_SAPLING)
+
+    /** All saplings that CAN grow as 2x2 mega trees. */
+    private val MEGA_TREE_SAPLINGS = setOf(Blocks.DARK_OAK_SAPLING, Blocks.SPRUCE_SAPLING, Blocks.JUNGLE_SAPLING)
 
     private const val SAPLING_SPACING = 3 // min blocks between saplings so trees grow properly
     private const val LARGE_TREE_SPACING = 5 // 2x2 trees have wider canopies
@@ -64,7 +67,7 @@ object PlacementJobs {
         particle = ParticleTypes.HAPPY_VILLAGER,
         itemCheck = { stack ->
             val block = (stack.item as? BlockItem)?.block
-            block is SaplingBlock && block !in TWO_BY_TWO_SAPLINGS
+            block is SaplingBlock && block !in REQUIRES_TWO_BY_TWO
         },
         findTarget = { world, origin ->
             BlockPos.iterateOutwards(origin, SEARCH_RADIUS, SEARCH_RADIUS, SEARCH_RADIUS)
@@ -91,7 +94,7 @@ object PlacementJobs {
         extractAmount = 4,
         itemCheck = { stack ->
             val block = (stack.item as? BlockItem)?.block
-            block in TWO_BY_TWO_SAPLINGS && stack.count >= 4
+            block in MEGA_TREE_SAPLINGS && stack.count >= 4
         },
         findTarget = { world, origin ->
             BlockPos.iterateOutwards(origin, SEARCH_RADIUS, SEARCH_RADIUS, SEARCH_RADIUS)
@@ -100,12 +103,14 @@ object PlacementJobs {
                         && hasNoNearbySaplingOrLog(world, pos, LARGE_TREE_SPACING)
                 }?.toImmutable()
         },
-        placeFn = { world, pos, _ ->
-            val state = Blocks.DARK_OAK_SAPLING.defaultState
-            world.setBlockState(pos, state)
-            world.setBlockState(pos.east(), state)
-            world.setBlockState(pos.south(), state)
-            world.setBlockState(pos.east().south(), state)
+        placeFn = { world, pos, item ->
+            val itemId = Registries.ITEM.getId(item.item)
+            val block = Registries.BLOCK.get(itemId)
+            val saplingState = if (block is SaplingBlock) block.defaultState else Blocks.DARK_OAK_SAPLING.defaultState
+            world.setBlockState(pos, saplingState)
+            world.setBlockState(pos.east(), saplingState)
+            world.setBlockState(pos.south(), saplingState)
+            world.setBlockState(pos.east().south(), saplingState)
         },
     )
 
