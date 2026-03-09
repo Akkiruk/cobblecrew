@@ -1,3 +1,9 @@
+## 4.5.3 — 2x2 Tree Planting
+- New job: large_tree_planter — places dark oak saplings in a 2x2 pattern so they actually grow
+- Extracts 4 saplings at once from barrels (requires a stack of 4+)
+- Finds valid 2x2 spots: all 4 positions must be air on dirt with sky access, 5-block spacing from other trees
+- Normal tree_planter now excludes dark oak saplings (they can't grow as 1x1)
+
 ## 4.5.2 — Tether Safety Snap-Back
 - Fix: pastured Pokémon could get fully recalled from the pasture when pathfinding took them near the tether boundary. Cobblemon's checkPastureTether uses randomTeleport which can fail (obstructed) and triggers a full recall.
 - Added preemptive tether boundary detection: if a worker gets within 5 blocks of the roam edge, it's instantly teleported back to the pasture origin via requestTeleport (which never fails) and its job is reset.

@@ -48,6 +48,7 @@ class PlacementJob(
     findTarget: (World, BlockPos) -> BlockPos?,
     val placeFn: (World, BlockPos, ItemStack) -> Unit,
     val partyEnabled: Boolean = false,
+    val extractAmount: Int = 1,
 ) : BaseJob() {
 
     // Captured under a different name to avoid conflict with BaseJob.findTarget()
@@ -107,9 +108,9 @@ class PlacementJob(
             return WorkResult.Done()
         }
 
-        // Phase 1: at source container — extract item and navigate to placement
+        // Phase 1: at source container — extract item(s) and navigate to placement
         val extracted = CobbleCrewInventoryUtils.extractFromContainer(
-            context.world, pos, itemCheck
+            context.world, pos, itemCheck, extractAmount
         )
         if (extracted.isEmpty) return WorkResult.Done()
 
