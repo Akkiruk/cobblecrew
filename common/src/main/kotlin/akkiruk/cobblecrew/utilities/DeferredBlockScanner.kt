@@ -25,14 +25,19 @@ object DeferredBlockScanner {
     private val searchHeight get() = config.searchHeight
     private val SCAN_COOLDOWN_TICKS: Long get() = config.scanCooldownSeconds.toLong() * 20L
 
-    private data class ScanJob(
+    data class ScanJob(
         val iterator: Iterator<BlockPos>,
         var lastTickProcessed: Long,
+        val world: World,
         val staged: MutableMap<BlockCategory, MutableSet<BlockPos>> = mutableMapOf()
     )
 
     private val activeScans = mutableMapOf<BlockPos, ScanJob>()
     private val lastScanCompletion = mutableMapOf<BlockPos, Long>()
+
+    /** Tracks how many blocks have been scanned this tick (global budget). */
+    private var currentTickBudgetUsed = 0
+    private var lastBudgetResetTick = -1L
 
     /** Categories actually needed by registered workers — computed once after init. */
     private var neededCategories: Set<BlockCategory>? = null
@@ -49,10 +54,25 @@ object DeferredBlockScanner {
     /** Call on config reload to recompute needed categories. */
     fun invalidate() { neededCategories = null }
 
+    /** Reset the per-tick budget counter. Called once per server tick. */
+    fun resetTickBudget(currentTick: Long) {
+        if (currentTick != lastBudgetResetTick) {
+            lastBudgetResetTick = currentTick
+            currentTickBudgetUsed = 0
+        }
+    }
+
+    /** How many blocks remain in this tick's global budget. */
+    private fun remainingBudget(): Int {
+        val cap = config.globalBlockBudget
+        if (cap <= 0) return BLOCKS_PER_TICK // disabled — use per-scan limit
+        return (cap - currentTickBudgetUsed).coerceAtLeast(0)
+    }
+
     /**
      * Initiates or continues a deferred area scan for one tick.
      * Populates BlockCategory caches for all registered validators.
-     * Used for pasture contexts; party contexts use eager scanning instead.
+     * Respects the global block budget — may scan fewer blocks if budget is exhausted.
      */
     fun tickAreaScan(context: JobContext) {
         val world = context.world
@@ -71,7 +91,7 @@ object DeferredBlockScanner {
             val height = searchHeight.toDouble()
             val searchArea = Box(scanCenter).expand(radius, height, radius)
             CobbleCrewDebugLogger.scanStarted(scanCenter, searchRadius, searchHeight)
-            ScanJob(BlockPos.stream(searchArea).iterator(), currentTick - 1)
+            ScanJob(BlockPos.stream(searchArea).iterator(), currentTick - 1, world)
         }
 
         if (scanJob.lastTickProcessed == currentTick) return
@@ -79,8 +99,11 @@ object DeferredBlockScanner {
 
         val categoryValidators = BlockCategoryValidators.validators
         val needed = getNeededCategories()
+        val budget = minOf(BLOCKS_PER_TICK, remainingBudget())
+        if (budget <= 0) return
 
-        repeat(BLOCKS_PER_TICK) {
+        var scanned = 0
+        while (scanned < budget) {
             if (!scanJob.iterator.hasNext()) {
                 CobbleCrewCacheManager.replaceAllCategoryTargets(key, scanJob.staged)
                 activeScans.remove(key)
@@ -93,19 +116,22 @@ object DeferredBlockScanner {
                     scanCenter,
                     counts.map { (k, v) -> k.name to v }.toMap()
                 )
+                currentTickBudgetUsed += scanned
                 return
             }
 
             val pos = scanJob.iterator.next()
+            scanned++
 
             val chunkPos = ChunkPos(pos)
-            if (!world.isChunkLoaded(chunkPos.x, chunkPos.z)) return@repeat
+            if (!world.isChunkLoaded(chunkPos.x, chunkPos.z)) continue
 
             val state = world.getBlockState(pos)
-            if (state.isAir) return@repeat
+            if (state.isAir) continue
 
             classifyBlock(world, pos, state.block, state, needed, categoryValidators, scanJob.staged)
         }
+        currentTickBudgetUsed += scanned
     }
 
     /** Checks whether a scan job is running for the given origin. */
@@ -117,11 +143,79 @@ object DeferredBlockScanner {
         lastScanCompletion.remove(origin)
     }
 
+    // ── Party scans (deferred, shares global budget) ────────────────────
+
+    private val partyScans = mutableMapOf<BlockPos, ScanJob>()
+
+    /**
+     * Enqueue a deferred party scan centred on [center].
+     * Uses party-specific radius/height from config.
+     * Returns false if a scan is already running or on cooldown.
+     */
+    fun enqueuePartyScan(key: BlockPos, world: World, center: BlockPos, radius: Int, height: Int): Boolean {
+        if (partyScans.containsKey(key)) return false
+        lastScanCompletion[key]?.let { last ->
+            if (world.time - last < SCAN_COOLDOWN_TICKS) return false
+        }
+        val r = radius.toDouble()
+        val h = height.toDouble()
+        val area = Box(center).expand(r, h, r)
+        partyScans[key] = ScanJob(BlockPos.stream(area).iterator(), world.time - 1, world)
+        return true
+    }
+
+    /**
+     * Tick one slice of a party scan. Returns `true` when the scan has finished
+     * (results written to CobbleCrewCacheManager).
+     */
+    fun tickPartyScan(key: BlockPos): Boolean {
+        val job = partyScans[key] ?: return true // nothing queued = "done"
+        val world = job.world
+        val currentTick = world.time
+
+        if (job.lastTickProcessed == currentTick) return false
+        job.lastTickProcessed = currentTick
+
+        val categoryValidators = BlockCategoryValidators.validators
+        val needed = getNeededCategories()
+        val budget = minOf(BLOCKS_PER_TICK, remainingBudget())
+        if (budget <= 0) return false
+
+        var scanned = 0
+        while (scanned < budget) {
+            if (!job.iterator.hasNext()) {
+                CobbleCrewCacheManager.replaceAllCategoryTargets(key, job.staged)
+                partyScans.remove(key)
+                lastScanCompletion[key] = currentTick
+                currentTickBudgetUsed += scanned
+                return true
+            }
+            val pos = job.iterator.next()
+            scanned++
+
+            val chunkPos = ChunkPos(pos)
+            if (!world.isChunkLoaded(chunkPos.x, chunkPos.z)) continue
+
+            val state = world.getBlockState(pos)
+            if (state.isAir) continue
+
+            classifyBlock(world, pos, state.block, state, needed, categoryValidators, job.staged)
+        }
+        currentTickBudgetUsed += scanned
+        return false
+    }
+
+    /** Whether a party scan is still in progress for this key. */
+    fun isPartyScanActive(key: BlockPos): Boolean = partyScans.containsKey(key)
+
     /** Clear all scan state (server shutdown). */
     fun clearAll() {
         activeScans.clear()
+        partyScans.clear()
         lastScanCompletion.clear()
         neededCategories = null
+        currentTickBudgetUsed = 0
+        lastBudgetResetTick = -1L
     }
 
     /**

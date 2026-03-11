@@ -27,17 +27,43 @@ import java.util.concurrent.ConcurrentHashMap
  */
 object BlockChangeNotifier {
 
-    /** Active pasture origins → search radius squared (for fast range check). */
+    /** Active pasture origins → search radius. */
     private val activePastures = ConcurrentHashMap<BlockPos, Int>()
+
+    /** Chunk-based spatial index: packed chunkX/chunkZ → set of pasture origins covering that chunk. */
+    private val chunkIndex = ConcurrentHashMap<Long, MutableSet<BlockPos>>()
 
     private val config get() = CobbleCrewConfigHolder.config.general
 
+    private fun chunkKey(cx: Int, cz: Int): Long = (cx.toLong() shl 32) or (cz.toLong() and 0xFFFFFFFFL)
+
+    /** Compute all chunks that a pasture's search area overlaps. */
+    private fun coveredChunks(origin: BlockPos, radius: Int): List<Long> {
+        val minCx = (origin.x - radius) shr 4
+        val maxCx = (origin.x + radius) shr 4
+        val minCz = (origin.z - radius) shr 4
+        val maxCz = (origin.z + radius) shr 4
+        val result = mutableListOf<Long>()
+        for (cx in minCx..maxCx) for (cz in minCz..maxCz) result.add(chunkKey(cx, cz))
+        return result
+    }
+
     fun registerPasture(origin: BlockPos) {
-        activePastures[origin] = config.searchRadius
+        val radius = config.searchRadius
+        activePastures[origin] = radius
+        for (ck in coveredChunks(origin, radius)) {
+            chunkIndex.getOrPut(ck) { ConcurrentHashMap.newKeySet() }.add(origin)
+        }
     }
 
     fun unregisterPasture(origin: BlockPos) {
-        activePastures.remove(origin)
+        val radius = activePastures.remove(origin) ?: return
+        for (ck in coveredChunks(origin, radius)) {
+            chunkIndex[ck]?.let { set ->
+                set.remove(origin)
+                if (set.isEmpty()) chunkIndex.remove(ck)
+            }
+        }
     }
 
     /**
@@ -51,8 +77,12 @@ object BlockChangeNotifier {
         val needed = DeferredBlockScanner.getNeededCategories()
         val validators = BlockCategoryValidators.validators
 
-        // Check each active pasture for range
-        for ((origin, radius) in activePastures) {
+        // Look up only pastures whose search area covers this block's chunk
+        val ck = chunkKey(pos.x shr 4, pos.z shr 4)
+        val candidates = chunkIndex[ck] ?: return
+
+        for (origin in candidates) {
+            val radius = activePastures[origin] ?: continue
             val dx = pos.x - origin.x
             val dy = pos.y - origin.y
             val dz = pos.z - origin.z
@@ -84,5 +114,6 @@ object BlockChangeNotifier {
 
     fun clearAll() {
         activePastures.clear()
+        chunkIndex.clear()
     }
 }

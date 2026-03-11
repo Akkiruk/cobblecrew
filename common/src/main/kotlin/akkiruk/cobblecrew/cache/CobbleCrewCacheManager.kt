@@ -23,6 +23,10 @@ import java.util.concurrent.ConcurrentHashMap
  */
 object CobbleCrewCacheManager {
     private val caches = ConcurrentHashMap<BlockPos, MutableMap<BlockCategory, MutableSet<BlockPos>>>()
+
+    /** Reverse index: (category, targetPos) → set of origins that cache this target. */
+    private val reverseIndex = ConcurrentHashMap<BlockCategory, ConcurrentHashMap<BlockPos, MutableSet<BlockPos>>>()
+
     private var structuresCache: Set<Identifier>? = null
     private val structureLocationCache = ConcurrentHashMap<Identifier, com.mojang.datafixers.util.Pair<BlockPos, RegistryEntry<Structure>>>()
     private val structureLocationExpiry = ConcurrentHashMap<Identifier, Long>()
@@ -34,34 +38,68 @@ object CobbleCrewCacheManager {
     fun getTargets(origin: BlockPos, category: BlockCategory): Set<BlockPos> =
         caches[origin]?.get(category)?.toSet() ?: emptySet()
 
-    /** Remove a position from ALL origin caches (handles overlapping pastures). */
+    /** Remove a position from ALL origin caches (handles overlapping pastures). O(1) via reverse index. */
     fun removeTargetGlobal(category: BlockCategory, pos: BlockPos) {
-        caches.values.forEach { it[category]?.remove(pos) }
+        val origins = reverseIndex[category]?.remove(pos) ?: return
+        for (origin in origins) {
+            caches[origin]?.get(category)?.remove(pos)
+        }
     }
 
     /** Add a single position to a specific origin's cache (live block change updates). */
     fun addTarget(origin: BlockPos, category: BlockCategory, pos: BlockPos) {
         val cache = caches[origin] ?: return
-        cache.getOrPut(category) { mutableSetOf() }.add(pos)
+        if (cache.getOrPut(category) { mutableSetOf() }.add(pos)) {
+            reverseIndex.getOrPut(category) { ConcurrentHashMap() }
+                .getOrPut(pos) { ConcurrentHashMap.newKeySet() }
+                .add(origin)
+        }
     }
 
     /** Remove a single position from a specific origin's cache. */
     fun removeTarget(origin: BlockPos, category: BlockCategory, pos: BlockPos) {
-        caches[origin]?.get(category)?.remove(pos)
+        if (caches[origin]?.get(category)?.remove(pos) == true) {
+            reverseIndex[category]?.get(pos)?.let { origins ->
+                origins.remove(origin)
+                if (origins.isEmpty()) reverseIndex[category]?.remove(pos)
+            }
+        }
     }
 
     /** Atomically replace all category targets for an origin with new scan results. */
     fun replaceAllCategoryTargets(origin: BlockPos, newTargets: Map<BlockCategory, Set<BlockPos>>) {
         val cache = caches.getOrPut(origin) { newCategoryMap() }
         for ((category, set) in cache) {
+            // Remove old reverse entries for this origin
+            for (oldPos in set) {
+                reverseIndex[category]?.get(oldPos)?.let { origins ->
+                    origins.remove(origin)
+                    if (origins.isEmpty()) reverseIndex[category]?.remove(oldPos)
+                }
+            }
             set.clear()
-            newTargets[category]?.let { set.addAll(it) }
+            newTargets[category]?.let { newPositions ->
+                set.addAll(newPositions)
+                // Add new reverse entries
+                val catIndex = reverseIndex.getOrPut(category) { ConcurrentHashMap() }
+                for (pos in newPositions) {
+                    catIndex.getOrPut(pos) { ConcurrentHashMap.newKeySet() }.add(origin)
+                }
+            }
         }
     }
 
     /** Remove an entire origin's cache (pasture removed or party scan origin changed). */
     fun removeCache(origin: BlockPos) {
-        caches.remove(origin)
+        val cache = caches.remove(origin) ?: return
+        for ((category, positions) in cache) {
+            for (pos in positions) {
+                reverseIndex[category]?.get(pos)?.let { origins ->
+                    origins.remove(origin)
+                    if (origins.isEmpty()) reverseIndex[category]?.remove(pos)
+                }
+            }
+        }
     }
 
     // --- Structure location cache (for Scout job) ---
@@ -110,6 +148,7 @@ object CobbleCrewCacheManager {
 
     fun clearAll() {
         caches.clear()
+        reverseIndex.clear()
         structuresCache = null
         structureLocationCache.clear()
         structureLocationExpiry.clear()

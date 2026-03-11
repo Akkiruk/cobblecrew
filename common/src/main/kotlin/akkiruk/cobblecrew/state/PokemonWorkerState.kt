@@ -68,6 +68,10 @@ class DepositState {
     var depositArrivalTick: Long? = null
     var lastDepositWarning: Long = 0L
 
+    /** Cached deposit target — avoid re-searching every tick while navigating. */
+    var cachedDepositTarget: BlockPos? = null
+    var cachedDepositTick: Long = 0L
+
     fun clear() {
         heldItems.clear()
         failedDeposits.clear()
@@ -75,6 +79,8 @@ class DepositState {
         depositArrivalTick = null
         heldSinceTick = 0L
         lastDepositWarning = 0L
+        cachedDepositTarget = null
+        cachedDepositTick = 0L
     }
 }
 

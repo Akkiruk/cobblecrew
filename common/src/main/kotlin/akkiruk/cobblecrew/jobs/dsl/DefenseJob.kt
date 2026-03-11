@@ -56,6 +56,7 @@ open class DefenseJob(
     override val arrivalTolerance: Double = 2.0
     override val workPhase: WorkPhase = phase
     override val producesItems: Boolean = false
+    override val bypassesAvailabilityCache: Boolean = true
 
     override fun buildDefaultConfig() = JobConfig(
         enabled = true,

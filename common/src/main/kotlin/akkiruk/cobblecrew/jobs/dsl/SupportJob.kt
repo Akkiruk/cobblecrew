@@ -62,6 +62,7 @@ open class SupportJob(
     override val workPhase: WorkPhase = WorkPhase.HEALING
     override val producesItems: Boolean = false
     override val arrivalStyle: ArrivalStyle = ArrivalStyle.QUICK
+    override val bypassesAvailabilityCache: Boolean = true
 
     protected val effectDurationTicks: Int get() =
         (config.effectDurationSeconds ?: defaultDurationSeconds) * 20

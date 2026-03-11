@@ -12,6 +12,7 @@ import akkiruk.cobblecrew.enums.JobPhase
 import akkiruk.cobblecrew.state.ClaimManager
 import akkiruk.cobblecrew.state.StateManager
 import akkiruk.cobblecrew.utilities.CobbleCrewDebugLogger
+import akkiruk.cobblecrew.utilities.DeferredBlockScanner
 import akkiruk.cobblecrew.utilities.HostileScanCache
 import akkiruk.cobblecrew.utilities.WorkerVisualUtils
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
@@ -35,6 +36,8 @@ object WorkerDispatcher {
      * Sweeps expired claims/blacklists every [SWEEP_INTERVAL] ticks.
      */
     fun tickMaintenance(serverTick: Long) {
+        DeferredBlockScanner.resetTickBudget(serverTick)
+        JobSelector.resetAvailCache(serverTick)
         if (serverTick - lastSweepTick >= SWEEP_INTERVAL) {
             lastSweepTick = serverTick
             ClaimManager.sweepExpired(serverTick)

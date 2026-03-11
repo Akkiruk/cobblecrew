@@ -12,6 +12,7 @@ import akkiruk.cobblecrew.enums.WorkerPriority
 import akkiruk.cobblecrew.interfaces.Worker
 import akkiruk.cobblecrew.state.PokemonWorkerState
 import akkiruk.cobblecrew.utilities.CobbleCrewDebugLogger
+import net.minecraft.util.math.BlockPos
 import java.util.UUID
 
 /**
@@ -28,6 +29,25 @@ import java.util.UUID
 object JobSelector {
     private const val JOB_STICKINESS_TICKS = 100L
 
+    // Per-tick isAvailable cache: (origin, jobName) → result.
+    // Defense jobs are excluded (they use pokemonId in their check).
+    private var availCacheTick = -1L
+    private val availCache = mutableMapOf<Long, Boolean>()
+
+    /** Pack origin+jobName into a single cache key. */
+    private fun cacheKey(origin: BlockPos, jobName: String): Long {
+        // Combine origin hashCode and jobName hashCode into a Long
+        return (origin.hashCode().toLong() shl 32) or (jobName.hashCode().toLong() and 0xFFFFFFFFL)
+    }
+
+    /** Reset the cache at the start of each tick. Call from WorkerDispatcher.tickMaintenance. */
+    fun resetAvailCache(serverTick: Long) {
+        if (serverTick != availCacheTick) {
+            availCacheTick = serverTick
+            availCache.clear()
+        }
+    }
+
     /**
      * Select the best available job from the Pokémon's eligible pool.
      * Returns null if no job is available right now.
@@ -40,10 +60,21 @@ object JobSelector {
                 .groupBy { it.importance }
                 .toSortedMap()
                 .flatMap { (_, workers) -> workers.shuffled() }
-            val available = sorted.firstOrNull { it.isAvailable(context, pokemonId) }
+            val available = sorted.firstOrNull { cachedIsAvailable(it, context, pokemonId) }
             if (available != null) return available
         }
         return null
+    }
+
+    private fun cachedIsAvailable(worker: Worker, context: JobContext, pokemonId: UUID): Boolean {
+        // Defense/support jobs use pokemonId — bypass cache
+        if (worker.bypassesAvailabilityCache) return worker.isAvailable(context, pokemonId)
+
+        val key = cacheKey(context.origin, worker.name)
+        availCache[key]?.let { return it }
+        val result = worker.isAvailable(context, pokemonId)
+        availCache[key] = result
+        return result
     }
 
     /**

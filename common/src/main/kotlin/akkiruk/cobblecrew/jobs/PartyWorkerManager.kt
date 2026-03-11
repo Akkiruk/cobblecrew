@@ -11,11 +11,9 @@ package akkiruk.cobblecrew.jobs
 import akkiruk.cobblecrew.CobbleCrew
 import akkiruk.cobblecrew.cache.CobbleCrewCacheManager
 import akkiruk.cobblecrew.config.CobbleCrewConfigHolder
-import akkiruk.cobblecrew.enums.BlockCategory
 import akkiruk.cobblecrew.state.ClaimManager
 import akkiruk.cobblecrew.state.PartyJobPreferences
 import akkiruk.cobblecrew.state.StateManager
-import akkiruk.cobblecrew.utilities.BlockCategoryValidators
 import akkiruk.cobblecrew.utilities.CobbleCrewInventoryUtils
 import akkiruk.cobblecrew.utilities.ContainerAnimations
 import akkiruk.cobblecrew.utilities.DeferredBlockScanner
@@ -183,8 +181,8 @@ object PartyWorkerManager {
                 JobContext.Party(first.owner, first.owner.serverWorld)
             }
 
-            // Eager synchronous scan — small radius, runs every scanIntervalTicks
-            runEagerScan(context)
+            // Deferred scan — spreads block scanning across ticks
+            runDeferredScan(context)
 
             // Drive chest animations for party workers
             ContainerAnimations.tickAnimations(context.world)
@@ -245,77 +243,49 @@ object PartyWorkerManager {
     }
 
     /**
-     * Synchronous area scan centered on the player.
-     * Scans all blocks in a small radius and populates the cache atomically.
-     * Much faster than the deferred scanner — ~2,000 blocks in a single tick.
+     * Deferred area scan centered on the player.
+     * Enqueues a new scan when the interval is up and the player has moved;
+     * ticks in-progress scans each frame (sharing the global block budget).
      */
-    private fun runEagerScan(context: JobContext.Party) {
+    private fun runDeferredScan(context: JobContext.Party) {
         val now = context.world.time
         val playerId = context.player.uuid
+        val key = context.origin
         val interval = config.scanIntervalTicks.toLong()
 
+        // Always tick an in-progress scan
+        if (DeferredBlockScanner.isPartyScanActive(key)) {
+            DeferredBlockScanner.tickPartyScan(key)
+            return
+        }
+
+        // Cooldown check
         lastScanTick[playerId]?.let { last ->
             if (now - last < interval) return
         }
         lastScanTick[playerId] = now
 
-        val world = context.world
         val playerPos = context.player.blockPos
         val radius = config.searchRadius
         val height = config.searchHeight
 
         // Only rescan if the player moved far enough from the last scan origin.
-        // Avoids thrashing the cache when the player shifts 1 block.
         val oldOrigin = context.scanOrigin
-        val RESCAN_DISTANCE_SQ = 9 // 3 blocks — must move at least this far to trigger new scan origin
+        val RESCAN_DISTANCE_SQ = 9
         if (oldOrigin != null) {
             val dx = playerPos.x - oldOrigin.x
             val dy = playerPos.y - oldOrigin.y
             val dz = playerPos.z - oldOrigin.z
             val distSq = dx * dx + dy * dy + dz * dz
-            if (distSq < RESCAN_DISTANCE_SQ) return  // Too close — skip rescan, keep old cache
+            if (distSq < RESCAN_DISTANCE_SQ) return
             CobbleCrewCacheManager.removeCache(oldOrigin)
         }
 
-        // Pin origin to current player pos — stable until next scan
         context.scanOrigin = playerPos
-        val key = context.origin
 
-        val categoryValidators = BlockCategoryValidators.validators
-        val needed = DeferredBlockScanner.getNeededCategories()
-        val staged = mutableMapOf<BlockCategory, MutableSet<BlockPos>>()
-
-        val minX = playerPos.x - radius
-        val maxX = playerPos.x + radius
-        val minY = playerPos.y - height
-        val maxY = playerPos.y + height
-        val minZ = playerPos.z - radius
-        val maxZ = playerPos.z + radius
-
-        for (x in minX..maxX) {
-            for (z in minZ..maxZ) {
-                val chunkX = x shr 4
-                val chunkZ = z shr 4
-                if (!world.isChunkLoaded(chunkX, chunkZ)) continue
-
-                for (y in minY..maxY) {
-                    val pos = BlockPos(x, y, z)
-                    val state = world.getBlockState(pos)
-                    if (state.isAir) continue
-                    DeferredBlockScanner.classifyBlock(
-                        world, pos, state.block, state,
-                        needed, categoryValidators, staged
-                    )
-                }
-            }
-        }
-
-        CobbleCrewCacheManager.replaceAllCategoryTargets(key, staged)
-
-        if (staged.isNotEmpty()) {
-            val summary = staged.entries.joinToString(", ") { (cat, positions) -> "${cat.name}=${positions.size}" }
-            CobbleCrew.LOGGER.debug("[CobbleCrew:PARTY_SCAN] Scan at {} found: {}", playerPos, summary)
-        }
+        DeferredBlockScanner.enqueuePartyScan(
+            context.origin, context.world, playerPos, radius, height
+        )
     }
 
     private fun deliverHeldItemsOnRecall(entry: PartyWorkerEntry) {

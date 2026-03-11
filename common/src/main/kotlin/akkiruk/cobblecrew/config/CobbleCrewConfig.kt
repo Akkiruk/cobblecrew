@@ -27,6 +27,12 @@ class CobbleCrewConfig : ConfigData {
     class GeneralGroup {
         @ConfigEntry.BoundedDiscrete(min = 10, max = 100)
         var blocksScannedPerTick = 50
+
+        /** Global cap on blocks scanned per tick across ALL pastures and party scans combined.
+         *  Prevents CPU spikes when many pastures are active. Set to 0 to disable the cap. */
+        @ConfigEntry.BoundedDiscrete(min = 0, max = 1000)
+        var globalBlockBudget = 200
+
         @ConfigEntry.BoundedDiscrete(min = 1, max = 10)
         var searchRadius = 8
         @ConfigEntry.BoundedDiscrete(min = 1, max = 8)

@@ -1,3 +1,13 @@
+## 4.6.0 — Performance Overhaul
+- Global block scan budget (200 blocks/tick shared across all pastures + party scans) prevents runaway scanning
+- Party scans now deferred across multiple ticks instead of synchronous 1,200+ block spike
+- Per-tick isAvailable cache: job availability results reused across all Pokémon at the same origin
+- Chunk-based spatial index for BlockChangeNotifier — O(1) lookup instead of iterating all pastures
+- Deposit target caching: Pokémon reuse their last found container for 2 seconds instead of re-searching every tick
+- Inventory search sorts by distance before checking space (skips far containers early)
+- Reverse index for removeTargetGlobal — O(1) instead of iterating all caches
+- New config: globalBlockBudget (default 200, 0 = disabled) in general settings
+
 ## 4.5.4 — Mega Trees: Spruce & Jungle
 - Large tree planter now handles spruce and jungle saplings in addition to dark oak
 - All three sapling types get placed as 2x2 for mega tree growth

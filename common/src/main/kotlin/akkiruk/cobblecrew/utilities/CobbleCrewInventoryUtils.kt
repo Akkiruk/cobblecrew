@@ -71,13 +71,11 @@ object CobbleCrewInventoryUtils {
         val possibleTargets = CobbleCrewCacheManager.getTargets(origin, BlockCategory.CONTAINER)
         if (possibleTargets.isEmpty()) return null
 
+        // Sort by distance first, then check space — avoids calling hasSpaceFor on far containers
         return possibleTargets
-            .filter { pos ->
-                blockValidator(world, pos)
-                    && pos !in ignorePos
-                    && (itemsToDeposit.isEmpty() || hasSpaceFor(world, pos, itemsToDeposit))
-            }
-            .minByOrNull { it.getSquaredDistance(origin) }
+            .filter { pos -> blockValidator(world, pos) && pos !in ignorePos }
+            .sortedBy { it.getSquaredDistance(origin) }
+            .firstOrNull { pos -> itemsToDeposit.isEmpty() || hasSpaceFor(world, pos, itemsToDeposit) }
     }
 
     /**

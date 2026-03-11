@@ -60,6 +60,9 @@ interface Worker {
      */
     fun isAvailable(context: JobContext, pokemonId: java.util.UUID): Boolean = true
 
+    /** True if this job's isAvailable uses pokemonId and should not be origin-cached. */
+    val bypassesAvailabilityCache: Boolean get() = false
+
     /** Main logic loop, executed each tick. */
     fun tick(context: JobContext, pokemonEntity: PokemonEntity)
 

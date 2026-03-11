@@ -69,7 +69,19 @@ object DepositHelper {
     ) {
         val itemsToDeposit = state.heldItems.toList()
         val allContainers = CobbleCrewCacheManager.getTargets(origin, BlockCategory.CONTAINER)
-        val inventoryPos = CobbleCrewInventoryUtils.findClosestInventory(world, origin, state.failedDeposits, itemsToDeposit)
+        val now = world.time
+
+        // Use cached deposit target if still valid (avoid re-searching every tick)
+        val CACHE_TTL = 40L // 2 seconds
+        var inventoryPos = state.deposit.cachedDepositTarget
+        if (inventoryPos != null && now - state.deposit.cachedDepositTick < CACHE_TTL
+            && inventoryPos !in state.failedDeposits) {
+            // keep cached
+        } else {
+            inventoryPos = CobbleCrewInventoryUtils.findClosestInventory(world, origin, state.failedDeposits, itemsToDeposit)
+            state.deposit.cachedDepositTarget = inventoryPos
+            state.deposit.cachedDepositTick = now
+        }
 
         if (inventoryPos == null) {
             val now = world.time
