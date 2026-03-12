@@ -50,7 +50,7 @@ class CobbleCrewConfig : ConfigData {
 
     class PartyGroup {
         /** Enable party Pokémon jobs globally. */
-        var enabled = true
+        var enabled = false
 
         /** Ticks between party area scans (lower = more responsive, higher = less CPU). */
         @ConfigEntry.BoundedDiscrete(min = 20, max = 200)
